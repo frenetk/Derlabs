@@ -1,0 +1,40 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/pedidos"
+  to = "/pedidos.html"
+  status = 200
+
+[[redirects]]
+  from = "/formulario"
+  to = "/formulario.html"
+  status = 200
+
+[[redirects]]
+  from = "/respuestas"
+  to = "/formulario-respuestas.html"
+  status = 200
+
+[[redirects]]
+  from = "/manifest.json"
+  to = "/.netlify/functions/manifestTienda"
+  status = 200
+
+# ── Landing de venta (dominio de marca: derlabs.cl) ──
+# Sin esto, ese dominio (agregado en Netlify → Domain management →
+# Add domain alias) mostraría la tienda de prueba test-burgers en vez
+# de la landing — index.html no sabe distinguir "esto es la landing
+# de marca" de "esto es una tienda sin registrar", ambas caen al
+# mismo valor por defecto. Cubre con y sin "www." — si el visitante
+# escribe cualquiera de las dos formas, cae en la landing igual.
+[[redirects]]
+  from = "/*"
+  to = "/landing.html"
+  status = 200
+  force = true
+  conditions = {Host = ["derlabs.cl", "www.derlabs.cl"]}

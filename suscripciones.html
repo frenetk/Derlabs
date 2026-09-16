@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Suscripciones — mensualidad de clientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════
+   TOKENS — mismos que generar-tienda.html, para que se sienta parte
+   del mismo sistema de herramientas internas.
+══════════════════════════════════════ */
+:root{
+  color-scheme: dark;
+  --rojo:#E53935;
+  --rojo-dark:#B71C1C;
+  --verde:#2E7D32;
+  --amarillo:#F9A825;
+  --bg:#0E0E0E;
+  --bg2:#181818;
+  --bg3:#222222;
+  --card:#1E1E1E;
+  --borde:rgba(255,255,255,.08);
+  --txt:#F5F5F5;
+  --txt2:#A0A0A0;
+  --txt3:#606060;
+  --radius:16px;
+  --shadow:0 4px 20px rgba(0,0,0,.45);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);font-family:'Nunito',sans-serif;min-height:100vh}
+.bc{font-family:'Barlow Condensed',sans-serif;font-weight:700}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif;font-weight:700}
+input,select,button,textarea{font-family:'Nunito',sans-serif;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+
+.wrapper{max-width:800px;margin:0 auto;padding:24px 18px 60px}
+
+/* ── Gate de acceso (mismo secreto que generar-tienda.html) ── */
+#gate{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;z-index:100;
+}
+.gate-box{width:100%;max-width:360px;text-align:center}
+.gate-box h2{font-size:24px;margin-bottom:6px}
+.gate-box p{color:var(--txt2);font-size:14px;margin-bottom:20px}
+.gate-box input{
+  width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--borde);
+  background:var(--bg2);color:var(--txt);font-size:15px;margin-bottom:12px;
+}
+.gate-box button{
+  width:100%;padding:14px;border-radius:12px;border:none;
+  background:var(--rojo);color:#fff;font-weight:800;font-size:15px;
+}
+.gate-err{color:var(--rojo);font-size:13px;margin-top:10px;min-height:18px}
+
+/* ── Header ── */
+header{margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+header h1{font-size:28px;margin-bottom:4px}
+header p{color:var(--txt2);font-size:14px}
+.btn-recargar{
+  background:var(--bg2);border:1px solid var(--borde);color:var(--txt2);
+  padding:10px 16px;border-radius:12px;font-size:13px;font-weight:700;
+  flex-shrink:0;
+}
+
+/* ── Resumen ── */
+.resumen{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}
+.resumen-card{
+  flex:1;min-width:100px;background:var(--card);border:1px solid var(--borde);
+  border-radius:14px;padding:14px;text-align:center;
+}
+.resumen-card .num{font-size:26px;font-weight:900;font-family:'Barlow Condensed',sans-serif}
+.resumen-card .lbl{font-size:11.5px;color:var(--txt2);font-weight:700;margin-top:2px}
+.resumen-card.ok .num{color:var(--verde)}
+.resumen-card.alerta .num{color:var(--amarillo)}
+.resumen-card.vencido .num{color:var(--rojo)}
+
+/* ── Lista ── */
+.suscripcion-card{
+  background:var(--card);border:1px solid var(--borde);border-radius:14px;
+  padding:14px 16px;margin-bottom:10px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.suscripcion-card .punto{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.suscripcion-card .punto.activa{background:var(--verde)}
+.suscripcion-card .punto.alerta{background:var(--amarillo)}
+.suscripcion-card .punto.vencida{background:var(--rojo)}
+.suscripcion-card .punto.pendiente,
+.suscripcion-card .punto.pausada,
+.suscripcion-card .punto.cancelada{background:var(--txt3)}
+.suscripcion-card .info{flex:1;min-width:160px}
+.suscripcion-card .nombre{font-weight:800;font-size:15px}
+.suscripcion-card .detalle{color:var(--txt2);font-size:12.5px;margin-top:2px}
+.suscripcion-card .estado-badge{
+  font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;
+  text-transform:uppercase;letter-spacing:.3px;
+}
+.suscripcion-card .estado-badge.activa{background:rgba(46,125,50,.18);color:var(--verde)}
+.suscripcion-card .estado-badge.alerta{background:rgba(249,168,37,.18);color:var(--amarillo)}
+.suscripcion-card .estado-badge.vencida{background:rgba(229,57,53,.18);color:var(--rojo)}
+.suscripcion-card .estado-badge.pendiente,
+.suscripcion-card .estado-badge.pausada,
+.suscripcion-card .estado-badge.cancelada{background:var(--bg3);color:var(--txt2)}
+
+.vacio{
+  text-align:center;color:var(--txt2);padding:40px 20px;
+  background:var(--card);border-radius:14px;border:1px solid var(--borde);
+}
+.error-carga{
+  background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.3);
+  border-radius:12px;padding:14px;color:var(--rojo);font-size:14px;margin-bottom:16px;
+}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <h2>🔐 Suscripciones</h2>
+    <p>Acceso restringido — solo administración.</p>
+    <input type="password" id="gateInput" placeholder="Clave de administrador" autocomplete="off">
+    <button id="gateBtn">Entrar</button>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+
+<div class="wrapper" id="app" style="display:none">
+  <header>
+    <div>
+      <h1 class="bc">Suscripciones</h1>
+      <p>Estado del cobro mensual de cada cliente.</p>
+    </div>
+    <button class="btn-recargar" id="btnRecargar">↻ Recargar</button>
+  </header>
+
+  <div class="resumen" id="resumen"></div>
+  <div id="errorCarga"></div>
+  <div id="lista"></div>
+</div>
+
+<script>
+const qs = s => document.querySelector(s);
+let ADMIN_SECRET = "";
+
+/* ── Gate — mismo patrón que generar-tienda.html, reutiliza el mismo
+   secreto guardado en sessionStorage si ya se ingresó en esa pestaña. ── */
+function intentarEntrar(){
+  const val = qs("#gateInput").value.trim();
+  if (!val){ qs("#gateErr").textContent = "Ingresá la clave"; return; }
+  ADMIN_SECRET = val;
+  sessionStorage.setItem("adminSecret", val);
+  qs("#gate").style.display = "none";
+  qs("#app").style.display = "block";
+  cargarSuscripciones();
+}
+qs("#gateBtn").addEventListener("click", intentarEntrar);
+qs("#gateInput").addEventListener("keydown", e => { if (e.key === "Enter") intentarEntrar(); });
+const secretGuardado = sessionStorage.getItem("adminSecret");
+if (secretGuardado){
+  ADMIN_SECRET = secretGuardado;
+  qs("#gate").style.display = "none";
+  qs("#app").style.display = "block";
+  cargarSuscripciones();
+}
+
+/* ── Clasificación de estado visual ──
+   "activa" de MercadoPago se subdivide en 3 según qué tan cerca esté
+   el próximo cobro — la propia base de datos solo sabe "activa",
+   este cálculo es puramente de presentación, no se guarda en ningún
+   lado. Umbral de 5 días para "por vencer": suficiente margen para
+   que el aviso sirva de algo antes de que el cobro efectivamente
+   falle o se atrase. */
+function claseVisual(s){
+  if (s.estado !== "activa") return s.estado; // pendiente/pausada/cancelada tal cual
+  if (!s.proximoCobro) return "activa";
+  const dias = (new Date(s.proximoCobro) - new Date()) / (1000 * 60 * 60 * 24);
+  if (dias < 0) return "vencida";
+  if (dias <= 5) return "alerta";
+  return "activa";
+}
+function labelEstado(clase){
+  return {
+    activa: "Al día", alerta: "Por vencer", vencida: "Vencida",
+    pendiente: "Pendiente de autorizar", pausada: "Pausada", cancelada: "Cancelada"
+  }[clase] || clase;
+}
+function fmtFecha(iso){
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" });
+  } catch(e){ return iso; }
+}
+function fmtMonto(n){
+  if (n == null) return "";
+  return "$" + Number(n).toLocaleString("es-CL");
+}
+
+async function cargarSuscripciones(){
+  const errorBox = qs("#errorCarga");
+  const resumenBox = qs("#resumen");
+  const listaBox = qs("#lista");
+  errorBox.innerHTML = "";
+  listaBox.innerHTML = '<p style="color:var(--txt2);text-align:center;padding:20px">Cargando…</p>';
+
+  try {
+    const res = await fetch("/.netlify/functions/listarSuscripciones", {
+      headers: { "X-Admin-Secret": ADMIN_SECRET }
+    });
+    const j = await res.json().catch(() => ({}));
+
+    if (res.status === 401){
+      errorBox.innerHTML = '<div class="error-carga">Clave de administrador incorrecta — recargá la página para ingresarla de nuevo.</div>';
+      listaBox.innerHTML = "";
+      sessionStorage.removeItem("adminSecret");
+      return;
+    }
+    if (!res.ok || !j.ok){
+      errorBox.innerHTML = '<div class="error-carga">' + (j.error || ("No se pudo cargar (HTTP " + res.status + ")")) + '</div>';
+      listaBox.innerHTML = "";
+      return;
+    }
+
+    const lista = j.suscripciones || [];
+    const clasificadas = lista.map(s => Object.assign({}, s, { clase: claseVisual(s) }));
+
+    // Resumen
+    const activas = clasificadas.filter(s => s.clase === "activa").length;
+    const porVencer = clasificadas.filter(s => s.clase === "alerta").length;
+    const vencidas = clasificadas.filter(s => s.clase === "vencida" || s.clase === "cancelada").length;
+    resumenBox.innerHTML = `
+      <div class="resumen-card ok"><div class="num">${activas}</div><div class="lbl">Al día</div></div>
+      <div class="resumen-card alerta"><div class="num">${porVencer}</div><div class="lbl">Por vencer</div></div>
+      <div class="resumen-card vencido"><div class="num">${vencidas}</div><div class="lbl">Vencidas</div></div>
+    `;
+
+    if (!clasificadas.length){
+      listaBox.innerHTML = '<div class="vacio">Todavía no hay ninguna suscripción creada.</div>';
+      return;
+    }
+
+    // Orden: lo más urgente primero (vencida → alerta → pendiente → activa → pausada/cancelada)
+    const prioridad = { vencida: 0, alerta: 1, pendiente: 2, activa: 3, pausada: 4, cancelada: 5 };
+    clasificadas.sort((a, b) => (prioridad[a.clase] ?? 9) - (prioridad[b.clase] ?? 9));
+
+    listaBox.innerHTML = clasificadas.map(s => `
+      <div class="suscripcion-card">
+        <span class="punto ${s.clase}"></span>
+        <div class="info">
+          <div class="nombre">${escHtml(s.nombreNegocio)}</div>
+          <div class="detalle">${escHtml(s.email || "sin email")} ${s.montoMensual ? "· " + fmtMonto(s.montoMensual) + "/mes" : ""} ${s.proximoCobro ? "· próximo cobro: " + fmtFecha(s.proximoCobro) : ""}</div>
+        </div>
+        <span class="estado-badge ${s.clase}">${labelEstado(s.clase)}</span>
+      </div>
+    `).join("");
+  } catch (err){
+    errorBox.innerHTML = '<div class="error-carga">Error de red — revisá la conexión e intentá de nuevo.</div>';
+    listaBox.innerHTML = "";
+  }
+}
+function escHtml(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+qs("#btnRecargar").addEventListener("click", cargarSuscripciones);
+</script>
+</body>
+</html>

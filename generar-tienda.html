@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Generar tienda nueva</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════
+   TOKENS — misma paleta base que pedidos.html, para que se sienta
+   parte del mismo sistema de herramientas internas.
+══════════════════════════════════════ */
+:root{
+  color-scheme: dark;
+  --rojo:#E53935;
+  --rojo-dark:#B71C1C;
+  --verde:#2E7D32;
+  --bg:#0E0E0E;
+  --bg2:#181818;
+  --bg3:#222222;
+  --card:#1E1E1E;
+  --borde:rgba(255,255,255,.08);
+  --txt:#F5F5F5;
+  --txt2:#A0A0A0;
+  --txt3:#606060;
+  --radius:16px;
+  --shadow:0 4px 20px rgba(0,0,0,.45);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);font-family:'Nunito',sans-serif;min-height:100vh}
+.bc{font-family:'Barlow Condensed',sans-serif;font-weight:700}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif;font-weight:700}
+input,select,button,textarea{font-family:'Nunito',sans-serif;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+
+.wrapper{max-width:720px;margin:0 auto;padding:24px 18px 60px}
+
+/* ── Gate de acceso (secreto de administrador) ── */
+#gate{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;z-index:100;
+}
+.gate-box{width:100%;max-width:360px;text-align:center}
+.gate-box h2{font-size:24px;margin-bottom:6px}
+.gate-box p{color:var(--txt2);font-size:14px;margin-bottom:20px}
+.gate-box input{
+  width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--borde);
+  background:var(--bg2);color:var(--txt);font-size:15px;margin-bottom:12px;
+}
+.gate-box button{
+  width:100%;padding:14px;border-radius:12px;border:none;
+  background:var(--rojo);color:#fff;font-weight:800;font-size:15px;
+}
+.gate-err{color:var(--rojo);font-size:13px;margin-top:10px;min-height:18px}
+
+/* ── Header ── */
+header{margin-bottom:28px}
+header h1{font-size:30px;margin-bottom:4px}
+header p{color:var(--txt2);font-size:14px}
+
+/* ── Formulario ── */
+.campo{margin-bottom:20px}
+.campo label{display:block;font-weight:800;font-size:14px;margin-bottom:8px}
+.campo .ayuda{color:var(--txt3);font-size:12.5px;margin-top:6px;line-height:1.4}
+.campo input[type="text"],
+.campo input[type="email"],
+.campo input[type="password"]{
+  width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--borde);
+  background:var(--bg2);color:var(--txt);font-size:15px;
+}
+.campo input:focus{outline:2px solid var(--rojo);outline-offset:-1px}
+
+/* ── Selector de rubro: chips ── */
+.rubro-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(130px,1fr));gap:10px}
+.rubro-chip{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:14px 8px;border-radius:14px;border:2px solid var(--borde);
+  background:var(--bg2);font-size:12.5px;font-weight:700;text-align:center;
+  transition:border-color .15s, background .15s;
+}
+.rubro-chip .ico{font-size:26px}
+.rubro-chip.activo{border-color:var(--chip-color, var(--rojo));background:var(--bg3)}
+
+/* ── Color custom ── */
+.color-row{display:flex;align-items:center;gap:12px}
+.color-row input[type="color"]{
+  width:52px;height:44px;border-radius:10px;border:1px solid var(--borde);
+  background:var(--bg2);padding:2px;
+}
+.color-row .hex-val{font-family:monospace;font-size:14px;color:var(--txt2)}
+.btn-reset-color{
+  margin-left:auto;background:none;border:1px solid var(--borde);color:var(--txt2);
+  padding:8px 12px;border-radius:10px;font-size:12.5px;font-weight:700;
+}
+
+/* ── Subida de imágenes ── */
+.img-upload{
+  border:2px dashed var(--borde);border-radius:14px;padding:22px 16px;
+  text-align:center;cursor:pointer;transition:border-color .15s, background .15s;
+}
+.img-upload:hover{border-color:var(--rojo);background:var(--bg2)}
+.img-upload-ico{font-size:28px;margin-bottom:6px}
+.img-upload-txt{font-size:13.5px;color:var(--txt2);font-weight:700}
+.img-preview-item{position:relative;display:inline-block;margin-bottom:10px}
+.img-preview-item img{
+  max-width:160px;max-height:160px;border-radius:12px;
+  border:1px solid var(--borde);display:block;
+}
+.img-preview-item .btn-quitar{
+  position:absolute;top:-8px;right:-8px;width:26px;height:26px;border-radius:50%;
+  background:var(--rojo);color:#fff;border:2px solid var(--bg);font-weight:900;
+  font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;
+}
+
+/* ── Vista previa ── */
+.preview-card{
+  border-radius:var(--radius);overflow:hidden;border:1px solid var(--borde);
+  background:var(--bg2);margin-top:14px;
+}
+.preview-header{
+  padding:20px 18px;display:flex;align-items:center;gap:12px;
+  background:var(--pv-color, #9B1B30);color:var(--pv-texto, #fff);
+}
+.preview-header .ico{font-size:32px}
+.preview-header .nombre{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px}
+.preview-body{padding:16px 18px;background:var(--pv-fondo, #FBF7F5)}
+.preview-btn{
+  display:inline-block;padding:10px 20px;border-radius:999px;
+  background:var(--pv-color, #9B1B30);color:var(--pv-texto, #fff);
+  font-weight:800;font-size:13.5px;
+}
+.preview-btn-hover{
+  display:inline-block;padding:10px 20px;border-radius:999px;margin-left:8px;
+  background:var(--pv-hover, #C4273A);color:var(--pv-texto, #fff);
+  font-weight:800;font-size:13.5px;
+}
+.preview-nota{color:#333;font-size:12px;margin-top:10px;opacity:.7}
+.preview-swatches{display:flex;gap:8px;margin-top:12px}
+.swatch{width:28px;height:28px;border-radius:8px;border:1px solid rgba(0,0,0,.1)}
+
+/* ── Botón principal ── */
+.btn-crear{
+  width:100%;padding:16px;border-radius:14px;border:none;
+  background:var(--rojo);color:#fff;font-weight:900;font-size:16px;
+  margin-top:28px;
+}
+.btn-crear:disabled{opacity:.5;cursor:not-allowed}
+.btn-crear.exito{background:var(--verde)}
+
+.estado-msg{margin-top:14px;font-size:14px;padding:12px 14px;border-radius:10px;display:none}
+.estado-msg.ok{display:block;background:rgba(46,125,50,.15);color:#66BB6A;border:1px solid rgba(46,125,50,.3)}
+.estado-msg.error{display:block;background:rgba(229,57,53,.15);color:#EF5350;border:1px solid rgba(229,57,53,.3)}
+
+.resultado-box{
+  margin-top:18px;padding:16px;border-radius:12px;background:var(--bg2);
+  border:1px solid var(--borde);font-size:14px;line-height:1.7;
+}
+.resultado-box b{color:var(--txt)}
+.resultado-box .pasos-siguientes{margin-top:12px;color:var(--txt2);font-size:13px}
+.resultado-box .pasos-siguientes li{margin-left:18px;margin-bottom:4px}
+
+.opcional-toggle{
+  background:none;border:none;color:var(--txt2);font-size:13px;font-weight:700;
+  padding:0;margin-bottom:14px;text-decoration:underline;
+}
+.opcional-bloque{display:none}
+.opcional-bloque.abierto{display:block}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <h2>🔐 Generar tienda</h2>
+    <p>Acceso restringido — solo administración.</p>
+    <input type="password" id="gateInput" placeholder="Clave de administrador" autocomplete="off">
+    <button id="gateBtn">Entrar</button>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+
+<div class="wrapper" id="app" style="display:none">
+  <header>
+    <h1 class="bc">Generar tienda nueva</h1>
+    <p>Completá los datos del cliente — la tienda queda lista, configurada con la paleta de su rubro, en un solo paso.</p>
+  </header>
+
+  <form id="formTienda" autocomplete="off">
+    <div class="campo">
+      <label for="fNombre">Nombre del negocio</label>
+      <input type="text" id="fNombre" placeholder="Ej: Pizzería de Juan Carlos" required>
+      <div class="ayuda">Como quieras que aparezca en la tienda — se usa también para generar el identificador interno.</div>
+    </div>
+
+    <div class="campo">
+      <label>Rubro</label>
+      <div class="rubro-grid" id="rubroGrid"></div>
+    </div>
+
+    <div class="campo">
+      <label>Color de marca</label>
+      <div class="color-row">
+        <input type="color" id="fColor" value="#9B1B30">
+        <span class="hex-val" id="fColorHex">#9B1B30</span>
+        <button type="button" class="btn-reset-color" id="btnResetColor">Usar el del rubro</button>
+      </div>
+      <div class="ayuda">Se completa solo al elegir el rubro — tocá el selector si el cliente pidió un color específico de su marca.</div>
+    </div>
+
+    <div class="campo">
+      <label>Logo / ícono <span style="color:var(--txt3);font-weight:600">(opcional)</span></label>
+      <div id="logoPreviewWrap"></div>
+      <div class="img-upload" id="logoUpload">
+        <div class="img-upload-ico">📷</div>
+        <div class="img-upload-txt">Toca para subir el logo del cliente</div>
+      </div>
+      <input type="file" id="fLogo" accept="image/*" style="display:none">
+      <div class="ayuda">Se usa como ícono del acceso directo en el celular del dueño. Si no lo subes ahora, la tienda usa el ícono del rubro hasta que lo agregues después desde devmode.</div>
+    </div>
+
+    <div class="campo">
+      <label>Imagen para el splash de carga <span style="color:var(--txt3);font-weight:600">(opcional)</span></label>
+      <div id="splashPreviewWrap"></div>
+      <div class="img-upload" id="splashUpload">
+        <div class="img-upload-ico">🖼️</div>
+        <div class="img-upload-txt">Toca para subir una imagen del negocio</div>
+      </div>
+      <input type="file" id="fSplash" accept="image/*" style="display:none">
+      <div class="ayuda">Se muestra a pantalla completa mientras carga la tienda. Una foto del local, del producto, o el logo en grande funcionan bien. Si no la subes, la tienda usa un ícono genérico del rubro mientras carga.</div>
+    </div>
+
+    <div class="campo">
+      <label>Vista previa</label>
+      <div class="preview-card" id="previewCard">
+        <div class="preview-header">
+          <span class="ico" id="pvIco">🏪</span>
+          <span class="nombre" id="pvNombre">Tu Negocio</span>
+        </div>
+        <div class="preview-body">
+          <span class="preview-btn" id="pvBtn">Confirmar pedido</span>
+          <span class="preview-btn-hover">Hover</span>
+          <div class="preview-swatches">
+            <div class="swatch" id="swColor"></div>
+            <div class="swatch" id="swHover"></div>
+            <div class="swatch" id="swFondo"></div>
+          </div>
+          <div class="preview-nota">Así se va a ver el color principal, su hover, y el fondo de página — mostrale esto al cliente antes de confirmar.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="campo">
+      <label for="fHostname">Dominio del cliente</label>
+      <input type="text" id="fHostname" placeholder="pizzeriajuan.cl" required>
+      <div class="ayuda">Sin "https://" ni barra final. El DNS y el alta en Netlify siguen siendo manuales (ver LEEME.md) — esto solo registra el mapeo dominio → tienda en la base de datos.</div>
+    </div>
+
+    <button type="button" class="opcional-toggle" id="toggleOpcional">+ Crear también la cuenta de propietario ahora</button>
+    <div class="opcional-bloque" id="bloqueOpcional">
+      <div class="campo">
+        <label for="fEmailProp">Email del propietario</label>
+        <input type="email" id="fEmailProp" placeholder="dueño@sunegocio.cl">
+      </div>
+      <div class="campo">
+        <label for="fPassProp">Contraseña</label>
+        <input type="password" id="fPassProp" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+        <div class="ayuda">Esta cuenta va a poder entrar al devmode de esta tienda y crear cupones, cambiar precios y ver la caja (ver LEEME.md, sección 8). <b>Si lo dejas en blanco, nadie va a poder entrar al devmode de esta tienda hasta que crees esta cuenta</b> — se puede hacer después a mano en Firebase Console, o volviendo a correr este formulario con el mismo dominio.</div>
+      </div>
+    </div>
+
+    <button type="button" class="opcional-toggle" id="toggleSuscripcion">+ Iniciar la mensualidad de este cliente ahora</button>
+    <div class="opcional-bloque" id="bloqueSuscripcion">
+      <div class="campo">
+        <label for="fMontoMensual">Monto mensual (CLP)</label>
+        <input type="text" inputmode="numeric" id="fMontoMensual" placeholder="Ej: 25000">
+        <div class="ayuda">Genera un link de cobro recurrente en MercadoPago — se lo mandas al cliente y, apenas lo autoriza, MercadoPago cobra ese monto todos los meses solo, sin que tengas que volver a pedirlo. Puedes ver el estado de todos tus clientes después en <a href="/suscripciones.html" style="color:var(--rojo)">suscripciones.html</a>. Si lo dejas en blanco, no se crea ninguna suscripción ahora — se puede hacer después.</div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-crear" id="btnCrear">Crear tienda</button>
+    <div class="estado-msg" id="estadoMsg"></div>
+    <div class="resultado-box" id="resultadoBox" style="display:none"></div>
+  </form>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   RUBROS — mismos ids y colores que RUBROS en index.html y
+   formulario.html. Si se agrega un rubro nuevo, sincronizar acá
+   también.
+══════════════════════════════════════════════════════════════ */
+const RUBROS = [
+  { id:"hamburguesas",  nombre:"Hamburguesas",         ico:"🍔", color:"#9B1B30" },
+  { id:"comida-rapida", nombre:"Comida rápida",        ico:"🌭", color:"#C83D09" },
+  { id:"cafeteria",     nombre:"Cafetería",            ico:"☕", color:"#5C3D2E" },
+  { id:"pasteleria",    nombre:"Pastelería",           ico:"🧁", color:"#C2185B" },
+  { id:"ropa",          nombre:"Ropa y accesorios",    ico:"👕", color:"#1A1A1A" },
+  { id:"belleza",       nombre:"Belleza y estética",   ico:"💅", color:"#D46A9F" },
+  { id:"servicios",     nombre:"Servicios y reservas", ico:"📅", color:"#1565C0" },
+  { id:"otro",          nombre:"Otro rubro",           ico:"🏪", color:"#546E7A" }
+];
+
+/* ── Utilidades de color — mismas fórmulas que index.html (HSL,
+   contraste WCAG real), para que la vista previa acá coincida
+   exactamente con lo que la tienda real va a mostrar. Duplicadas a
+   propósito: este panel es un archivo HTML independiente, sin acceso
+   directo al script de index.html. ── */
+function hexARgb(hex){
+  hex = String(hex || "").replace("#", "");
+  if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+  const n = parseInt(hex, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function rgbAHex(r, g, b){
+  const c = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+  return "#" + c(r) + c(g) + c(b);
+}
+function rgbAHsl(r, g, b){
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if (max === min){ h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max){
+      case r: h = (g-b)/d + (g<b?6:0); break;
+      case g: h = (b-r)/d + 2; break;
+      default: h = (r-g)/d + 4;
+    }
+    h /= 6;
+  }
+  return { h: h*360, s: s*100, l: l*100 };
+}
+function hslARgb(h, s, l){
+  h /= 360; s /= 100; l /= 100;
+  if (s === 0){ const v = l*255; return { r:v, g:v, b:v }; }
+  const hue2rgb = (p,q,t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q-p)*6*t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q-p)*(2/3-t)*6;
+    return p;
+  };
+  const q = l < 0.5 ? l*(1+s) : l+s-l*s;
+  const p = 2*l - q;
+  return {
+    r: hue2rgb(p,q,h+1/3)*255,
+    g: hue2rgb(p,q,h)*255,
+    b: hue2rgb(p,q,h-1/3)*255
+  };
+}
+function luminanciaRelativa(r, g, b){
+  const chan = [r,g,b].map(v => { v/=255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); });
+  return 0.2126*chan[0] + 0.7152*chan[1] + 0.0722*chan[2];
+}
+function razonContrasteWCAG(hex1, hex2){
+  const l1 = (() => { const {r,g,b} = hexARgb(hex1); return luminanciaRelativa(r,g,b); })();
+  const l2 = (() => { const {r,g,b} = hexARgb(hex2); return luminanciaRelativa(r,g,b); })();
+  const claro = Math.max(l1,l2), oscuro = Math.min(l1,l2);
+  return (claro+0.05)/(oscuro+0.05);
+}
+function textoLegibleSobre(hex){
+  const cb = razonContrasteWCAG(hex, "#FFFFFF");
+  const cn = razonContrasteWCAG(hex, "#1A1A1A");
+  if (cb >= 4.5) return "#FFFFFF";
+  if (cn >= 4.5) return "#1A1A1A";
+  return cb >= cn ? "#FFFFFF" : "#1A1A1A";
+}
+function colorHover(hex){
+  const {r,g,b} = hexARgb(hex);
+  const hsl = rgbAHsl(r,g,b);
+  const nuevaL = hsl.l > 55 ? Math.max(0, hsl.l-12) : Math.min(100, hsl.l+12);
+  const rgb = hslARgb(hsl.h, hsl.s, nuevaL);
+  return rgbAHex(rgb.r, rgb.g, rgb.b);
+}
+function fondoSuaveDesde(hex){
+  const {r,g,b} = hexARgb(hex);
+  const hsl = rgbAHsl(r,g,b);
+  const rgb = hslARgb(hsl.h, Math.min(25, hsl.s*0.3), 97);
+  return rgbAHex(rgb.r, rgb.g, rgb.b);
+}
+
+/* ── Estado ── */
+let rubroSeleccionado = "hamburguesas";
+let colorTocadoAMano = false;
+let ADMIN_SECRET = "";
+let logoBase64 = "";
+let splashBase64 = "";
+
+const qs = s => document.querySelector(s);
+
+/* ── Subida y compresión de imágenes ──
+   Mismo patrón que manejarSubidaLogo() en formulario.html: comprimir
+   en el navegador antes de guardar, para no depender de que el
+   archivo original ya venga liviano. Acá el presupuesto es más chico
+   porque van DOS imágenes (logo + splash) en el mismo documento de
+   Firestore junto con el resto de config/general — 1 MiB de límite
+   total repartido entre ambas más el resto de los campos de texto. */
+const IMG_MAX_ARCHIVO_ENTRADA = 15 * 1024 * 1024; // solo evita trabar el navegador
+
+function comprimirImagen(file, maxLado, maxBytes){
+  return new Promise((resolve, reject) => {
+    if (file.size > IMG_MAX_ARCHIVO_ENTRADA){
+      reject(new Error("La imagen es demasiado grande para procesarla. Usá una de menos de 15MB."));
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxLado || height > maxLado){
+        const escala = maxLado / Math.max(width, height);
+        width = Math.round(width * escala);
+        height = Math.round(height * escala);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let calidad = 0.9;
+      let dataUrl = canvas.toDataURL("image/jpeg", calidad);
+      let intentos = 0;
+      while (dataUrl.length > maxBytes && intentos < 6){
+        calidad -= 0.13;
+        dataUrl = canvas.toDataURL("image/jpeg", Math.max(0.25, calidad));
+        intentos++;
+      }
+      if (dataUrl.length > maxBytes){
+        reject(new Error("No pudimos comprimir esta imagen lo suficiente. Probá con otra, idealmente ya recortada de cerca."));
+        return;
+      }
+      resolve(dataUrl);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("No pudimos leer esta imagen. Probá con otro archivo.")); };
+    img.src = url;
+  });
+}
+
+function renderImgPreview(wrapId, base64, onQuitar){
+  const wrap = qs(wrapId);
+  if (!base64){ wrap.innerHTML = ""; return; }
+  wrap.innerHTML = `
+    <div class="img-preview-item">
+      <img src="${base64}" alt="Vista previa">
+      <button type="button" class="btn-quitar" title="Quitar">×</button>
+    </div>
+  `;
+  wrap.querySelector(".btn-quitar").addEventListener("click", onQuitar);
+}
+
+qs("#logoUpload").addEventListener("click", () => qs("#fLogo").click());
+qs("#fLogo").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  qs("#logoUpload .img-upload-txt").textContent = "Procesando…";
+  try {
+    // 256px de lado: de sobra para un ícono de acceso directo y para el favicon.
+    logoBase64 = await comprimirImagen(file, 256, 200 * 1024);
+    renderImgPreview("#logoPreviewWrap", logoBase64, () => {
+      logoBase64 = ""; e.target.value = "";
+      renderImgPreview("#logoPreviewWrap", "", null);
+    });
+  } catch (err){
+    alert(err.message);
+  } finally {
+    qs("#logoUpload .img-upload-txt").textContent = "Toca para subir el logo del cliente";
+    e.target.value = "";
+  }
+});
+
+qs("#splashUpload").addEventListener("click", () => qs("#fSplash").click());
+qs("#fSplash").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  qs("#splashUpload .img-upload-txt").textContent = "Procesando…";
+  try {
+    // 900px de lado: se ve a pantalla completa, necesita más resolución que el ícono.
+    splashBase64 = await comprimirImagen(file, 900, 380 * 1024);
+    renderImgPreview("#splashPreviewWrap", splashBase64, () => {
+      splashBase64 = ""; e.target.value = "";
+      renderImgPreview("#splashPreviewWrap", "", null);
+    });
+  } catch (err){
+    alert(err.message);
+  } finally {
+    qs("#splashUpload .img-upload-txt").textContent = "Toca para subir una imagen del negocio";
+    e.target.value = "";
+  }
+});
+
+/* ── Gate ── */
+function intentarEntrar(){
+  const val = qs("#gateInput").value.trim();
+  if (!val){ qs("#gateErr").textContent = "Ingresá la clave"; return; }
+  ADMIN_SECRET = val;
+  sessionStorage.setItem("adminSecret", val);
+  qs("#gate").style.display = "none";
+  qs("#app").style.display = "block";
+}
+qs("#gateBtn").addEventListener("click", intentarEntrar);
+qs("#gateInput").addEventListener("keydown", e => { if (e.key === "Enter") intentarEntrar(); });
+/* Recordar el secreto solo durante la pestaña abierta (sessionStorage,
+   no localStorage) — este panel puede crear cuentas y tocar dominios,
+   conviene que la sesión no quede guardada indefinidamente en el
+   navegador. */
+const secretGuardado = sessionStorage.getItem("adminSecret");
+if (secretGuardado){
+  ADMIN_SECRET = secretGuardado;
+  qs("#gate").style.display = "none";
+  qs("#app").style.display = "block";
+}
+
+/* ── Render de chips de rubro ── */
+function renderRubros(){
+  qs("#rubroGrid").innerHTML = RUBROS.map(r => `
+    <button type="button" class="rubro-chip${r.id === rubroSeleccionado ? ' activo' : ''}"
+            data-rubro="${r.id}" style="--chip-color:${r.color}">
+      <span class="ico">${r.ico}</span>
+      <span>${r.nombre}</span>
+    </button>
+  `).join("");
+}
+renderRubros();
+
+qs("#rubroGrid").addEventListener("click", e => {
+  const chip = e.target.closest("[data-rubro]");
+  if (!chip) return;
+  rubroSeleccionado = chip.dataset.rubro;
+  renderRubros();
+  if (!colorTocadoAMano){
+    const r = RUBROS.find(x => x.id === rubroSeleccionado);
+    qs("#fColor").value = r.color;
+    actualizarColorHex();
+  }
+  actualizarPreview();
+});
+
+/* ── Color custom ── */
+function actualizarColorHex(){
+  qs("#fColorHex").textContent = qs("#fColor").value.toUpperCase();
+}
+qs("#fColor").addEventListener("input", () => {
+  colorTocadoAMano = true;
+  actualizarColorHex();
+  actualizarPreview();
+});
+qs("#btnResetColor").addEventListener("click", () => {
+  colorTocadoAMano = false;
+  const r = RUBROS.find(x => x.id === rubroSeleccionado);
+  qs("#fColor").value = r.color;
+  actualizarColorHex();
+  actualizarPreview();
+});
+
+/* ── Vista previa ── */
+function actualizarPreview(){
+  const r = RUBROS.find(x => x.id === rubroSeleccionado);
+  const color = qs("#fColor").value;
+  const hover = colorHover(color);
+  const fondo = fondoSuaveDesde(color);
+  const textoSobre = textoLegibleSobre(color);
+  const nombre = qs("#fNombre").value.trim() || "Tu Negocio";
+
+  qs("#pvIco").textContent = r.ico;
+  qs("#pvNombre").textContent = nombre;
+
+  const card = qs("#previewCard");
+  card.style.setProperty("--pv-color", color);
+  card.style.setProperty("--pv-hover", hover);
+  card.style.setProperty("--pv-fondo", fondo);
+  card.style.setProperty("--pv-texto", textoSobre);
+
+  qs("#swColor").style.background = color;
+  qs("#swHover").style.background = hover;
+  qs("#swFondo").style.background = fondo;
+}
+qs("#fNombre").addEventListener("input", actualizarPreview);
+actualizarColorHex();
+actualizarPreview();
+
+/* ── Opcional: cuenta de propietario ── */
+qs("#toggleOpcional").addEventListener("click", () => {
+  const bloque = qs("#bloqueOpcional");
+  bloque.classList.toggle("abierto");
+  qs("#toggleOpcional").textContent = bloque.classList.contains("abierto")
+    ? "− Ocultar cuenta de propietario"
+    : "+ Crear también la cuenta de propietario ahora";
+});
+qs("#toggleSuscripcion").addEventListener("click", () => {
+  const bloque = qs("#bloqueSuscripcion");
+  bloque.classList.toggle("abierto");
+  qs("#toggleSuscripcion").textContent = bloque.classList.contains("abierto")
+    ? "− Ocultar mensualidad"
+    : "+ Iniciar la mensualidad de este cliente ahora";
+});
+
+/* ── Envío ── */
+qs("#formTienda").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = qs("#btnCrear");
+  const estadoMsg = qs("#estadoMsg");
+  const resultadoBox = qs("#resultadoBox");
+  estadoMsg.className = "estado-msg";
+  resultadoBox.style.display = "none";
+
+  const nombreNegocio = qs("#fNombre").value.trim();
+  const hostname = qs("#fHostname").value.trim();
+  const emailPropietario = qs("#fEmailProp").value.trim();
+  const passwordPropietario = qs("#fPassProp").value;
+
+  if (!nombreNegocio || !hostname){
+    estadoMsg.textContent = "Completá al menos el nombre del negocio y el dominio.";
+    estadoMsg.classList.add("error");
+    return;
+  }
+  if (emailPropietario && (!passwordPropietario || passwordPropietario.length < 6)){
+    estadoMsg.textContent = "Si vas a crear la cuenta de propietario, la contraseña debe tener al menos 6 caracteres.";
+    estadoMsg.classList.add("error");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Creando…";
+
+  try {
+    const res = await fetch("/.netlify/functions/crearTienda", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Secret": ADMIN_SECRET
+      },
+      body: JSON.stringify({
+        nombreNegocio,
+        rubro: rubroSeleccionado,
+        hostname,
+        colorPrimario: qs("#fColor").value,
+        logoBase64: logoBase64 || undefined,
+        splashBase64: splashBase64 || undefined,
+        emailPropietario: emailPropietario || undefined,
+        passwordPropietario: passwordPropietario || undefined
+      })
+    });
+    const j = await res.json().catch(() => ({}));
+
+    if (res.status === 401){
+      estadoMsg.textContent = "Clave de administrador incorrecta — recargá la página para ingresarla de nuevo.";
+      estadoMsg.classList.add("error");
+      sessionStorage.removeItem("adminSecret");
+      btn.disabled = false; btn.textContent = "Crear tienda";
+      return;
+    }
+    if (!res.ok || !j.ok){
+      estadoMsg.textContent = j.error || ("No se pudo crear la tienda (HTTP " + res.status + ")");
+      estadoMsg.classList.add("error");
+      btn.disabled = false; btn.textContent = "Crear tienda";
+      return;
+    }
+
+    btn.textContent = "✅ Tienda creada";
+    btn.classList.add("exito");
+    estadoMsg.classList.add("ok");
+    estadoMsg.textContent = "Listo — la tienda \"" + j.storeId + "\" quedó configurada.";
+
+    let avisoProp = "";
+    if (j.avisoPropietario){
+      avisoProp = `<div class="estado-msg error" style="display:block;margin-top:10px">${j.avisoPropietario}</div>`;
+    } else if (j.propietario){
+      avisoProp = `<p style="margin-top:8px">👤 Cuenta de propietario creada: <b>${j.propietario.email}</b></p>`;
+    }
+
+    /* Suscripción mensual — opcional, solo si el vendedor completó el
+       monto Y hay un email disponible para asociarla (el de la cuenta
+       de propietario si se creó, o ninguno — sin email no se puede
+       generar el link de cobro). No bloquea el resultado de "tienda
+       creada" si esto falla: la tienda ya existe igual, la mensualidad
+       se puede reintentar después sin perder nada de lo demás. */
+    let avisoSuscripcion = "";
+    const montoMensual = qs("#fMontoMensual").value.replace(/\D/g, "");
+    const emailParaSuscripcion = qs("#fEmailProp").value.trim();
+    if (montoMensual && Number(montoMensual) > 0){
+      if (!emailParaSuscripcion){
+        avisoSuscripcion = '<div class="estado-msg error" style="display:block;margin-top:10px">No se pudo crear la mensualidad: hace falta el email del propietario (completalo arriba, en "Crear también la cuenta de propietario").</div>';
+      } else {
+        try {
+          const resSus = await fetch("/.netlify/functions/crearSuscripcionPlataforma", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Admin-Secret": ADMIN_SECRET },
+            body: JSON.stringify({
+              storeId: j.storeId, email: emailParaSuscripcion,
+              montoMensual: Number(montoMensual), nombreNegocio: nombreNegocio
+            })
+          });
+          const jSus = await resSus.json().catch(() => ({}));
+          if (resSus.ok && jSus.ok){
+            avisoSuscripcion = `<p style="margin-top:8px">💳 Mensualidad creada — mandale este link al cliente para que la autorice: <a href="${jSus.initPoint}" target="_blank" style="color:var(--rojo)">${jSus.initPoint}</a></p>`;
+          } else {
+            avisoSuscripcion = '<div class="estado-msg error" style="display:block;margin-top:10px">No se pudo crear la mensualidad: ' + (jSus.error || ("HTTP " + resSus.status)) + '</div>';
+          }
+        } catch (errSus){
+          avisoSuscripcion = '<div class="estado-msg error" style="display:block;margin-top:10px">No se pudo crear la mensualidad — error de red. Se puede reintentar después.</div>';
+        }
+      }
+    }
+
+    resultadoBox.style.display = "block";
+    resultadoBox.innerHTML = `
+      <p><b>storeId:</b> ${j.storeId}</p>
+      <p><b>Dominio registrado:</b> ${j.hostname}</p>
+      ${avisoProp}
+      ${avisoSuscripcion}
+      <div class="pasos-siguientes">
+        <p style="margin-bottom:6px"><b>Lo que sigue siendo manual (ver LEEME.md, sección 9):</b></p>
+        <ul>
+          <li>Apuntar el DNS de <b>${j.hostname}</b> hacia Netlify, en el registrador del cliente.</li>
+          <li>Netlify → Domain management → Add custom domain → <b>${j.hostname}</b>.</li>
+          <li>El cliente pega su Access Token de MercadoPago desde <code>${j.hostname}/?dev=1</code> → tab Pagos.</li>
+          ${j.propietario ? "" : "<li><b>Nadie va a poder entrar al devmode de esta tienda todavía</b> — creá la cuenta de propietario a mano en Firebase Console (ver LEEME.md, Paso 5) o volviendo a correr este formulario con el mismo dominio.</li>"}
+        </ul>
+      </div>
+    `;
+  } catch (err){
+    estadoMsg.textContent = "Error de red — revisá la conexión e intentá de nuevo.";
+    estadoMsg.classList.add("error");
+    btn.disabled = false; btn.textContent = "Crear tienda";
+  }
+});
+</script>
+</body>
+</html>

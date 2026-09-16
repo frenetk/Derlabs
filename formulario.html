@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Formulario para tu tienda — DerLabs</title>
+<meta name="description" content="Cuéntanos sobre tu negocio para armar tu tienda a tu medida.">
+<meta name="theme-color" content="#9B1B30">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Barlow+Condensed:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --rojo:   #9B1B30;
+  --rojo-h: #C4273A;
+  --blanco: #FFFFFF;
+  --crema:  #FBF7F5;
+  --texto:  #1A1A1A;
+  --muted:  #6B6B6B;
+  --dorado: #D4A017;
+  --sombra: rgba(155,27,48,0.15);
+  --verde:  #1E7B3C;
+  --borde:  #EEEEEE;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:#F0F0F0;
+  font-family:'Nunito',sans-serif;
+  color:var(--texto);
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:'Barlow Condensed',sans-serif;font-weight:700;margin:0}
+button{font-family:'Nunito',sans-serif;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+input,select,textarea{font-family:'Nunito',sans-serif;color:var(--texto)}
+img{max-width:100%;display:block}
+
+.wrap{max-width:640px;margin:0 auto;padding:0 20px}
+
+/* ══════════════════════════════════════
+   HEADER
+══════════════════════════════════════ */
+header{
+  background:var(--blanco);border-bottom:1px solid var(--borde);
+  padding:18px 0;position:sticky;top:0;z-index:20;
+}
+.header-row{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800}
+.brand-mark{
+  width:30px;height:30px;border-radius:9px;
+  background:linear-gradient(135deg,var(--rojo),var(--rojo-h));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;color:#fff;
+}
+.brand-name{font-family:'Barlow Condensed',sans-serif;font-size:19px;color:var(--rojo)}
+
+/* ══════════════════════════════════════
+   BARRA DE PROGRESO
+══════════════════════════════════════ */
+.progreso-wrap{background:var(--blanco);padding:0 0 14px}
+.progreso-track{
+  height:6px;background:var(--borde);border-radius:999px;overflow:hidden;
+}
+.progreso-fill{
+  height:100%;background:linear-gradient(90deg,var(--rojo),var(--dorado));
+  border-radius:999px;transition:width .35s ease;width:16.6%;
+}
+.progreso-label{
+  font-size:12.5px;font-weight:700;color:var(--muted);margin-top:8px;
+  display:flex;justify-content:space-between;
+}
+
+/* ══════════════════════════════════════
+   HERO / INTRO
+══════════════════════════════════════ */
+.intro{padding:36px 0 8px;text-align:center}
+.intro-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(30,123,60,.1);color:var(--verde);
+  padding:7px 16px;border-radius:999px;font-size:13px;font-weight:800;
+  margin-bottom:18px;
+}
+.intro h1{font-size:30px;color:var(--texto);margin-bottom:10px;line-height:1.15}
+.intro p{font-size:15px;color:var(--muted);font-weight:600;line-height:1.55;max-width:480px;margin:0 auto}
+
+/* ══════════════════════════════════════
+   PASOS DEL FORMULARIO
+══════════════════════════════════════ */
+.paso{
+  display:none;padding:28px 0 60px;animation:entrar .3s ease both;
+}
+.paso.activo{display:block}
+@keyframes entrar{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.paso-tit{font-size:24px;margin-bottom:6px}
+.paso-sub{font-size:14px;color:var(--muted);font-weight:600;margin-bottom:26px;line-height:1.5}
+
+.campo{margin-bottom:20px}
+.campo label{
+  display:block;font-size:13px;font-weight:800;color:var(--texto);
+  margin-bottom:8px;
+}
+.campo .opcional{font-weight:600;color:var(--muted);font-size:12px}
+.input{
+  width:100%;padding:14px 16px;border-radius:12px;
+  border:1.5px solid var(--borde);background:var(--blanco);
+  font-size:15px;font-weight:600;color:var(--texto);
+  transition:border-color .15s;
+}
+.input:focus{outline:none;border-color:var(--rojo)}
+.input::placeholder{color:#B0B0B0;font-weight:500}
+textarea.input{resize:vertical;min-height:88px;line-height:1.5}
+
+.campo-ayuda{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:7px;line-height:1.4}
+
+/* Chips de selección única */
+.chip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.chip{
+  padding:14px 12px;border-radius:12px;border:1.5px solid var(--borde);
+  background:var(--blanco);font-size:13.5px;font-weight:700;color:var(--texto);
+  text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.chip-ico{font-size:22px}
+.chip.activo{border-color:var(--rojo);background:rgba(155,27,48,.06);color:var(--rojo)}
+
+/* Selector de color */
+.color-grid{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.color-dot{
+  width:42px;height:42px;border-radius:50%;border:3px solid transparent;
+  cursor:pointer;transition:transform .15s,border-color .15s;position:relative;
+}
+.color-dot.activo{border-color:var(--texto);transform:scale(1.1)}
+.color-dot.activo::after{
+  content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:900;font-size:16px;text-shadow:0 1px 2px rgba(0,0,0,.3);
+}
+.color-custom-row{display:flex;align-items:center;gap:10px}
+.color-custom-row input[type=color]{
+  width:42px;height:42px;border-radius:50%;border:1.5px solid var(--borde);
+  padding:0;cursor:pointer;background:none;
+}
+.color-custom-row input[type=color]::-webkit-color-swatch-wrapper{padding:0;border-radius:50%}
+.color-custom-row input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
+.color-custom-label{font-size:13px;font-weight:700;color:var(--muted)}
+
+/* Toggle sí/no */
+.toggle-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px;border-radius:12px;border:1.5px solid var(--borde);
+  background:var(--blanco);margin-bottom:14px;
+}
+.toggle-row-txt{font-size:14px;font-weight:700}
+.toggle-row-sub{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px}
+.switch{position:relative;display:inline-block;width:46px;height:27px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{
+  position:absolute;cursor:pointer;inset:0;background:#D8D8D8;
+  border-radius:999px;transition:.2s;
+}
+.slider::before{
+  content:"";position:absolute;height:21px;width:21px;left:3px;bottom:3px;
+  background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+.switch input:checked + .slider{background:var(--rojo)}
+.switch input:checked + .slider::before{transform:translateX(19px)}
+
+/* Subida de imagen */
+.img-upload{
+  border:2px dashed var(--borde);border-radius:14px;padding:24px;
+  text-align:center;cursor:pointer;transition:border-color .15s;
+}
+.img-upload:hover{border-color:var(--rojo)}
+.img-upload-ico{font-size:30px;margin-bottom:8px}
+.img-upload-txt{font-size:13.5px;font-weight:700;color:var(--muted)}
+.img-preview{
+  width:96px;height:96px;border-radius:14px;object-fit:cover;
+  margin:0 auto 14px;border:1.5px solid var(--borde);
+}
+
+/* ══════════════════════════════════════
+   NAVEGACIÓN DE PASOS
+══════════════════════════════════════ */
+.nav-pasos{
+  position:fixed;bottom:0;left:0;right:0;background:var(--blanco);
+  border-top:1px solid var(--borde);padding:14px 20px;
+  padding-bottom:calc(14px + env(safe-area-inset-bottom));
+  display:flex;gap:12px;z-index:20;
+}
+.btn{
+  flex:1;padding:15px;border-radius:999px;font-weight:800;font-size:15px;
+  text-align:center;transition:transform .15s,opacity .15s;
+}
+.btn:active{transform:scale(.97)}
+.btn-primario{background:var(--rojo);color:#fff}
+.btn-primario:disabled{opacity:.4;pointer-events:none}
+.btn-standalone{display:block;max-width:320px;margin:0 auto}
+.btn-fantasma{background:var(--crema);color:var(--texto);flex:0 0 auto;padding:15px 22px}
+
+.campo.error .input{border-color:var(--rojo);background:rgba(155,27,48,.03)}
+.campo-error-txt{font-size:12.5px;color:var(--rojo);font-weight:700;margin-top:6px;display:none}
+.campo.error .campo-error-txt{display:block}
+
+/* ══════════════════════════════════════
+   PANTALLA FINAL
+══════════════════════════════════════ */
+.final{display:none;padding:60px 0 60px;text-align:center}
+.final.activo{display:block}
+.final-check{
+  width:84px;height:84px;border-radius:50%;background:var(--verde);
+  display:flex;align-items:center;justify-content:center;font-size:42px;color:#fff;
+  margin:0 auto 22px;animation:popIn .5s ease both;
+}
+@keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.final h2{font-size:27px;margin-bottom:12px}
+.final p{font-size:15px;color:var(--muted);font-weight:600;line-height:1.6;max-width:440px;margin:0 auto 28px}
+.final-info{
+  background:var(--crema);border-radius:14px;padding:18px 20px;
+  text-align:left;max-width:440px;margin:0 auto 28px;
+}
+.final-info-tit{font-size:13px;font-weight:800;color:var(--rojo);margin-bottom:8px;text-transform:uppercase;letter-spacing:.3px}
+.final-info p{font-size:13.5px;color:var(--texto);font-weight:600;margin:0;text-align:left;max-width:none}
+
+/* ══════════════════════════════════════
+   ESTADOS DE CARGA / ERROR
+══════════════════════════════════════ */
+.estado-pantalla{
+  min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:40px 24px;
+}
+.spinner{
+  width:38px;height:38px;border-radius:50%;
+  border:3px solid var(--borde);border-top-color:var(--rojo);
+  animation:girar .8s linear infinite;margin-bottom:18px;
+}
+@keyframes girar{to{transform:rotate(360deg)}}
+.estado-pantalla h3{font-size:19px;margin-bottom:8px}
+.estado-pantalla p{font-size:14px;color:var(--muted);font-weight:600;max-width:340px;line-height:1.5}
+
+@media(max-width:400px){
+  .intro h1{font-size:26px}
+  .chip-grid{grid-template-columns:repeat(auto-fill,minmax(105px,1fr))}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap header-row">
+    <div class="brand">
+      <span class="brand-mark">D</span>
+      <span class="brand-name">DerLabs</span>
+    </div>
+  </div>
+</header>
+
+<div id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIG — mismo proyecto Firebase que el resto de DerLabs
+══════════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM",
+  authDomain:        "tienda-test-burgers.firebaseapp.com",
+  projectId:         "tienda-test-burgers",
+  storageBucket:     "tienda-test-burgers.firebasestorage.app",
+  messagingSenderId: "406623629835",
+  appId:             "1:406623629835:web:31152eac803ed8c679cd0e"
+};
+let STORE_ID = "test-burgers"; // valor por defecto — se resuelve por dominio en arrancar()
+
+const RUBROS = [
+  { id:"hamburguesas", nombre:"Hamburguesas", ico:"🍔" },
+  { id:"comida-rapida", nombre:"Comida rápida", ico:"🌭" },
+  { id:"cafeteria", nombre:"Cafetería", ico:"☕" },
+  { id:"pasteleria", nombre:"Pastelería", ico:"🧁" },
+  { id:"ropa", nombre:"Ropa y accesorios", ico:"👕" },
+  { id:"belleza", nombre:"Belleza y estética", ico:"💅" },
+  { id:"servicios", nombre:"Servicios y reservas", ico:"📅" },
+  { id:"otro", nombre:"Otro rubro", ico:"🏪" }
+];
+
+const COLORES_SUGERIDOS = ["#9B1B30","#1E7B3C","#0D5C8C","#D4A017","#6B3FA0","#C4273A","#2C2C2C"];
+
+/* ══════════════════════════════════════════════════════════════
+   ESTADO
+══════════════════════════════════════════════════════════════ */
+let db;
+let pasoActual = 1;
+const TOTAL_PASOS = 6;
+
+let datos = {
+  nombreNegocio: "",
+  rubro: "",
+  rubroOtro: "",
+  tagline: "",
+  whatsapp: "",
+  emailNotif: "",
+  colorPrimario: "#9B1B30",
+  logoBase64: "",
+  tipoEntrega: [],       // "retiro" | "delivery" — multi-select, puede tener ambos
+  direccionLocal: "",
+  comunasDelivery: "",
+  tieneDominioPropio: null, // true | false
+  dominioPropio: "",
+  notasAdicionales: ""
+};
+
+function qs(sel){ return document.querySelector(sel); }
+function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+/* ══════════════════════════════════════════════════════════════
+   ARRANQUE
+══════════════════════════════════════════════════════════════ */
+function initFirebase(){
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+}
+
+async function arrancar(){
+  initFirebase();
+  /* Resolución de STORE_ID por dominio — mismo mecanismo que index.html
+     y pedidos.html. Sin fila registrada, se queda con el valor por
+     defecto ("test-burgers"), nunca rompe el formulario actual. */
+  try {
+    const domDoc = await db.collection("dominios").doc(location.hostname).get();
+    if (domDoc.exists && domDoc.data().storeId) {
+      STORE_ID = domDoc.data().storeId;
+    }
+  } catch(e) {
+    console.warn("No se pudo resolver STORE_ID por dominio, se usa el valor por defecto:", e);
+  }
+  renderFormulario();
+}
+
+function renderEstado(icono, titulo, texto, cargando){
+  qs("#app").innerHTML = `
+    <div class="estado-pantalla">
+      ${cargando ? '<div class="spinner"></div>' : `<div style="font-size:44px;margin-bottom:14px">${icono}</div>`}
+      <h3>${esc(titulo)}</h3>
+      <p>${esc(texto)}</p>
+    </div>
+  `;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FORMULARIO — estructura general
+══════════════════════════════════════════════════════════════ */
+function renderFormulario(){
+  qs("#app").innerHTML = `
+    <div class="progreso-wrap">
+      <div class="wrap">
+        <div class="progreso-track"><div class="progreso-fill" id="progresoFill"></div></div>
+        <div class="progreso-label"><span id="progresoTxt">Paso 1 de ${TOTAL_PASOS}</span><span id="progresoPct">17%</span></div>
+      </div>
+    </div>
+
+    <div class="intro">
+      <div class="wrap">
+        <div class="intro-badge">📋 Formulario para tu tienda</div>
+        <h1>Cuéntanos de tu negocio</h1>
+        <p>Con esto armamos tu tienda a tu medida. Toma unos 3 minutos.</p>
+      </div>
+    </div>
+
+    <div class="wrap" id="pasosWrap"></div>
+
+    <div class="nav-pasos">
+      <button class="btn btn-fantasma" id="btnAtras" style="display:none">← Atrás</button>
+      <button class="btn btn-primario" id="btnSiguiente">Siguiente</button>
+    </div>
+  `;
+  renderPaso();
+  qs("#btnAtras").addEventListener("click", () => cambiarPaso(pasoActual - 1));
+  qs("#btnSiguiente").addEventListener("click", intentarAvanzar);
+}
+
+function actualizarProgreso(){
+  const pct = Math.round((pasoActual / TOTAL_PASOS) * 100);
+  qs("#progresoFill").style.width = pct + "%";
+  qs("#progresoTxt").textContent = "Paso " + pasoActual + " de " + TOTAL_PASOS;
+  qs("#progresoPct").textContent = pct + "%";
+  qs("#btnAtras").style.display = pasoActual > 1 ? "block" : "none";
+  qs("#btnSiguiente").textContent = pasoActual === TOTAL_PASOS ? "Enviar y terminar 🎉" : "Siguiente";
+}
+
+function cambiarPaso(n){
+  if (n < 1 || n > TOTAL_PASOS) return;
+  guardarValoresPasoActual();
+  pasoActual = n;
+  renderPaso();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function renderPaso(){
+  actualizarProgreso();
+  const wrap = qs("#pasosWrap");
+  wrap.innerHTML = PASOS[pasoActual - 1].render();
+  PASOS[pasoActual - 1].bind();
+}
+
+async function intentarAvanzar(){
+  guardarValoresPasoActual();
+  const errores = PASOS[pasoActual - 1].validar();
+  if (errores.length){
+    mostrarErroresPaso(errores);
+    return;
+  }
+  if (pasoActual === TOTAL_PASOS){
+    await enviarFormularioFinal();
+    return;
+  }
+  cambiarPaso(pasoActual + 1);
+}
+
+function mostrarErroresPaso(errores){
+  errores.forEach(id => {
+    const campo = qs("#campo-" + id);
+    if (campo) campo.classList.add("error");
+  });
+  const primero = qs("#campo-" + errores[0]);
+  if (primero) primero.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+function limpiarError(id){
+  const campo = qs("#campo-" + id);
+  if (campo) campo.classList.remove("error");
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PASO 1 — Datos del negocio
+══════════════════════════════════════════════════════════════ */
+const paso1 = {
+  render(){
+    return `
+      <h2 class="paso-tit">Tu negocio</h2>
+      <p class="paso-sub">Empecemos por lo básico.</p>
+
+      <div class="campo" id="campo-nombreNegocio">
+        <label>Nombre de tu negocio</label>
+        <input class="input" id="fNombreNegocio" placeholder="Ej: Sabores del Sur" value="${esc(datos.nombreNegocio)}">
+        <div class="campo-error-txt">Cuéntanos cómo se llama tu negocio</div>
+      </div>
+
+      <div class="campo" id="campo-rubro">
+        <label>¿A qué se dedica tu negocio?</label>
+        <div class="chip-grid" id="rubroGrid">
+          ${RUBROS.map(r => `
+            <button type="button" class="chip ${datos.rubro === r.id ? 'activo' : ''}" data-rubro="${r.id}">
+              <span class="chip-ico">${r.ico}</span>
+              <span>${esc(r.nombre)}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="campo-error-txt">Elige el rubro que más se parece al tuyo</div>
+      </div>
+
+      <div class="campo" id="campo-rubroOtro" style="display:${datos.rubro === 'otro' ? 'block' : 'none'}">
+        <label>¿Cuál es tu rubro?</label>
+        <input class="input" id="fRubroOtro" placeholder="Ej: Florería, Ferretería…" value="${esc(datos.rubroOtro)}">
+      </div>
+
+      <div class="campo">
+        <label>Una frase corta para tu tienda <span class="opcional">(opcional)</span></label>
+        <input class="input" id="fTagline" placeholder="Ej: Sabor casero todos los días" value="${esc(datos.tagline)}" maxlength="60">
+        <div class="campo-ayuda">Aparece justo debajo del nombre en tu tienda.</div>
+      </div>
+    `;
+  },
+  bind(){
+    qs("#fNombreNegocio").addEventListener("input", () => limpiarError("nombreNegocio"));
+    qsa("[data-rubro]").forEach(chip => {
+      chip.addEventListener("click", () => {
+        datos.rubro = chip.dataset.rubro;
+        qsa("[data-rubro]").forEach(c => c.classList.toggle("activo", c.dataset.rubro === datos.rubro));
+        qs("#campo-rubroOtro").style.display = datos.rubro === "otro" ? "block" : "none";
+        limpiarError("rubro");
+      });
+    });
+  },
+  guardar(){
+    datos.nombreNegocio = qs("#fNombreNegocio").value.trim();
+    datos.rubroOtro = qs("#fRubroOtro") ? qs("#fRubroOtro").value.trim() : datos.rubroOtro;
+    datos.tagline = qs("#fTagline").value.trim();
+  },
+  validar(){
+    const errores = [];
+    if (!datos.nombreNegocio) errores.push("nombreNegocio");
+    if (!datos.rubro) errores.push("rubro");
+    return errores;
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   PASO 2 — Contacto
+══════════════════════════════════════════════════════════════ */
+const paso2 = {
+  render(){
+    return `
+      <h2 class="paso-tit">Contacto</h2>
+      <p class="paso-sub">Acá es donde vas a recibir tus pedidos y notificaciones.</p>
+
+      <div class="campo" id="campo-whatsapp">
+        <label>WhatsApp de tu negocio</label>
+        <input class="input" id="fWhatsapp" type="tel" placeholder="+56 9 1234 5678" value="${esc(datos.whatsapp)}">
+        <div class="campo-ayuda">Tus clientes van a poder escribirte directo desde acá.</div>
+        <div class="campo-error-txt">Necesitamos un WhatsApp de contacto</div>
+      </div>
+
+      <div class="campo" id="campo-emailNotif">
+        <label>Email para notificaciones <span class="opcional">(opcional)</span></label>
+        <input class="input" id="fEmailNotif" type="email" placeholder="tucorreo@gmail.com" value="${esc(datos.emailNotif)}">
+        <div class="campo-ayuda">Si lo dejas vacío, solo recibirás notificaciones push en tu celular y computador.</div>
+      </div>
+    `;
+  },
+  bind(){
+    qs("#fWhatsapp").addEventListener("input", () => limpiarError("whatsapp"));
+  },
+  guardar(){
+    datos.whatsapp = qs("#fWhatsapp").value.trim();
+    datos.emailNotif = qs("#fEmailNotif").value.trim();
+  },
+  validar(){
+    const errores = [];
+    const soloDigitos = datos.whatsapp.replace(/\D/g, "");
+    if (soloDigitos.length < 8) errores.push("whatsapp");
+    return errores;
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   PASO 3 — Identidad visual
+══════════════════════════════════════════════════════════════ */
+const paso3 = {
+  render(){
+    return `
+      <h2 class="paso-tit">Identidad visual</h2>
+      <p class="paso-sub">Elige el color principal de tu tienda. Puedes cambiarlo después desde tu panel.</p>
+
+      <div class="campo">
+        <label>Color de tu marca</label>
+        <div class="color-grid" id="colorGrid">
+          ${COLORES_SUGERIDOS.map(c => `
+            <div class="color-dot ${datos.colorPrimario.toLowerCase() === c.toLowerCase() ? 'activo' : ''}" data-color="${c}" style="background:${c}"></div>
+          `).join("")}
+        </div>
+        <div class="color-custom-row">
+          <input type="color" id="fColorCustom" value="${esc(datos.colorPrimario)}">
+          <span class="color-custom-label">O elige tu propio color exacto</span>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label>Logo de tu negocio <span class="opcional">(opcional)</span></label>
+        <div id="logoPreviewWrap"></div>
+        <div class="img-upload" id="logoUpload">
+          <div class="img-upload-ico">📷</div>
+          <div class="img-upload-txt">Toca para subir tu logo</div>
+        </div>
+        <input type="file" id="fLogo" accept="image/*" style="display:none">
+        <div class="campo-ayuda">Si no tienes uno todavía, no hay problema — lo agregamos en la instalación.</div>
+      </div>
+    `;
+  },
+  bind(){
+    qsa("[data-color]").forEach(dot => {
+      dot.addEventListener("click", () => {
+        datos.colorPrimario = dot.dataset.color;
+        qsa("[data-color]").forEach(d => d.classList.toggle("activo", d.dataset.color.toLowerCase() === datos.colorPrimario.toLowerCase()));
+        qs("#fColorCustom").value = datos.colorPrimario;
+      });
+    });
+    qs("#fColorCustom").addEventListener("input", (e) => {
+      datos.colorPrimario = e.target.value;
+      qsa("[data-color]").forEach(d => d.classList.remove("activo"));
+    });
+    renderLogoPreview();
+    qs("#logoUpload").addEventListener("click", () => qs("#fLogo").click());
+    qs("#fLogo").addEventListener("change", manejarSubidaLogo);
+  },
+  guardar(){ /* el color y logo ya se guardan en vivo por los listeners */ },
+  validar(){ return []; } // todo opcional en este paso
+};
+
+function renderLogoPreview(){
+  const wrap = qs("#logoPreviewWrap");
+  if (!wrap) return;
+  wrap.innerHTML = datos.logoBase64
+    ? `<img src="${datos.logoBase64}" class="img-preview" alt="Tu logo">`
+    : "";
+}
+
+/* Firestore tiene un límite duro de 1 MiB (1.048.576 bytes) por
+   documento completo — no solo el logo, sino todo el formulario junto.
+   Base64 infla el tamaño del archivo original en ~33%, así que un logo
+   de 1.5-2MB (que antes SÍ pasaba la validación de "menos de 2MB")
+   generaba un Base64 de ~2-2.7MB, muy por encima del límite — el envío
+   completo de las 6 páginas fallaba al final por culpa solo del logo.
+   En vez de simplemente bajar el límite de entrada (que solo mueve el
+   problema: sigue rechazando fotos de celular sin comprimir, que son la
+   mayoría), se redimensiona y comprime la imagen en el propio navegador
+   antes de guardarla — así casi cualquier foto razonable termina
+   cabiendo sin que la persona necesite saber comprimir nada. */
+const LOGO_MAX_LADO = 512;         // px — de sobra para un logo en un formulario
+const LOGO_MAX_BASE64_BYTES = 700 * 1024; // deja margen amplio bajo el 1 MiB de Firestore
+const LOGO_MAX_ARCHIVO_ENTRADA = 15 * 1024 * 1024; // solo para no trabar el navegador con algo absurdo
+
+function manejarSubidaLogo(e){
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > LOGO_MAX_ARCHIVO_ENTRADA){
+    alert("La imagen es demasiado grande para procesarla. Usa una de menos de 15MB.");
+    e.target.value = "";
+    return;
+  }
+
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    let { width, height } = img;
+    if (width > LOGO_MAX_LADO || height > LOGO_MAX_LADO){
+      const escala = LOGO_MAX_LADO / Math.max(width, height);
+      width = Math.round(width * escala);
+      height = Math.round(height * escala);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, width, height);
+
+    /* Bajar calidad JPEG hasta que el Base64 resultante quede bajo el
+       límite seguro. 5 intentos alcanza incluso para fotos con mucho
+       detalle; si aun así no entra (caso extremo, prácticamente no
+       debería pasar con 512px de lado), se avisa en vez de guardar algo
+       que rompería el envío final. */
+    let calidad = 0.92;
+    let dataUrl = canvas.toDataURL("image/jpeg", calidad);
+    let intentos = 0;
+    while (dataUrl.length > LOGO_MAX_BASE64_BYTES && intentos < 5){
+      calidad -= 0.15;
+      dataUrl = canvas.toDataURL("image/jpeg", Math.max(0.3, calidad));
+      intentos++;
+    }
+
+    if (dataUrl.length > LOGO_MAX_BASE64_BYTES){
+      alert("No pudimos comprimir esta imagen lo suficiente. Prueba con otra foto del logo, idealmente ya recortada de cerca.");
+      e.target.value = "";
+      return;
+    }
+
+    datos.logoBase64 = dataUrl;
+    renderLogoPreview();
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    alert("No pudimos leer esta imagen. Prueba con otro archivo.");
+    e.target.value = "";
+  };
+  img.src = url;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PASO 4 — Cómo entregas tus pedidos
+══════════════════════════════════════════════════════════════ */
+const paso4 = {
+  render(){
+    return `
+      <h2 class="paso-tit">Cómo entregas tus pedidos</h2>
+      <p class="paso-sub">Puedes elegir una o ambas opciones.</p>
+
+      <div class="campo" id="campo-tipoEntrega">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-txt">🏪 Retiro en local</div>
+            <div class="toggle-row-sub">El cliente pasa a buscar su pedido</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="fRetiro" ${datos.tipoEntrega.includes("retiro") ? "checked" : ""}>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-txt">🛵 Delivery</div>
+            <div class="toggle-row-sub">Envías el pedido a domicilio</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="fDelivery" ${datos.tipoEntrega.includes("delivery") ? "checked" : ""}>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="campo-error-txt">Elige al menos una forma de entrega</div>
+      </div>
+
+      <div class="campo" id="campoDireccionLocal" style="display:${datos.tipoEntrega.includes("retiro") ? "block" : "none"}">
+        <label>Dirección de tu local</label>
+        <input class="input" id="fDireccionLocal" placeholder="Av. Ejemplo 123, Comuna" value="${esc(datos.direccionLocal)}">
+      </div>
+
+      <div class="campo" id="campoComunas" style="display:${datos.tipoEntrega.includes("delivery") ? "block" : "none"}">
+        <label>¿A qué comunas haces delivery?</label>
+        <textarea class="input" id="fComunas" placeholder="Ej: Providencia, Ñuñoa, Las Condes">${esc(datos.comunasDelivery)}</textarea>
+        <div class="campo-ayuda">Separadas por coma. Definimos los costos exactos por zona en la instalación.</div>
+      </div>
+    `;
+  },
+  bind(){
+    qs("#fRetiro").addEventListener("change", actualizarTipoEntrega);
+    qs("#fDelivery").addEventListener("change", actualizarTipoEntrega);
+  },
+  guardar(){
+    datos.direccionLocal = qs("#fDireccionLocal") ? qs("#fDireccionLocal").value.trim() : datos.direccionLocal;
+    datos.comunasDelivery = qs("#fComunas") ? qs("#fComunas").value.trim() : datos.comunasDelivery;
+  },
+  validar(){
+    return datos.tipoEntrega.length === 0 ? ["tipoEntrega"] : [];
+  }
+};
+
+function actualizarTipoEntrega(){
+  const seleccion = [];
+  if (qs("#fRetiro").checked) seleccion.push("retiro");
+  if (qs("#fDelivery").checked) seleccion.push("delivery");
+  datos.tipoEntrega = seleccion;
+  qs("#campoDireccionLocal").style.display = seleccion.includes("retiro") ? "block" : "none";
+  qs("#campoComunas").style.display = seleccion.includes("delivery") ? "block" : "none";
+  limpiarError("tipoEntrega");
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PASO 5 — Dominio
+══════════════════════════════════════════════════════════════ */
+const paso5 = {
+  render(){
+    return `
+      <h2 class="paso-tit">Tu dirección web</h2>
+      <p class="paso-sub">¿Ya tienes un dominio propio (tunegocio.com) o prefieres que te ayudemos a conseguir uno?</p>
+
+      <div class="campo" id="campo-tieneDominioPropio">
+        <div class="chip-grid" style="grid-template-columns:1fr 1fr">
+          <button type="button" class="chip ${datos.tieneDominioPropio === true ? 'activo' : ''}" data-dominio="si">
+            <span class="chip-ico">✅</span>
+            <span>Ya tengo uno</span>
+          </button>
+          <button type="button" class="chip ${datos.tieneDominioPropio === false ? 'activo' : ''}" data-dominio="no">
+            <span class="chip-ico">🤝</span>
+            <span>Ayúdenme a conseguirlo</span>
+          </button>
+        </div>
+        <div class="campo-error-txt">Cuéntanos si ya tienes un dominio</div>
+      </div>
+
+      <div class="campo" id="campoDominioPropio" style="display:${datos.tieneDominioPropio === true ? "block" : "none"}">
+        <label>¿Cuál es tu dominio?</label>
+        <input class="input" id="fDominioPropio" placeholder="tunegocio.com" value="${esc(datos.dominioPropio)}">
+        <div class="campo-ayuda">En la instalación lo conectamos a tu tienda.</div>
+      </div>
+
+      <div class="campo" id="cajaSinDominio" style="display:${datos.tieneDominioPropio === false ? "block" : "none"}">
+        <div class="campo-ayuda" style="background:var(--crema);padding:14px 16px;border-radius:12px;margin:0">
+          Sin problema — mientras tanto tu tienda queda disponible en una dirección temporal, y conversamos sobre comprar tu dominio propio en la instalación.
+        </div>
+      </div>
+    `;
+  },
+  bind(){
+    qsa("[data-dominio]").forEach(chip => {
+      chip.addEventListener("click", () => {
+        datos.tieneDominioPropio = chip.dataset.dominio === "si";
+        qsa("[data-dominio]").forEach(c =>
+          c.classList.toggle("activo", (c.dataset.dominio === "si") === datos.tieneDominioPropio)
+        );
+        qs("#campoDominioPropio").style.display = datos.tieneDominioPropio === true ? "block" : "none";
+        qs("#cajaSinDominio").style.display = datos.tieneDominioPropio === false ? "block" : "none";
+        limpiarError("tieneDominioPropio");
+      });
+    });
+  },
+  guardar(){
+    datos.dominioPropio = qs("#fDominioPropio") ? qs("#fDominioPropio").value.trim() : datos.dominioPropio;
+  },
+  validar(){
+    return datos.tieneDominioPropio === null ? ["tieneDominioPropio"] : [];
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   PASO 6 — Notas finales
+══════════════════════════════════════════════════════════════ */
+const paso6 = {
+  render(){
+    return `
+      <h2 class="paso-tit">Últimos detalles</h2>
+      <p class="paso-sub">¿Algo más que debamos saber antes de armar tu tienda?</p>
+
+      <div class="campo">
+        <label>Cuéntanos lo que quieras <span class="opcional">(opcional)</span></label>
+        <textarea class="input" id="fNotas" placeholder="Ej: Quiero programa de puntos, tengo 3 sucursales, mi horario es de martes a domingo…">${esc(datos.notasAdicionales)}</textarea>
+      </div>
+
+      <div class="campo-ayuda" style="background:var(--crema);padding:16px;border-radius:12px">
+        Al enviar este formulario, tus datos quedan guardados para que armemos tu tienda a tu medida. Nos pondremos en contacto contigo.
+      </div>
+    `;
+  },
+  bind(){},
+  guardar(){
+    datos.notasAdicionales = qs("#fNotas").value.trim();
+  },
+  validar(){ return []; }
+};
+
+const PASOS = [paso1, paso2, paso3, paso4, paso5, paso6];
+
+function guardarValoresPasoActual(){
+  PASOS[pasoActual - 1].guardar();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ENVÍO FINAL
+   Cada visita a este formulario es una persona potencialmente nueva —
+   no hay pedido ni sesión previa que identifique quién es, así que no
+   existe guardado progresivo intermedio (no habría a qué documento
+   volver sin pedir algún tipo de login al visitante, que es justo lo
+   que este formulario evita). Solo se guarda una vez, al final,
+   generando un ID propio para esa respuesta.
+══════════════════════════════════════════════════════════════ */
+async function enviarFormularioFinal(){
+  const btn = qs("#btnSiguiente");
+  const original = btn.textContent;
+  btn.textContent = "Enviando…";
+  btn.disabled = true;
+
+  try {
+    /* Cada envío genera su propio ID — no hay pedido ni sesión previa
+       que lo identifique. Formato legible: FORM- + timestamp + 3
+       caracteres al azar, para que sea fácil de referenciar a simple
+       vista en la lista de respuestas sin ser adivinable en secuencia. */
+    const nuevoId = "FORM-" + Date.now().toString(36).toUpperCase() +
+      "-" + Math.random().toString(36).slice(2, 5).toUpperCase();
+
+    await db.doc("tiendas/" + STORE_ID + "/formularios/" + nuevoId).set({
+      id: nuevoId,
+      datos: datos,
+      creadoEn: new Date().toISOString(),
+      revisado: false
+    });
+
+    renderFinal();
+  } catch(e){
+    console.error(e);
+    btn.textContent = original;
+    btn.disabled = false;
+    alert("No pudimos enviar tu formulario. Revisa tu conexión e inténtalo de nuevo.");
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA FINAL
+══════════════════════════════════════════════════════════════ */
+function renderFinal(){
+  qs("#app").innerHTML = `
+    <div class="final activo">
+      <div class="wrap">
+        <div class="final-check">✓</div>
+        <h2>¡Listo, ${esc(datos.nombreNegocio || "gracias por completarlo")}!</h2>
+        <p>Recibimos tu información. La revisamos y nos pondremos en contacto contigo por WhatsApp a la brevedad.</p>
+
+        <div class="final-info">
+          <div class="final-info-tit">¿Qué sigue ahora?</div>
+          <p style="margin:0">Con esto ya tenemos todo lo que necesitamos para armar tu tienda a tu medida y coordinar los siguientes pasos contigo.</p>
+        </div>
+
+        <a href="https://wa.me/56930025299?text=${encodeURIComponent("Hola, acabo de completar el formulario para mi tienda")}" target="_blank" rel="noopener" class="btn btn-primario btn-standalone">
+          💬 Escribirnos por WhatsApp
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+arrancar();
+</script>
+
+</body>
+</html>

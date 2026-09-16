@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<title>Pedidos — Gestión</title>
+<!-- manifest.json se genera dinámicamente por dominio, ver
+     netlify/functions/manifestTienda.js y el redirect en netlify.toml.
+     start_url apunta acá mismo (pedidos.html) — el acceso directo del
+     celular abre directo el gestor, no la tienda pública. -->
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase compat SDK v9 -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<style>
+/* ══════════════════════════════════════
+   TOKENS & RESET
+══════════════════════════════════════ */
+:root{
+  color-scheme: dark;
+  --rojo:#E53935;
+  --rojo-dark:#B71C1C;
+  --naranja:#F57C00;
+  --azul:#1565C0;
+  --verde:#2E7D32;
+  --verde-light:#43A047;
+  --bg:#0E0E0E;
+  --bg2:#181818;
+  --bg3:#222222;
+  --card:#1E1E1E;
+  --borde:rgba(255,255,255,.08);
+  --txt:#F5F5F5;
+  --txt2:#A0A0A0;
+  --txt3:#606060;
+  --header-h:56px;
+  --tabs-h:48px;
+  --radius:16px;
+  --shadow:0 4px 20px rgba(0,0,0,.45);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+.ico-inline{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:1em;height:1em;vertical-align:-0.14em;
+  flex-shrink:0;
+}
+.ico-inline svg{width:100%;height:100%;display:block}
+html{color-scheme:dark}
+html,body{
+  height:100%;
+  background:var(--bg);color:var(--txt);font-family:'Nunito',sans-serif;
+  overflow:hidden;
+  position:fixed;
+  inset:0;
+  width:100%;
+}
+button{font-family:'Nunito',sans-serif;cursor:pointer;border:none;outline:none;color:inherit}
+input{font-family:'Nunito',sans-serif;outline:none;border:none;color:var(--txt);background-color:transparent;color-scheme:dark}
+a{color:inherit;text-decoration:none}
+
+/* ══════════════════════════════════════
+   PANTALLA DE LOGIN
+══════════════════════════════════════ */
+#loginScreen{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;z-index:1000;
+}
+.login-box{
+  width:100%;max-width:360px;
+  background:var(--card);border-radius:24px;
+  padding:36px 28px 32px;
+  box-shadow:0 12px 48px rgba(0,0,0,.6);
+}
+.login-logo{
+  text-align:center;margin-bottom:28px;
+}
+.login-logo svg{width:48px;height:48px;color:var(--rojo)}
+.login-logo h1{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:28px;font-weight:800;letter-spacing:1px;
+  margin-top:10px;color:var(--txt);
+}
+.login-logo p{font-size:13px;color:var(--txt2);margin-top:4px}
+.login-field{margin-bottom:14px}
+.login-field label{
+  display:block;font-size:12px;font-weight:700;
+  color:var(--txt2);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;
+}
+.login-field input{
+  width:100%;background:var(--bg3);
+  border:1.5px solid var(--borde);border-radius:10px;
+  padding:13px 14px;font-size:15px;color:var(--txt);
+  transition:border-color .2s;
+}
+.login-field input:focus{border-color:var(--rojo)}
+.login-err{
+  font-size:13px;color:#EF5350;font-weight:700;
+  text-align:center;margin-bottom:12px;min-height:18px;
+}
+.btn-login{
+  width:100%;padding:15px;border-radius:12px;
+  background:var(--rojo);color:#fff;
+  font-size:16px;font-weight:800;letter-spacing:.5px;
+  transition:opacity .15s,transform .1s;
+}
+.btn-login:active{opacity:.85;transform:scale(.98)}
+.btn-login:disabled{opacity:.5;pointer-events:none}
+
+/* ══════════════════════════════════════
+   LAYOUT PRINCIPAL
+══════════════════════════════════════ */
+#app{
+  display:flex;flex-direction:column;
+  position:fixed;
+  inset:0;
+  max-width:600px;margin:0 auto;
+  overflow:hidden;
+}
+#app.oculto{display:none}
+
+/* HEADER */
+#header{
+  flex-shrink:0;
+  height:var(--header-h);
+  background:var(--bg2);
+  border-bottom:1px solid var(--borde);
+  display:flex;align-items:center;
+  padding:0 16px;gap:10px;
+  position:relative;z-index:10;
+  isolation:isolate;
+}
+.h-brand{
+  display:flex;align-items:center;gap:8px;flex:1;min-width:0;
+}
+.h-brand-ico{
+  width:32px;height:32px;background:var(--rojo);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.h-brand-ico svg{width:18px;height:18px;color:#fff}
+.h-title{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:20px;font-weight:800;letter-spacing:.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  color:var(--txt);
+}
+#conexionIndicador{
+  display:flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:700;color:var(--txt2);
+  flex-shrink:0;
+}
+.conn-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--verde-light);
+  transition:background .3s;
+}
+.conn-dot.offline{
+  background:var(--rojo);
+  animation:parpadeo 1s ease-in-out infinite;
+}
+@keyframes parpadeo{0%,100%{opacity:1}50%{opacity:.3}}
+.conn-label{display:none}
+@media(min-width:380px){.conn-label{display:inline}}
+
+.btn-settings{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.btn-settings svg{width:18px;height:18px;color:var(--txt2)}
+
+/* TABS */
+#tabs{
+  flex-shrink:0;
+  height:var(--tabs-h);
+  background:var(--bg2);
+  border-bottom:1px solid var(--borde);
+  display:flex;overflow-x:auto;scrollbar-width:none;
+  padding:0 8px;gap:2px;
+}
+#tabs::-webkit-scrollbar{display:none}
+.tab-btn{
+  flex-shrink:0;height:100%;
+  padding:0 14px;
+  display:flex;align-items:center;gap:6px;
+  font-size:13px;font-weight:700;color:var(--txt2);
+  border-bottom:2.5px solid transparent;
+  transition:color .15s,border-color .15s;
+  white-space:nowrap;background:transparent;
+}
+.tab-btn.activo{color:var(--txt);border-bottom-color:var(--rojo)}
+.tab-cnt{
+  background:var(--rojo);color:#fff;
+  font-size:10px;font-weight:900;
+  padding:1px 6px;border-radius:20px;
+  min-width:18px;text-align:center;line-height:16px;
+}
+.tab-cnt.oculto{display:none}
+
+/* BUSCADOR */
+#searchBar{
+  flex-shrink:0;
+  padding:10px 14px;
+  background:var(--bg);
+  border-bottom:1px solid var(--borde);
+}
+.search-wrap{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg3);border-radius:10px;
+  padding:0 12px;
+}
+.search-wrap svg{width:16px;height:16px;color:var(--txt3);flex-shrink:0}
+#searchInput{
+  flex:1;background:transparent;
+  padding:10px 0;font-size:14px;font-weight:600;
+  color:var(--txt);
+}
+#searchInput::placeholder{color:var(--txt3)}
+
+/* LISTA DE PEDIDOS */
+#listWrap{
+  flex:1;min-height:0;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  padding:12px 14px 24px;
+  display:flex;flex-direction:column;gap:10px;
+  position:relative;z-index:1;
+}
+#listWrap::-webkit-scrollbar{width:4px}
+#listWrap::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
+
+/* ESTADO VACÍO */
+#emptyState{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:12px;padding:40px 20px;text-align:center;
+}
+.empty-ico{font-size:48px;line-height:1}
+.empty-tit{font-size:16px;font-weight:800;color:var(--txt2)}
+.empty-sub{font-size:13px;color:var(--txt3);font-weight:600}
+
+/* ══════════════════════════════════════
+   CARDS DE PEDIDO
+══════════════════════════════════════ */
+.ped-card{
+  background:var(--card);border-radius:var(--radius);
+  border:1.5px solid var(--borde);
+  cursor:pointer;
+  transition:border-color .15s,transform .1s;
+  -webkit-user-select:none;user-select:none;
+  touch-action:pan-y;
+}
+.ped-card:active{transform:scale(.99)}
+.ped-card.estado-nuevo{
+  border-color:var(--rojo);
+  animation:pulso-borde 2s ease-in-out infinite;
+}
+@keyframes pulso-borde{
+  0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,.4)}
+  50%{box-shadow:0 0 0 6px rgba(229,57,53,0)}
+}
+
+.card-head{
+  padding:12px 14px 10px;
+  display:flex;align-items:center;gap:10px;
+}
+.card-estado-dot{
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;
+}
+.dot-nuevo{background:var(--rojo)}
+.dot-preparacion{background:var(--naranja)}
+.dot-camino{background:var(--azul)}
+.dot-listo{background:var(--verde)}
+.dot-cancelado{background:var(--txt3)}
+
+.card-id{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:17px;font-weight:800;letter-spacing:.5px;
+  flex:1;color:var(--txt);
+}
+.card-badge{
+  font-size:10px;font-weight:900;padding:3px 9px;border-radius:20px;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.badge-nuevo{background:rgba(229,57,53,.15);color:var(--rojo)}
+.badge-preparacion{background:rgba(245,124,0,.15);color:var(--naranja)}
+.badge-camino{background:rgba(21,101,192,.15);color:#64B5F6}
+.badge-listo{background:rgba(46,125,50,.15);color:#81C784}
+.badge-cancelado{background:rgba(96,96,96,.15);color:var(--txt3)}
+
+.card-meta{
+  padding:0 14px 10px;
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:var(--txt2);font-weight:600;
+}
+.card-tiempo{color:var(--txt2)}
+.card-tipo-ico{font-size:12px}
+.card-sep{color:var(--txt3)}
+
+.card-cliente{
+  padding:0 14px 8px;
+  font-size:14px;font-weight:800;color:var(--txt);
+}
+.card-cliente span{font-weight:600;color:var(--txt2);font-size:13px}
+
+.card-items{
+  padding:0 14px 8px;
+  font-size:13px;color:var(--txt2);font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+.card-dir{
+  padding:0 14px 8px;
+  font-size:12px;color:var(--txt3);font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+.card-footer{
+  padding:10px 14px 12px;
+  display:flex;align-items:center;gap:8px;
+  border-top:1px solid var(--borde);
+}
+/* Cuando la card no tiene botón de acción (estado listo/cancelado),
+   el footer usa más padding para igualar la altura de las demás cards.
+   Sin esto, la mezcla de alturas distintas en el mismo listado flex
+   puede provocar que el navegador recorte visualmente el contenido
+   de las cards más cortas durante el reflow inicial en móvil. */
+.ped-card.sin-acciones .card-footer{
+  padding-bottom:26px;
+}
+.card-total{
+  flex:1;font-size:16px;font-weight:900;color:var(--txt);
+}
+.card-pago{
+  font-size:11px;font-weight:700;color:var(--txt2);
+  background:var(--bg3);padding:4px 8px;border-radius:8px;
+}
+
+/* Botones de acción en card */
+.card-acciones{
+  padding:10px 14px 14px;
+  display:flex;gap:8px;
+}
+.btn-estado{
+  flex:1;padding:12px 8px;border-radius:12px;
+  font-size:14px;font-weight:900;color:#fff;
+  letter-spacing:.3px;
+  transition:opacity .15s,transform .1s;
+}
+.btn-estado:active{opacity:.85;transform:scale(.98)}
+.btn-estado.nuevo{background:var(--rojo)}
+.btn-estado.preparacion{background:var(--naranja)}
+.btn-estado.camino{background:var(--verde)}
+
+.btn-wa{
+  width:46px;height:46px;border-radius:12px;flex-shrink:0;
+  background:#25D366;
+  display:flex;align-items:center;justify-content:center;
+}
+.btn-wa svg{width:22px;height:22px;color:#fff}
+
+/* ══════════════════════════════════════
+   PANEL DE DETALLE (DRAWER)
+══════════════════════════════════════ */
+#detalle{
+  position:fixed;inset:0;z-index:200;
+  display:flex;flex-direction:column;
+}
+#detalle.oculto{display:none}
+.det-overlay{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(3px);
+}
+.det-panel{
+  position:absolute;bottom:0;left:0;right:0;
+  max-width:600px;margin:0 auto;
+  background:var(--bg2);
+  border-radius:20px 20px 0 0;
+  max-height:92dvh;
+  display:flex;flex-direction:column;
+  animation:slideUp .25s ease;
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.det-handle{
+  width:36px;height:4px;border-radius:2px;
+  background:var(--bg3);margin:10px auto 0;flex-shrink:0;
+}
+.det-header{
+  padding:14px 18px 12px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--borde);
+  flex-shrink:0;
+}
+.det-id{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:22px;font-weight:800;flex:1;color:var(--txt);
+}
+.det-close{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;
+}
+.det-close svg{width:16px;height:16px;color:var(--txt2)}
+
+.det-body{
+  flex:1;overflow-y:auto;padding:16px 18px 24px;
+  display:flex;flex-direction:column;gap:16px;
+}
+.det-body::-webkit-scrollbar{width:3px}
+.det-body::-webkit-scrollbar-thumb{background:var(--bg3)}
+
+.det-section{
+  background:var(--bg3);border-radius:12px;padding:14px;
+}
+.det-section-tit{
+  font-size:11px;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;color:var(--txt3);margin-bottom:10px;
+}
+.det-mapa-mini{
+  width:100%;height:150px;border-radius:10px;overflow:hidden;
+  margin-bottom:12px;background:var(--bg2);border:1px solid rgba(255,255,255,.06);
+}
+.det-mapa-mini iframe{width:100%;height:100%;border:0;display:block}
+.det-row{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:5px 0;font-size:14px;
+}
+.det-row:not(:last-child){border-bottom:1px solid rgba(255,255,255,.05)}
+.det-row-ico{
+  width:20px;height:20px;flex-shrink:0;margin-top:1px;
+}
+.det-row-ico svg{width:100%;height:100%;color:var(--txt3)}
+.det-row-lbl{flex:1;font-weight:600;color:var(--txt2);font-size:13px}
+.det-row-val{font-weight:700;color:var(--txt);text-align:right}
+.det-row-val a{color:#64B5F6}
+
+/* Items del pedido */
+.det-items{}
+.det-item{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:6px 0;font-size:14px;
+}
+.det-item:not(:last-child){border-bottom:1px solid rgba(255,255,255,.05)}
+.det-item-cant{
+  min-width:24px;height:24px;border-radius:6px;
+  background:rgba(229,57,53,.15);color:var(--rojo);
+  font-size:12px;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.det-item-nom{flex:1;font-weight:700;color:var(--txt)}
+.det-item-extra{
+  font-weight:600;font-size:12.5px;color:var(--txt2);
+  margin-top:2px;line-height:1.4;
+}
+.det-item-nota{font-style:italic}
+.det-item-precio{font-weight:700;color:var(--txt2);font-size:13px;flex-shrink:0}
+
+/* Totales */
+.det-totales{}
+.det-total-row{
+  display:flex;justify-content:space-between;
+  align-items:center;padding:5px 0;
+  font-size:14px;font-weight:600;color:var(--txt2);
+}
+.det-total-row.principal{
+  font-size:17px;font-weight:900;color:var(--txt);
+  border-top:1px solid var(--borde);margin-top:6px;padding-top:10px;
+}
+.det-total-row.descuento{color:#81C784}
+
+/* Timeline */
+.timeline{}
+.tl-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding-bottom:14px;position:relative;
+}
+.tl-item:not(:last-child)::before{
+  content:"";position:absolute;left:9px;top:20px;
+  width:2px;bottom:0;background:var(--borde);
+}
+.tl-dot{
+  width:20px;height:20px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;z-index:1;
+}
+.tl-dot.hecho{background:var(--verde);color:#fff}
+.tl-dot.pendiente{background:var(--bg);border:2px solid var(--borde)}
+.tl-dot.pendiente svg{width:10px;height:10px;color:var(--txt3)}
+.tl-info{flex:1}
+.tl-label{font-size:13px;font-weight:800;color:var(--txt)}
+.tl-ts{font-size:11px;font-weight:600;color:var(--txt3);margin-top:2px}
+
+/* Botones detalle */
+.det-acciones{
+  display:flex;gap:8px;flex-shrink:0;
+  padding:0 18px 16px;
+}
+.det-acciones .btn-estado{padding:14px}
+.det-btn-wa{
+  flex-shrink:0;width:50px;height:50px;border-radius:12px;
+  background:#25D366;
+  display:flex;align-items:center;justify-content:center;
+}
+.det-btn-wa svg{width:24px;height:24px;color:#fff}
+.det-btn-maps{
+  flex-shrink:0;width:50px;height:50px;border-radius:12px;
+  background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;
+}
+.det-btn-maps svg{width:22px;height:22px;color:#64B5F6}
+.det-btn-eliminar{
+  flex-shrink:0;width:50px;height:50px;border-radius:12px;
+  background:rgba(229,57,53,.12);
+  display:flex;align-items:center;justify-content:center;
+}
+.det-btn-eliminar svg{width:22px;height:22px;color:var(--rojo)}
+
+/* ══════════════════════════════════════
+   PANEL DE SETTINGS
+══════════════════════════════════════ */
+#settings{
+  position:fixed;inset:0;z-index:300;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+#settings.oculto{display:none}
+.set-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65)}
+.set-panel{
+  position:relative;width:100%;max-width:600px;
+  background:var(--bg2);border-radius:20px 20px 0 0;
+  padding:16px 20px calc(20px + env(safe-area-inset-bottom,0px));
+  animation:slideUp .2s ease;
+}
+.set-tit{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:20px;font-weight:800;margin-bottom:16px;
+  color:var(--txt);
+}
+.set-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 0;border-bottom:1px solid var(--borde);
+}
+.set-row:last-of-type{border-bottom:none}
+.set-row-lbl{font-size:14px;font-weight:700;color:var(--txt)}
+.set-row-sub{font-size:12px;color:var(--txt2);font-weight:600;margin-top:2px}
+/* Toggle switch */
+.toggle{position:relative;width:44px;height:26px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{
+  position:absolute;inset:0;border-radius:13px;
+  background:var(--bg3);cursor:pointer;
+  transition:background .2s;
+}
+.toggle-slider::before{
+  content:"";position:absolute;left:3px;top:3px;
+  width:20px;height:20px;border-radius:50%;
+  background:#fff;transition:transform .2s;
+}
+.toggle input:checked + .toggle-slider{background:var(--verde-light)}
+.toggle input:checked + .toggle-slider::before{transform:translateX(18px)}
+
+.btn-logout{
+  width:100%;padding:14px;border-radius:12px;
+  background:rgba(229,57,53,.12);color:var(--rojo);
+  font-size:15px;font-weight:800;margin-top:16px;
+  transition:background .15s;
+}
+.btn-logout:active{background:rgba(229,57,53,.2)}
+
+.set-row-full{padding:14px 0;border-bottom:1px solid var(--borde)}
+.btn-ir-devmode{
+  display:block;text-align:center;padding:13px;border-radius:12px;
+  background:rgba(229,57,53,.1);color:var(--rojo);
+  font-size:14px;font-weight:800;transition:background .15s;
+}
+.btn-ir-devmode:active{background:rgba(229,57,53,.18)}
+
+/* ══════════════════════════════════════
+   TOAST / NOTIF
+══════════════════════════════════════ */
+#toast{
+  position:fixed;top:calc(var(--header-h) + var(--tabs-h) + 10px);
+  left:50%;
+  background:var(--card);border:1px solid var(--borde);color:var(--txt);
+  padding:12px 20px;border-radius:14px;
+  font-size:14px;font-weight:700;
+  box-shadow:var(--shadow);z-index:950;
+  pointer-events:none;
+  white-space:nowrap;
+  display:flex;align-items:center;gap:8px;
+  transform:translateX(-50%) translateY(-16px);
+  opacity:0;
+  transition:transform .25s ease, opacity .25s ease;
+}
+#toast.mostrar{
+  transform:translateX(-50%) translateY(0);
+  opacity:1;
+}
+#toast.toast-urgente{
+  background:var(--rojo);color:#fff;border-color:transparent;
+  font-size:16px;padding:15px 24px;
+  box-shadow:0 6px 26px rgba(229,57,53,.5);
+  animation:toast-pulso 1.4s ease-in-out 2;
+}
+@keyframes toast-pulso{
+  0%,100%{box-shadow:0 6px 26px rgba(229,57,53,.5)}
+  50%{box-shadow:0 6px 34px rgba(229,57,53,.85)}
+}
+
+/* ══════════════════════════════════════
+   CARGANDO
+══════════════════════════════════════ */
+#cargando{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  z-index:900;
+}
+.spin{
+  width:36px;height:36px;border-radius:50%;
+  border:3px solid var(--borde);
+  border-top-color:var(--rojo);
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══════════════════════════════════════
+   UTILIDADES
+══════════════════════════════════════ */
+.oculto{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- PANTALLA DE CARGA -->
+<div id="cargando"><div class="spin"></div></div>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="oculto">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+      <h1>GESTIÓN</h1>
+      <p>Panel de pedidos</p>
+    </div>
+    <div id="loginErr" class="login-err"></div>
+    <div class="login-field">
+      <label>Correo electrónico</label>
+      <input type="email" id="loginEmail" placeholder="admin@tutienda.cl" autocomplete="email" inputmode="email">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btnLogin">Entrar</button>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="app" class="oculto">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div class="h-brand">
+      <div class="h-brand-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 7h12l-1.5 9.39A2 2 0 0 1 14.52 18H9.48a2 2 0 0 1-1.98-1.61L6 7z"/>
+          <path d="M9 10V6a3 3 0 0 1 6 0v4"/>
+        </svg>
+      </div>
+      <span class="h-title" id="hTiendaNombre">Pedidos</span>
+    </div>
+    <div id="conexionIndicador">
+      <div class="conn-dot" id="connDot"></div>
+      <span class="conn-label" id="connLabel">Conectado</span>
+    </div>
+    <button class="btn-settings" id="btnSettings" aria-label="Configuración">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- TABS -->
+  <div id="tabs">
+    <button class="tab-btn activo" data-tab="todos">Todos <span class="tab-cnt oculto" id="cntTodos"></span></button>
+    <button class="tab-btn" data-tab="nuevo">Nuevos <span class="tab-cnt" id="cntNuevo">0</span></button>
+    <button class="tab-btn" data-tab="preparacion">Prep <span class="tab-cnt oculto" id="cntPreparacion"></span></button>
+    <button class="tab-btn" data-tab="camino">En camino <span class="tab-cnt oculto" id="cntCamino"></span></button>
+    <button class="tab-btn" data-tab="listo">Listos <span class="tab-cnt oculto" id="cntListo"></span></button>
+  </div>
+
+  <!-- BUSCADOR -->
+  <div id="searchBar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="search" id="searchInput" placeholder="Buscar por # pedido o nombre…" autocomplete="off">
+    </div>
+  </div>
+
+  <!-- LISTA -->
+  <div id="listWrap">
+    <div id="emptyState" class="oculto">
+      <div class="empty-ico">📭</div>
+      <div class="empty-tit">Sin pedidos aquí</div>
+      <div class="empty-sub">Cuando lleguen nuevos pedidos aparecerán acá</div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- DETALLE DRAWER -->
+<div id="detalle" class="oculto">
+  <div class="det-overlay" id="detOverlay"></div>
+  <div class="det-panel">
+    <div class="det-handle"></div>
+    <div class="det-header">
+      <div class="det-id" id="detId">#TB00000</div>
+      <div id="detBadge" class="card-badge"></div>
+      <button class="det-close" id="detClose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="det-body" id="detBody"></div>
+    <div class="det-acciones" id="detAcciones"></div>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div id="settings" class="oculto">
+  <div class="set-overlay" id="setOverlay"></div>
+  <div class="set-panel">
+    <div class="set-tit">Configuración</div>
+    <div class="set-row">
+      <div>
+        <div class="set-row-lbl">Sonido de alerta</div>
+        <div class="set-row-sub">Suena al llegar un pedido nuevo</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="togSonido" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="set-row">
+      <div>
+        <div class="set-row-lbl">Vibración</div>
+        <div class="set-row-sub">Vibra al llegar un pedido nuevo</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="togVibracion" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <button class="btn-logout" id="btnLogout">Cerrar sesión</button>
+
+    <div class="set-tit" style="margin-top:22px">🔔 Notificaciones push</div>
+    <p class="set-row-sub" style="margin-bottom:12px;line-height:1.5">
+      Se activan y gestionan desde el panel de administración de la tienda (pestaña "Notificaciones"), no acá — así todos los dispositivos quedan en un solo lugar, sin duplicar la lista.
+    </p>
+    <a href="/?dev=1" class="btn-ir-devmode">Ir al panel de administración →</a>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   FIREBASE CONFIG — misma que el index.html del proyecto
+══════════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM",
+  authDomain:        "tienda-test-burgers.firebaseapp.com",
+  projectId:         "tienda-test-burgers",
+  storageBucket:     "tienda-test-burgers.firebasestorage.app",
+  messagingSenderId: "406623629835",
+  appId:             "1:406623629835:web:31152eac803ed8c679cd0e"
+};
+let STORE_ID = "test-burgers"; // valor por defecto — se resuelve por dominio en initFirebase()
+const GOOGLE_MAPS_KEY = "AIzaSyAc5TwfbIVzuRfuOelbRRXdPXHq8hHD00w"; // misma key que index.html, usada acá solo para el embed de mapa en el detalle de pedido
+const VAPID_KEY = "BN0atA77lvF6LY8buvjl9RLsPXb8ZqESonUfWBDDewV2-_Mr70vcsPNrpvcuFLGJU_mHVRnp084azSSnjvB6ANs"; // misma key que index.html
+
+/* ══════════════════════════════════════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════════════════════════════════════ */
+var db, auth;
+var _pedidos      = [];     // todos los pedidos del listener
+var _tabActiva    = "todos";
+var _busqueda     = "";
+var _detPedido    = null;   // pedido abierto en el drawer
+var _unsubPedidos = null;   // función para desuscribirse del listener
+var _sonidoActivo = true;
+var _vibracionActiva = true;
+var _primeraCarga = true;   // para no alertar al montar los pedidos iniciales
+var _audCtx       = null;
+var _renderDebounce = null; // timer para agrupar renders si Firestore emite varios snapshots seguidos
+
+/* ══════════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════════ */
+function qs(sel){ return document.querySelector(sel); }
+
+/* ══════════════════════════════════════════════════════════════
+   ÍCONOS SVG en vez de emoji — mismo sistema que index.html (ver
+   comentarios ahí para el diseño completo). Duplicado acá porque son
+   dos documentos HTML independientes, sin JS compartido. ══════════════════════════════════════════════════════════════ */
+const EMOJI_A_ICONO = {
+  "🔔": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/> </svg>`,
+  "🔕": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M8.7 3A6 6 0 0 1 18 8c0 2.3.6 3.9 1.3 5.1"/> <path d="M6 8a6 6 0 0 0-1 3.3C5 18 2 20 2 20h14"/> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/> <line x1="2" y1="2" x2="22" y2="22"/> </svg>`,
+  "📍": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/> <circle cx="12" cy="10" r="3"/> </svg>`,
+  "🗺": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/> <circle cx="12" cy="10" r="3"/> </svg>`,
+  "🏠": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M3 9.5 12 2l9 7.5"/> <path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/> </svg>`,
+  "🔒": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="4" y="11" width="16" height="10" rx="2"/> <path d="M8 11V7a4 4 0 0 1 8 0v4"/> </svg>`,
+  "⭐": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/> </svg>`,
+  "🗑": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M3 6h18"/> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/> <line x1="10" y1="11" x2="10" y2="17"/> <line x1="14" y1="11" x2="14" y2="17"/> </svg>`,
+  "💬": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/> </svg>`,
+  "📧": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="4" width="20" height="16" rx="2"/> <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/> </svg>`,
+  "✉": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="4" width="20" height="16" rx="2"/> <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/> </svg>`,
+  "🕐": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="10"/> <polyline points="12 6 12 12 16 14"/> </svg>`,
+  "⏳": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="10"/> <polyline points="12 6 12 12 16 14"/> </svg>`,
+  "💵": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="6" width="20" height="12" rx="2"/> <circle cx="12" cy="12" r="2"/> <path d="M6 12h.01M18 12h.01"/> </svg>`,
+  "📦": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/> <path d="m3.3 7 8.7 5 8.7-5"/> <path d="M12 22V12"/> </svg>`,
+  "🛒": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="8" cy="21" r="1"/> <circle cx="19" cy="21" r="1"/> <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/> </svg>`,
+  "🔍": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="11" cy="11" r="8"/> <line x1="21" y1="21" x2="16.65" y2="16.65"/> </svg>`,
+  "💼": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="7" width="20" height="14" rx="2"/> <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/> </svg>`,
+  "👤": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20 21a8 8 0 0 0-16 0"/> <circle cx="12" cy="7" r="4"/> </svg>`,
+  "🚫": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="10"/> <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/> </svg>`,
+  "📱": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="5" y="2" width="14" height="20" rx="2"/> <line x1="12" y1="18" x2="12.01" y2="18"/> </svg>`,
+  "📞": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z"/> </svg>`,
+  "🍔": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 9a8 4 0 0 1 16 0Z"/> <line x1="3" y1="12" x2="21" y2="12"/> <path d="M4 15h16"/> <path d="M5 18h14a1 1 0 0 1 1 1 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 1 1 0 0 1 1-1Z"/> </svg>`,
+  "🌭": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 15 15 4a3.5 3.5 0 0 1 5 5L9 20a3.5 3.5 0 0 1-5-5Z"/> <path d="m9.5 9.5 5 5"/> </svg>`,
+  "☕": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M17 8h1a4 4 0 1 1 0 8h-1"/> <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/> <line x1="6" y1="2" x2="6" y2="4"/> <line x1="10" y1="2" x2="10" y2="4"/> <line x1="14" y1="2" x2="14" y2="4"/> </svg>`,
+  "🧁": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M12 3c-1.5 0-2.5 1.2-2.5 2.5S10.2 8 12 8s2.5-1.2 2.5-2.5S13.5 3 12 3Z"/> <path d="M6 11h12l-1.2 8.4a2 2 0 0 1-2 1.6H9.2a2 2 0 0 1-2-1.6Z"/> <path d="M5 11a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3"/> </svg>`,
+  "👕": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 .55.45 1 1 1h10a1 1 0 0 0 1-1V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z"/> </svg>`,
+  "💅": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M9 2h6l1 5a4 4 0 0 1-8 0Z"/> <path d="M12 11v6"/> <path d="M8 22c0-2.2 1.8-4 4-4s4 1.8 4 4"/> </svg>`,
+  "📅": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="3" y="4" width="18" height="18" rx="2"/> <line x1="16" y1="2" x2="16" y2="6"/> <line x1="8" y1="2" x2="8" y2="6"/> <line x1="3" y1="10" x2="21" y2="10"/> </svg>`,
+  "🏪": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M2 7h20l-1.5 5a2 2 0 0 1-2 1.5H5.5a2 2 0 0 1-2-1.5Z"/> <path d="M4 13v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6"/> <path d="M9 21v-5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5"/> <path d="M2 7 4.5 3h15L22 7"/> </svg>`,
+  "👁": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/> <circle cx="12" cy="12" r="3"/> </svg>`,
+  "🛍": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/> <line x1="3" y1="6" x2="21" y2="6"/> <path d="M16 10a4 4 0 0 1-8 0"/> </svg>`,
+  "🎟": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/> <line x1="13" y1="5" x2="13" y2="19" stroke-dasharray="2 2"/> </svg>`,
+  "🔥": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/> </svg>`,
+  "🧾": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/> <polyline points="14 2 14 8 20 8"/> <line x1="8" y1="13" x2="16" y2="13"/> <line x1="8" y1="17" x2="16" y2="17"/> </svg>`,
+  "💡": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M9 18h6"/> <path d="M10 22h4"/> <path d="M12 2a7 7 0 0 0-4 12.7c.5.4.9 1 1 1.6V18h6v-1.7c.1-.6.5-1.2 1-1.6A7 7 0 0 0 12 2Z"/> </svg>`,
+  "🛵": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="5" cy="18" r="3"/> <circle cx="19" cy="18" r="3"/> <path d="M5 18V9h6l3 4h5"/> <path d="M9 9V6h3"/> <path d="M15 13l-2-4"/> </svg>`,
+  "🚴": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="5" cy="18" r="3"/> <circle cx="19" cy="18" r="3"/> <path d="M5 18V9h6l3 4h5"/> <path d="M9 9V6h3"/> <path d="M15 13l-2-4"/> </svg>`,
+  "🔗": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.5 1.5"/> <path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.5-1.5"/> </svg>`,
+  "👑": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="m2 8 4 3 6-7 6 7 4-3-2 11H4Z"/> <line x1="5" y1="21" x2="19" y2="21"/> </svg>`,
+  "🎁": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="3" y="8" width="18" height="4" rx="1"/> <path d="M12 8v13"/> <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/> <path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8Z"/> <path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8Z"/> </svg>`,
+  "🎂": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="9" y1="3" x2="9" y2="6"/> <path d="M8 3.5c0 .8.5 1 1 1.5s1 .7 1-.1S9.5 3 9 2.5"/> <path d="M4 21v-7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7Z"/> <path d="M4 17c1 1 2 1 3 0s2-1 3 0 2 1 3 0 2-1 3 0 2 1 3 0"/> <path d="M6 12v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/> </svg>`,
+  "👨": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/> <line x1="6" y1="17" x2="18" y2="17"/> </svg>`,
+  "🍳": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/> <line x1="6" y1="17" x2="18" y2="17"/> </svg>`,
+  "🖼": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="3" y="3" width="18" height="18" rx="2"/> <circle cx="9" cy="9" r="2"/> <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/> </svg>`,
+  "📢": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="m3 11 18-5v12L3 14v-3Z"/> <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/> </svg>`,
+  "🍪": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5Z"/> <path d="M8.5 8.5v.01"/> <path d="M16 15.5v.01"/> <path d="M12 12v.01"/> <path d="M11 17v.01"/> <path d="M7 14v.01"/> </svg>`,
+  "📁": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/> </svg>`,
+  "😞": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="10"/> <path d="M16 16s-1.5-2-4-2-4 2-4 2"/> <line x1="9" y1="9" x2="9.01" y2="9"/> <line x1="15" y1="9" x2="15.01" y2="9"/> </svg>`,
+  "🏢": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="4" y="2" width="16" height="20" rx="1"/> <line x1="9" y1="6" x2="9" y2="6.01"/> <line x1="15" y1="6" x2="15" y2="6.01"/> <line x1="9" y1="10" x2="9" y2="10.01"/> <line x1="15" y1="10" x2="15" y2="10.01"/> <line x1="9" y1="14" x2="9" y2="14.01"/> <line x1="15" y1="14" x2="15" y2="14.01"/> <path d="M9 22v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4"/> </svg>`,
+  "📭": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M22 12h-6l-2 3h-4l-2-3H2"/> <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/> </svg>`,
+  "🎉": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M5.8 11.3 2 22l10.7-3.79"/> <path d="M4 3h.01"/> <path d="M22 8h.01"/> <path d="M15 2h.01"/> <path d="M22 20h.01"/> <path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.8-.23 1.6-.86 2.11L4.3 16.28"/> <path d="m22 13-3.5.5-.5 3.5L11 21"/> <path d="M12 3v3"/> <path d="M3 12h3"/> </svg>`,
+  "💳": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="5" width="20" height="14" rx="2"/> <line x1="2" y1="10" x2="22" y2="10"/> </svg>`,
+  "📌": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="12" y1="17" x2="12" y2="22"/> <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a1 1 0 0 0 0-2H8a1 1 0 0 0 0 2h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/> </svg>`,
+  "💰": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="8" cy="8" r="6"/> <path d="M18.09 10.37A6 6 0 1 1 10.34 18"/> <path d="M7 6h1v4"/> <path d="m16.71 13.88.7.71-2.82 2.82"/> </svg>`,
+  "📋": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="8" y="2" width="8" height="4" rx="1"/> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/> <line x1="8" y1="11" x2="16" y2="11"/> <line x1="8" y1="15" x2="14" y2="15"/> </svg>`,
+  "❌": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="10"/> <line x1="15" y1="9" x2="9" y2="15"/> <line x1="9" y1="9" x2="15" y2="15"/> </svg>`,
+  "⚙": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="3"/> <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/> </svg>`,
+};
+/* Colores para los 7 "puntos de estado" (antes emoji de círculo de color) —
+   mismos colores que ya usa el resto de la interfaz para esos estados. */
+const PUNTO_COLOR = {
+  "🔴": "#C62828", "🟢": "#2E7D32", "🟡": "#F9A825",
+  "🔵": "#1565C0", "🟠": "#EF6C00", "🟣": "#6A1B9A", "⚪": "#9E9E9E"
+};
+const SVG_PUNTO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>`;
+
+/* ══════════════════════════════════════════════════════════════
+   REEMPLAZO DE EMOJI POR ÍCONOS SVG
+   Reemplaza en el propio HTML fuente (antes de insertarlo al DOM)
+   todo emoji del mapa por un <span> con el SVG correspondiente. Se
+   aplica sobre STRINGS de HTML ya armados (los que arman las
+   funciones render*), no sobre el DOM ya insertado — evitando así
+   tener que recorrer nodos de texto después de cada render, que es
+   más lento y más frágil con contenido que se regenera seguido
+   (listas de pedidos, timeline, etc).
+   Uso: envolver el string final de cualquier función que arme HTML
+   con emoji con reemplazarEmojis(html) antes de asignarlo a
+   innerHTML. ══════════════════════════════════════════════════════════════ */
+function reemplazarEmojis(html){
+  if (!html) return html;
+  let out = html;
+  for (const emoji in EMOJI_A_ICONO){
+    if (out.indexOf(emoji) === -1) continue;
+    const span = '<span class="ico-inline">' + EMOJI_A_ICONO[emoji] + '</span>';
+    out = out.split(emoji).join(span);
+  }
+  for (const emoji in PUNTO_COLOR){
+    if (out.indexOf(emoji) === -1) continue;
+    const span = '<span class="ico-inline" style="color:' + PUNTO_COLOR[emoji] + '">' + SVG_PUNTO + '</span>';
+    out = out.split(emoji).join(span);
+  }
+  return out;
+}
+
+/* Recorre TODOS los nodos de texto del contenedor dado (o de todo el
+   body si no se especifica uno), saltando SCRIPT/STYLE, y reemplaza
+   solo los nodos que contienen un emoji del mapa. A diferencia de
+   reescribir innerHTML de bloques completos, esto no reconstruye el
+   DOM alrededor (no rompe el foco de un input, no pierde el estado de
+   scroll) y es seguro de llamar tantas veces como haga falta — un nodo
+   ya convertido no tiene más emoji, así que una segunda pasada no hace
+   nada sobre él. */
+function aplicarIconosGlobal(raiz){
+  try {
+    const contenedor = raiz || document.body;
+    const walker = document.createTreeWalker(contenedor, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(nodo){
+        const padreTag = nodo.parentElement ? nodo.parentElement.tagName : "";
+        if (padreTag === "SCRIPT" || padreTag === "STYLE") return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodosATocar = [];
+    let nodo;
+    while ((nodo = walker.nextNode())){
+      if (tieneAlgunEmoji(nodo.nodeValue)) nodosATocar.push(nodo);
+    }
+    nodosATocar.forEach(function(textNode){
+      const html = reemplazarEmojis(escaparParaHtml(textNode.nodeValue));
+      const span = document.createElement("span");
+      span.innerHTML = html;
+      textNode.parentNode.replaceChild(span, textNode);
+      while (span.firstChild) span.parentNode.insertBefore(span.firstChild, span);
+      span.parentNode.removeChild(span);
+    });
+  } catch(e){ console.warn("No se pudieron aplicar los íconos:", e); }
+}
+function escaparParaHtml(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function tieneAlgunEmoji(texto){
+  if (!texto) return false;
+  for (const e in EMOJI_A_ICONO) if (texto.indexOf(e) !== -1) return true;
+  for (const e in PUNTO_COLOR) if (texto.indexOf(e) !== -1) return true;
+  return false;
+}
+
+
+function fmtPrecio(n){
+  return "$" + Number(n||0).toLocaleString("es-CL");
+}
+
+function fmtFecha(iso){
+  if(!iso) return "—";
+  var d = new Date(iso);
+  var dias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  var meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  return dias[d.getDay()] + " " + d.getDate() + " " + meses[d.getMonth()] +
+         ", " + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+}
+
+function fmtTiempo(iso){
+  if(!iso) return "";
+  var diff = Date.now() - new Date(iso).getTime();
+  var min  = Math.floor(diff / 60000);
+  if(min < 1)  return "ahora";
+  if(min < 60) return "hace " + min + " min";
+  var h = Math.floor(min/60);
+  return "hace " + h + "h " + (min%60) + "m";
+}
+
+function labelEstado(e){
+  return {nuevo:"Nuevo",preparacion:"Preparando",camino:"En camino",listo:"Listo",cancelado:"Cancelado"}[e] || e;
+}
+
+function dotClass(e){
+  return "dot-" + (e||"cancelado");
+}
+
+function badgeClass(e){
+  return "badge-" + (e||"cancelado");
+}
+
+function resumenItems(items){
+  if(!items || !items.length) return "Sin productos";
+  return items.map(function(it){ return it.cantidad + "× " + it.nombre; }).join(", ");
+}
+
+function esc(s){
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function mostrarToast(msg, dur, urgente){
+  var t = qs("#toast");
+  t.textContent = msg;
+  t.classList.toggle("toast-urgente", !!urgente);
+  t.classList.add("mostrar");
+  aplicarIconosGlobal(t);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.classList.remove("mostrar"); }, dur || (urgente ? 4500 : 2500));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SONIDO DE ALERTA (Web Audio API — sin archivos externos)
+══════════════════════════════════════════════════════════════ */
+function reproducirAlerta(){
+  if(!_sonidoActivo) return;
+  try{
+    if(!_audCtx) _audCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Tres notas ascendentes cortas
+    var tiempos = [0, 0.15, 0.3];
+    var freqs   = [440, 554, 659];
+    tiempos.forEach(function(t, i){
+      var osc  = _audCtx.createOscillator();
+      var gain = _audCtx.createGain();
+      osc.connect(gain);
+      gain.connect(_audCtx.destination);
+      osc.frequency.value = freqs[i];
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0, _audCtx.currentTime + t);
+      gain.gain.linearRampToValueAtTime(0.35, _audCtx.currentTime + t + 0.04);
+      gain.gain.linearRampToValueAtTime(0, _audCtx.currentTime + t + 0.14);
+      osc.start(_audCtx.currentTime + t);
+      osc.stop(_audCtx.currentTime + t + 0.15);
+    });
+  }catch(e){ /* silencioso */ }
+}
+
+function vibrar(){
+  if(!_vibracionActiva) return;
+  if(navigator.vibrate) navigator.vibrate([200,100,200]);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CONEXIÓN / DESCONEXIÓN INDICATOR
+══════════════════════════════════════════════════════════════ */
+function setConexion(ok){
+  var dot   = qs("#connDot");
+  var label = qs("#connLabel");
+  if(ok){
+    dot.classList.remove("offline");
+    label.textContent = "Conectado";
+  } else {
+    dot.classList.add("offline");
+    label.textContent = "Sin conexión";
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FIREBASE INIT
+══════════════════════════════════════════════════════════════ */
+async function initFirebase(){
+  if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  db   = firebase.firestore();
+  auth = firebase.auth();
+  // Persistencia de sesión
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+  /* Resolución de STORE_ID por dominio — mismo mecanismo que index.html.
+     Si el dominio no está registrado en "dominios", se queda con el
+     valor por defecto declarado más arriba (nunca rompe el panel
+     actual por un dominio sin configurar). */
+  try {
+    const domDoc = await db.collection("dominios").doc(location.hostname).get();
+    if (domDoc.exists && domDoc.data().storeId) {
+      STORE_ID = domDoc.data().storeId;
+    }
+  } catch(e) {
+    console.warn("No se pudo resolver STORE_ID por dominio, se usa el valor por defecto:", e);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════════════════════ */
+function arrancarAuth(){
+  auth.onAuthStateChanged(function(user){
+    qs("#cargando").classList.add("oculto");
+    if(user){
+      /* Login estándar de devmode — cualquier cuenta autenticada entra.
+         La protección de lo sensible (cupones, precios, caja) no vive
+         acá, vive en index.html con la reautenticación de propietario
+         (ver pedirVerificacionPropietario en index.html), que pide una
+         segunda clave separada solo para esas acciones puntuales. */
+      mostrarApp(user);
+    } else {
+      mostrarLogin("");
+    }
+  });
+}
+
+function mostrarLogin(err){
+  qs("#loginScreen").classList.remove("oculto");
+  qs("#app").classList.add("oculto");
+  if(err) qs("#loginErr").textContent = err;
+}
+
+function mostrarApp(user){
+  qs("#loginScreen").classList.add("oculto");
+  qs("#app").classList.remove("oculto");
+  cargarNombreTienda();
+  iniciarListenerPedidos();
+  limpiarPendientesVencidos();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIMPIEZA DE PREFERENCIAS DE PAGO VENCIDAS
+   Respaldo del lado del cliente para cuando la scheduled function
+   de Netlify (limpiarPendientes.js) no está disponible — las
+   scheduled functions requieren plan Pro o superior; en el plan
+   gratuito nunca se ejecutan solas. Esto corre cada vez que alguien
+   abre pedidos.html, y se repite cada 5 minutos mientras la pestaña
+   quede abierta (ver el setInterval al final del archivo).
+══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   LIMPIEZA DE INTENTOS DE PAGO VENCIDOS
+   Respaldo del lado del cliente para cuando la scheduled function
+   de Netlify (limpiarPendientes.js) no está disponible — las
+   scheduled functions requieren plan Pro o superior; en el plan
+   gratuito nunca se ejecutan solas. Esto corre cada vez que alguien
+   abre pedidos.html, y se repite cada 5 minutos mientras la pestaña
+   quede abierta (ver el setInterval al final del archivo).
+
+   Solo borra los que quedaron en "iniciado" (el cliente probablemente
+   cerró el checkout sin pagar, caso normal) — nunca los que están en
+   "error", esos se dejan para que el dueño los revise en devmode
+   (tab Pagos → "Intentos de pago sin confirmar").
+══════════════════════════════════════════════════════════════ */
+function limpiarPendientesVencidos(){
+  if(!db) return;
+  var MINUTOS_LIMITE = 30; // más margen que antes: un intento "iniciado" no implica que haya fallado nada, solo que el cliente no completó el pago todavía
+  var limite = new Date(Date.now() - MINUTOS_LIMITE * 60 * 1000).toISOString();
+
+  db.collection("tiendas").doc(STORE_ID).collection("intentos_pago")
+    .where("estado", "==", "iniciado")
+    .where("creadoEn", "<", limite)
+    .get()
+    .then(function(snap){
+      if(snap.empty) return;
+      var batch = db.batch();
+      snap.docs.forEach(function(doc){ batch.delete(doc.ref); });
+      return batch.commit().then(function(){
+        console.log("🗑️ Limpieza: " + snap.size + " intento(s) de pago sin completar");
+      });
+    })
+    .catch(function(e){ console.warn("limpiarPendientesVencidos:", e); });
+}
+
+/* Login */
+qs("#btnLogin").addEventListener("click", function(){
+  var email = qs("#loginEmail").value.trim();
+  var pass  = qs("#loginPass").value;
+  var err   = qs("#loginErr");
+  err.textContent = "";
+  if(!email || !pass){ err.textContent = "Completá los campos."; return; }
+  var btn = qs("#btnLogin");
+  btn.disabled = true;
+  btn.textContent = "Entrando…";
+  auth.signInWithEmailAndPassword(email, pass).catch(function(e){
+    btn.disabled = false;
+    btn.textContent = "Entrar";
+    var msgs = {
+      "auth/wrong-password":"Contraseña incorrecta.",
+      "auth/user-not-found":"No existe esa cuenta.",
+      "auth/invalid-email":"Email inválido.",
+      "auth/too-many-requests":"Demasiados intentos. Esperá un momento.",
+      /* Firebase unificó "contraseña incorrecta" y "usuario no existe"
+         bajo este único código hace tiempo, por seguridad (así no se
+         puede usar el mensaje de error para adivinar qué emails están
+         registrados) — sin este caso, cualquiera de esos dos
+         problemas reales caía en el genérico de abajo, sin pista de
+         cuál de los dos era. */
+      "auth/invalid-credential":"Email o contraseña incorrectos.",
+      "auth/user-disabled":"Esta cuenta fue deshabilitada — revisala en Firebase Console → Authentication.",
+      "auth/network-request-failed":"Sin conexión — revisá tu red e intentá de nuevo."
+    };
+    err.textContent = msgs[e.code] || ("Error al iniciar sesión (" + e.code + ").");
+  });
+});
+
+qs("#loginPass").addEventListener("keydown", function(e){
+  if(e.key === "Enter") qs("#btnLogin").click();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   NOMBRE DE LA TIENDA
+══════════════════════════════════════════════════════════════ */
+/* Mismos ids/emoji que RUBROS en index.html, generar-tienda.html y
+   formulario.html — solo el emoji hace falta acá, no el color. */
+var EMOJI_POR_RUBRO = {
+  "hamburguesas": "🍔", "comida-rapida": "🌭", "cafeteria": "☕",
+  "pasteleria": "🧁", "ropa": "👕", "belleza": "💅",
+  "servicios": "📅", "otro": "🏪"
+};
+/* Mismo mecanismo de favicon dinámico que index.html (ver
+   aplicarFavicon()/actualizarFaviconConConfig() ahí) — duplicado acá
+   porque pedidos.html es un documento HTML independiente, con su
+   propio <head>, que no hereda nada de lo que index.html haga en el
+   suyo. Relevante en particular porque pedidos.html es el start_url
+   del acceso directo (ver manifest.json dinámico) — conviene que la
+   pestaña del navegador y el ícono se sientan de la misma tienda. */
+function aplicarFaviconPedidos(url){
+  var link = document.querySelector('link[rel="icon"]');
+  if (!link){
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.type = "image/png";
+  link.href = url;
+}
+function aplicarFaviconEmoji(emoji){
+  try {
+    /* Reutiliza el mismo SVG que EMOJI_A_ICONO ya usa para reemplazar
+       este emoji en el resto de la interfaz — mismo criterio que
+       index.html (ver comentarios ahí para el detalle completo). */
+    var svg = EMOJI_A_ICONO[emoji];
+    if (!svg) { aplicarFaviconEmojiCrudo(emoji); return; }
+    var canvas = document.createElement("canvas");
+    canvas.width = 64; canvas.height = 64;
+    var ctx = canvas.getContext("2d");
+    var img = new Image();
+    var svgConColor = svg.replace("<svg ", '<svg style="color:#1A1A1A" ');
+    var svgUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgConColor);
+    img.onload = function(){
+      ctx.drawImage(img, 6, 6, 52, 52);
+      aplicarFaviconPedidos(canvas.toDataURL("image/png"));
+    };
+    img.onerror = function(){ aplicarFaviconEmojiCrudo(emoji); };
+    img.src = svgUrl;
+  } catch(e){ console.warn("No se pudo generar el favicon:", e); }
+}
+function aplicarFaviconEmojiCrudo(emoji){
+  try {
+    var canvas = document.createElement("canvas");
+    canvas.width = 64; canvas.height = 64;
+    var ctx = canvas.getContext("2d");
+    ctx.font = "52px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(emoji, 32, 38);
+    aplicarFaviconPedidos(canvas.toDataURL("image/png"));
+  } catch(e){ console.warn("No se pudo generar el favicon de respaldo:", e); }
+}
+function cargarNombreTienda(){
+  db.collection("tiendas").doc(STORE_ID)
+    .collection("config").doc("general")
+    .get().then(function(doc){
+      if(doc.exists){
+        var d = doc.data();
+        var nombre = d.nombreTienda || d.nombre || "Pedidos";
+        qs("#hTiendaNombre").textContent = nombre;
+        document.title = nombre + " — Pedidos";
+        /* Prioridad: logo real del cliente > emoji del rubro > nada
+           (queda el ícono por defecto del navegador). */
+        if (d.logoBase64) aplicarFaviconPedidos(d.logoBase64);
+        else aplicarFaviconEmoji(EMOJI_POR_RUBRO[d.rubro] || EMOJI_POR_RUBRO.otro);
+      }
+    }).catch(function(){});
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LISTENER EN TIEMPO REAL
+══════════════════════════════════════════════════════════════ */
+function iniciarListenerPedidos(){
+  if(_unsubPedidos) _unsubPedidos();
+
+  // Escuchar últimas 48h
+  var desde = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+
+  var query = db.collection("tiendas").doc(STORE_ID)
+    .collection("pedidos")
+    .where("fecha", ">=", desde)
+    .orderBy("fecha", "desc");
+
+  _unsubPedidos = query.onSnapshot(
+    function(snap){
+      setConexion(true);
+      var nuevosIds = [];
+
+      if(!_primeraCarga){
+        snap.docChanges().forEach(function(change){
+          if(change.type === "added"){
+            var d = change.doc.data();
+            if(d.estado === "nuevo") nuevosIds.push(d.id || change.doc.id);
+          }
+        });
+      }
+
+      _pedidos = snap.docs.map(function(doc){
+        var d = doc.data();
+        d._docId = doc.id;
+        if(!d.id) d.id = doc.id;
+        return d;
+      });
+
+      _primeraCarga = false;
+
+      if(nuevosIds.length){
+        reproducirAlerta();
+        vibrar();
+        mostrarToast(
+          "🔔 " + (nuevosIds.length === 1 ? "¡Tienes un pedido nuevo!" : "¡Tienes " + nuevosIds.length + " pedidos nuevos!"),
+          null, true
+        );
+        // Actualizar tab badge en el título
+        document.title = "(" + contarPorEstado("nuevo") + ") Pedidos";
+      }
+
+      /* Debounce corto: si Firestore emite varios snapshots seguidos
+         (común al montar la query por primera vez), esto evita
+         reconstruir la lista completa decenas de veces en milisegundos. */
+      clearTimeout(_renderDebounce);
+      _renderDebounce = setTimeout(function(){
+        renderLista();
+        actualizarContadores();
+      }, 30);
+
+      // Si el detalle estaba abierto, actualizarlo
+      if(_detPedido){
+        var actualizado = _pedidos.find(function(p){ return p.id === _detPedido.id; });
+        if(actualizado) _detPedido = actualizado;
+        renderDetalle();
+      }
+    },
+    function(err){
+      setConexion(false);
+      console.warn("Firestore error:", err);
+      /* El error más común acá es "The query requires an index" —
+         Firestore no arma consultas con where() + orderBy() en campos
+         relacionados sin un índice compuesto creado de antemano. El
+         propio error de Firebase trae, en err.message, un link directo
+         a la consola de Firebase para crear ese índice con un clic —
+         se lo mostramos al vendedor en vez de dejarlo solo con "sin
+         conexión", que no explica qué pasa de verdad. */
+      if(err && err.code === "failed-precondition"){
+        mostrarToast("⚠️ Falta un índice de Firestore — revisá la consola del navegador para el link que lo crea", 8000, true);
+      }
+    }
+  );
+
+  // Detectar reconexión offline
+  window.addEventListener("online",  function(){ setConexion(true);  });
+  window.addEventListener("offline", function(){ setConexion(false); });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILTRAR Y RENDERIZAR LISTA
+══════════════════════════════════════════════════════════════ */
+function pedidosFiltrados(){
+  var lista = _pedidos.slice();
+
+  // Filtro por tab
+  if(_tabActiva !== "todos"){
+    lista = lista.filter(function(p){ return p.estado === _tabActiva; });
+  }
+
+  // Filtro por búsqueda
+  if(_busqueda){
+    var q = _busqueda.toLowerCase();
+    lista = lista.filter(function(p){
+      var id     = String(p.id || "").toLowerCase();
+      var nombre = String((p.cliente && p.cliente.nombre) || "").toLowerCase();
+      return id.includes(q) || nombre.includes(q);
+    });
+  }
+
+  // Ordenar: nuevos siempre primero
+  lista.sort(function(a, b){
+    if(a.estado === "nuevo" && b.estado !== "nuevo") return -1;
+    if(b.estado === "nuevo" && a.estado !== "nuevo") return  1;
+    return new Date(b.fecha) - new Date(a.fecha);
+  });
+
+  return lista;
+}
+
+function renderLista(){
+  var lista  = pedidosFiltrados();
+  var wrap   = qs("#listWrap");
+  var empty  = qs("#emptyState");
+
+  if(!lista.length){
+    // Limpiar cards existentes (no el emptyState)
+    Array.from(wrap.children).forEach(function(el){
+      if(el.id !== "emptyState") el.remove();
+    });
+    empty.classList.remove("oculto");
+    return;
+  }
+  empty.classList.add("oculto");
+
+  /* Construir todas las cards en un fragmento en memoria primero —
+     evita que el navegador pinte el layout (altura de las cards)
+     antes de que el texto interno termine de insertarse, que es
+     lo que causaba el efecto de "barras vacías" al recargar con
+     muchos pedidos. */
+  var frag = document.createDocumentFragment();
+  lista.forEach(function(ped){
+    var card = document.createElement("div");
+    var tieneAccion = btnEstadoTxt(ped.estado) !== null;
+    card.className = "ped-card" +
+      (ped.estado === "nuevo" ? " estado-nuevo" : "") +
+      (tieneAccion ? "" : " sin-acciones");
+    card.dataset.id = ped.id;
+    card.innerHTML = cardHTML(ped);
+    frag.appendChild(card);
+  });
+
+  // Limpiar cards existentes (no el emptyState) y volcar el fragmento ya completo de una sola vez
+  Array.from(wrap.children).forEach(function(el){
+    if(el.id !== "emptyState") el.remove();
+  });
+  wrap.appendChild(frag);
+  aplicarIconosGlobal(wrap); // solo sobre lo que se acaba de insertar, no toda la página
+}
+
+function cardHTML(p){
+  var cl   = p.cliente || {};
+  var items = resumenItems(p.items);
+  var estad = p.estado || "nuevo";
+  var btnTxt = btnEstadoTxt(estad);
+  var btnCls = btnEstadoCls(estad);
+  var hayBoton = btnTxt !== null;
+
+  return [
+    '<div class="card-head">',
+      '<div class="card-estado-dot ' + dotClass(estad) + '"></div>',
+      '<div class="card-id">' + esc(p.id) + '</div>',
+      '<div class="card-badge ' + badgeClass(estad) + '">' + labelEstado(estad) + '</div>',
+    '</div>',
+    '<div class="card-meta">',
+      '<span class="card-tiempo">' + fmtTiempo(p.fecha) + '</span>',
+      '<span class="card-sep">·</span>',
+      '<span class="card-tipo-ico">' + (p.tipo === "delivery" ? "🛵" : "🏠") + '</span>',
+      '<span>' + (p.tipo === "delivery" ? "Delivery" : "Retiro") + '</span>',
+    '</div>',
+    '<div class="card-cliente">' + esc(cl.nombre || "Cliente") +
+      (cl.telefono ? ' <span>· ' + esc(cl.telefono) + '</span>' : '') + '</div>',
+    '<div class="card-items">' + esc(items) + '</div>',
+    (cl.direccion ? '<div class="card-dir">📍 ' + esc(cl.direccion) + (cl.comuna ? ", " + esc(cl.comuna) : "") + '</div>' : ''),
+    '<div class="card-footer">',
+      '<div class="card-total">' + fmtPrecio(p.total) + '</div>',
+      '<div class="card-pago">' + esc(p.metodoPago === "mercadopago" ? "MercadoPago" : "Efectivo") + '</div>',
+    '</div>',
+    hayBoton ? [
+      '<div class="card-acciones">',
+        '<button class="btn-estado ' + btnCls + '" data-id="' + esc(p.id) + '" data-accion="avanzar">',
+          btnTxt,
+        '</button>',
+        '<button class="btn-wa" data-id="' + esc(p.id) + '" data-accion="wa" aria-label="WhatsApp">',
+          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.117 1.532 5.845L.057 23.077a.75.75 0 0 0 .924.924l5.232-1.475A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.64-.523-5.144-1.428l-.368-.22-3.808 1.074 1.074-3.808-.22-.368A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>',
+        '</button>',
+      '</div>'
+    ].join("") : ''
+  ].join("");
+}
+
+function btnEstadoTxt(e){
+  if(e === "nuevo")       return "▶ PREPARAR AHORA";
+  if(e === "preparacion") return "🚴 DESPACHAR";
+  if(e === "camino")      return "✅ ENTREGADO";
+  return null; // listo o cancelado no tienen botón
+}
+
+function btnEstadoCls(e){
+  if(e === "nuevo")       return "nuevo";
+  if(e === "preparacion") return "preparacion";
+  if(e === "camino")      return "camino";
+  return "";
+}
+
+function estadoSiguiente(e){
+  if(e === "nuevo")       return "preparacion";
+  if(e === "preparacion") return "camino";
+  if(e === "camino")      return "listo";
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CONTADORES DE TABS
+══════════════════════════════════════════════════════════════ */
+function contarPorEstado(e){
+  return _pedidos.filter(function(p){ return p.estado === e; }).length;
+}
+
+function actualizarContadores(){
+  var estados = ["nuevo","preparacion","camino","listo"];
+  estados.forEach(function(e){
+    var el = qs("#cnt" + (e.charAt(0).toUpperCase() + e.slice(1)));
+    if(!el) return;
+    var cnt = contarPorEstado(e);
+    el.textContent = cnt;
+    if(cnt > 0){
+      el.classList.remove("oculto");
+    } else {
+      if(e !== "nuevo") el.classList.add("oculto");
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   EVENTOS — LISTA
+══════════════════════════════════════════════════════════════ */
+qs("#listWrap").addEventListener("click", function(e){
+  // Botón estado
+  var btnEst = e.target.closest("[data-accion='avanzar']");
+  if(btnEst){
+    e.stopPropagation();
+    var id = btnEst.dataset.id;
+    var ped = _pedidos.find(function(p){ return p.id === id; });
+    if(ped) avanzarEstado(ped);
+    return;
+  }
+  // Botón WhatsApp
+  var btnWa = e.target.closest("[data-accion='wa']");
+  if(btnWa){
+    e.stopPropagation();
+    var id2 = btnWa.dataset.id;
+    var ped2 = _pedidos.find(function(p){ return p.id === id2; });
+    if(ped2) abrirWhatsApp(ped2);
+    return;
+  }
+  // Card completa → abrir detalle
+  var card = e.target.closest(".ped-card");
+  if(card){
+    var id3 = card.dataset.id;
+    var ped3 = _pedidos.find(function(p){ return p.id === id3; });
+    if(ped3) abrirDetalle(ped3);
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   AVANZAR ESTADO
+══════════════════════════════════════════════════════════════ */
+function avanzarEstado(ped){
+  var sig = estadoSiguiente(ped.estado);
+  if(!sig) return;
+
+  var update = { estado: sig };
+  update["estadoTimeline." + sig] = new Date().toISOString();
+
+  db.collection("tiendas").doc(STORE_ID)
+    .collection("pedidos").doc(ped._docId)
+    .update(update)
+    .then(function(){
+      mostrarToast("✅ " + ped.id + " → " + labelEstado(sig));
+    })
+    .catch(function(err){
+      mostrarToast("❌ Error al actualizar");
+      console.error(err);
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ELIMINAR PEDIDO
+══════════════════════════════════════════════════════════════ */
+function eliminarPedido(ped){
+  if(!ped || !ped._docId) return;
+  var confirmado = confirm("¿Eliminar el pedido " + ped.id + "?\n\nEsta acción no se puede deshacer.");
+  if(!confirmado) return;
+
+  db.collection("tiendas").doc(STORE_ID)
+    .collection("pedidos").doc(ped._docId)
+    .delete()
+    .then(function(){
+      mostrarToast("🗑️ Pedido " + ped.id + " eliminado");
+      cerrarDetalle();
+    })
+    .catch(function(err){
+      mostrarToast("❌ No se pudo eliminar");
+      console.error(err);
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   WHATSAPP
+══════════════════════════════════════════════════════════════ */
+function msgWhatsApp(ped){
+  var cl    = ped.cliente || {};
+  var nombre = cl.nombre || "cliente";
+  var id    = ped.id;
+  var msgs = {
+    nuevo:       "Hola " + nombre + ", recibimos tu pedido " + id + " 🍔 ¡Pronto empezamos a prepararlo!",
+    preparacion: "Hola " + nombre + ", estamos preparando tu pedido " + id + " 🍔",
+    camino:      "Hola " + nombre + ", tu pedido " + id + " ya está en camino 🛵 ¡Llegamos pronto!",
+    listo:       "Hola " + nombre + ", tu pedido " + id + " fue entregado ✅ ¡Gracias por elegirnos!"
+  };
+  return msgs[ped.estado] || "Hola " + nombre + ", te escribimos sobre tu pedido " + id;
+}
+
+function abrirWhatsApp(ped){
+  var cl  = ped.cliente || {};
+  var tel = String(cl.telefono || "").replace(/\D/g,"");
+  if(!tel){ mostrarToast("Sin número de teléfono"); return; }
+  if(tel.startsWith("0")) tel = tel.slice(1);
+  if(!tel.startsWith("56")) tel = "56" + tel;
+  var msg = encodeURIComponent(msgWhatsApp(ped));
+  window.open("https://wa.me/" + tel + "?text=" + msg, "_blank");
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DETALLE DRAWER
+══════════════════════════════════════════════════════════════ */
+function abrirDetalle(ped){
+  _detPedido = ped;
+  renderDetalle();
+  qs("#detalle").classList.remove("oculto");
+  document.body.style.overflow = "hidden";
+}
+
+function cerrarDetalle(){
+  qs("#detalle").classList.add("oculto");
+  document.body.style.overflow = "";
+  _detPedido = null;
+}
+
+function renderDetalle(){
+  if(!_detPedido) return;
+  var p  = _detPedido;
+  var cl = p.cliente || {};
+
+  // Header
+  qs("#detId").textContent    = p.id;
+  qs("#detBadge").className   = "card-badge " + badgeClass(p.estado);
+  qs("#detBadge").textContent = labelEstado(p.estado);
+
+  // Body
+  var tl = p.estadoTimeline || {};
+  var body = [];
+
+  // — Cliente
+  body.push('<div class="det-section">');
+  body.push('<div class="det-section-tit">Cliente</div>');
+
+  body.push(detalleRow(
+    iconSVG("person"),
+    "Nombre",
+    esc(cl.nombre || "—")
+  ));
+  if(cl.telefono){
+    body.push(detalleRow(
+      iconSVG("phone"),
+      "Teléfono",
+      '<a href="tel:' + esc(cl.telefono) + '">' + esc(cl.telefono) + '</a>'
+    ));
+  }
+  if(cl.email){
+    body.push(detalleRow(
+      iconSVG("mail"),
+      "Email",
+      esc(cl.email)
+    ));
+  }
+  body.push('</div>');
+
+  // — Entrega
+  if(p.tipo === "delivery" && cl.direccion){
+    body.push('<div class="det-section">');
+    body.push('<div class="det-section-tit">Entrega</div>');
+    var direccionCompleta = (cl.direccion||"") + (cl.comuna ? ", " + cl.comuna : "") + " Chile";
+    var mapsUrl = "https://maps.google.com/?q=" + encodeURIComponent(direccionCompleta);
+    /* Mapa en miniatura — embed de Google Maps (modo "place"), usa la
+       misma GOOGLE_MAPS_KEY que ya existe en index.html para el
+       autocompletado del checkout. No requiere facturación habilitada
+       en Google Cloud, a diferencia de la Static Maps API. */
+    var mapaEmbedUrl = "https://www.google.com/maps/embed/v1/place?key=" + GOOGLE_MAPS_KEY +
+      "&q=" + encodeURIComponent(direccionCompleta);
+    body.push(
+      '<div class="det-mapa-mini">' +
+        '<iframe src="' + mapaEmbedUrl + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>' +
+      '</div>'
+    );
+    body.push(detalleRow(
+      iconSVG("map"),
+      "Dirección",
+      '<a href="' + mapsUrl + '" target="_blank">' + esc(cl.direccion) + (cl.comuna ? ", " + esc(cl.comuna) : "") + ' 📍</a>'
+    ));
+    if(cl.referencias){
+      body.push(detalleRow(iconSVG("note"), "Referencias", esc(cl.referencias)));
+    }
+    body.push('</div>');
+  } else if(p.tipo === "retiro"){
+    body.push('<div class="det-section"><div class="det-section-tit">Retiro en local</div></div>');
+  }
+
+  // — Productos
+  body.push('<div class="det-section">');
+  body.push('<div class="det-section-tit">Productos</div>');
+  body.push('<div class="det-items">');
+  (p.items || []).forEach(function(it){
+    var extra = "";
+    if(it.variantes && typeof it.variantes === "object"){
+      var partesVar = [];
+      for(var k in it.variantes){ if(it.variantes[k]) partesVar.push(esc(k) + ": " + esc(it.variantes[k])); }
+      if(partesVar.length) extra += '<div class="det-item-extra">' + partesVar.join(" · ") + '</div>';
+    }
+    if(it.notaPersonal){
+      extra += '<div class="det-item-extra det-item-nota">"' + esc(it.notaPersonal) + '"</div>';
+    }
+    body.push(
+      '<div class="det-item">' +
+        '<div class="det-item-cant">' + (it.cantidad||1) + '</div>' +
+        '<div class="det-item-nom">' + esc(it.nombre) + extra + '</div>' +
+        '<div class="det-item-precio">' + fmtPrecio((it.precio||0) * (it.cantidad||1)) + '</div>' +
+      '</div>'
+    );
+  });
+  body.push('</div>');
+
+  // Totales
+  body.push('<div class="det-totales" style="margin-top:10px">');
+  body.push('<div class="det-total-row"><span>Subtotal</span><span>' + fmtPrecio(p.subtotal || p.total) + '</span></div>');
+  if(p.descuento && p.descuento > 0){
+    body.push('<div class="det-total-row descuento"><span>Descuento (' + esc(p.cuponAplicado) + ')</span><span>-' + fmtPrecio(p.descuento) + '</span></div>');
+  }
+  if(p.tipo === "delivery"){
+    body.push('<div class="det-total-row"><span>Delivery</span><span>' + fmtPrecio(p.costoDelivery) + '</span></div>');
+  }
+  body.push('<div class="det-total-row principal"><span>Total</span><span>' + fmtPrecio(p.total) + '</span></div>');
+  body.push('</div>');
+
+  body.push('</div>'); // /section productos
+
+  // Notas
+  if(cl.notas){
+    body.push('<div class="det-section">');
+    body.push('<div class="det-section-tit">Notas de cocina</div>');
+    body.push('<div style="font-size:14px;font-weight:600;color:var(--txt)">' + esc(cl.notas) + '</div>');
+    body.push('</div>');
+  }
+
+  // Pago
+  body.push('<div class="det-section">');
+  body.push('<div class="det-section-tit">Pago</div>');
+  body.push(detalleRow(iconSVG("card"), "Método", esc(p.metodoPago === "mercadopago" ? "MercadoPago" : "Efectivo al entregar")));
+  body.push(detalleRow(iconSVG("clock"), "Pedido el", fmtFecha(p.fecha)));
+  body.push('</div>');
+
+  // Timeline
+  body.push('<div class="det-section">');
+  body.push('<div class="det-section-tit">Estado del pedido</div>');
+  body.push('<div class="timeline">');
+  var pasos = [
+    { key:"nuevo",       lbl:"Pedido recibido",    ico:"✓" },
+    { key:"preparacion", lbl:"En preparación",      ico:"🍔" },
+    { key:"camino",      lbl:"En camino",            ico:"🛵" },
+    { key:"listo",       lbl:"Entregado",            ico:"✅" }
+  ];
+  pasos.forEach(function(paso){
+    var ts   = tl[paso.key];
+    var hecho = !!ts;
+    body.push(
+      '<div class="tl-item">' +
+        '<div class="tl-dot ' + (hecho ? "hecho" : "pendiente") + '">' +
+          (hecho ? paso.ico : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg>') +
+        '</div>' +
+        '<div class="tl-info">' +
+          '<div class="tl-label">' + esc(paso.lbl) + '</div>' +
+          (hecho ? '<div class="tl-ts">' + fmtFecha(ts) + '</div>' : '<div class="tl-ts">Pendiente</div>') +
+        '</div>' +
+      '</div>'
+    );
+  });
+  body.push('</div></div>'); // /timeline /section
+
+  qs("#detBody").innerHTML = body.join("");
+  aplicarIconosGlobal(qs("#detBody"));
+
+  // Acciones del drawer
+  var acc = [];
+  var btnTxt = btnEstadoTxt(p.estado);
+  if(btnTxt){
+    acc.push('<button class="btn-estado ' + btnEstadoCls(p.estado) + '" id="detBtnEstado">' + btnTxt + '</button>');
+  }
+  // Botón WhatsApp si hay teléfono
+  if(cl.telefono){
+    acc.push(
+      '<button class="det-btn-wa" id="detBtnWa" aria-label="WhatsApp">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.117 1.532 5.845L.057 23.077a.75.75 0 0 0 .924.924l5.232-1.475A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.64-.523-5.144-1.428l-.368-.22-3.808 1.074 1.074-3.808-.22-.368A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>' +
+      '</button>'
+    );
+  }
+  // Botón Maps si hay dirección
+  if(p.tipo === "delivery" && cl.direccion){
+    var mUrl = "https://maps.google.com/?q=" + encodeURIComponent((cl.direccion||"") + " " + (cl.comuna||"") + " Chile");
+    acc.push(
+      '<a href="' + mUrl + '" target="_blank" class="det-btn-maps" aria-label="Ver en Maps">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>' +
+      '</a>'
+    );
+  }
+  // Botón eliminar — siempre disponible, con confirmación
+  acc.push(
+    '<button class="det-btn-eliminar" id="detBtnEliminar" aria-label="Eliminar pedido">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>' +
+    '</button>'
+  );
+
+  qs("#detAcciones").innerHTML = acc.join("");
+
+  // Eventos botones del drawer
+  var detBtnE = qs("#detBtnEstado");
+  if(detBtnE){
+    detBtnE.addEventListener("click", function(){
+      avanzarEstado(_detPedido);
+    });
+  }
+  var detBtnW = qs("#detBtnWa");
+  if(detBtnW){
+    detBtnW.addEventListener("click", function(){
+      abrirWhatsApp(_detPedido);
+    });
+  }
+  var detBtnDel = qs("#detBtnEliminar");
+  if(detBtnDel){
+    detBtnDel.addEventListener("click", function(){
+      eliminarPedido(_detPedido);
+    });
+  }
+}
+
+function detalleRow(icoHTML, lbl, val){
+  return [
+    '<div class="det-row">',
+      '<div class="det-row-ico">' + icoHTML + '</div>',
+      '<div class="det-row-lbl">' + lbl + '</div>',
+      '<div class="det-row-val">' + val + '</div>',
+    '</div>'
+  ].join("");
+}
+
+function iconSVG(tipo){
+  var svgs = {
+    person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>',
+    phone:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.8 19.8 0 0 1-3.07-8.67 2 2 0 0 1 1.99-2.18h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l.86-.86a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    mail:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+    map:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+    note:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    card:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>',
+    clock:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  };
+  return svgs[tipo] || "";
+}
+
+/* Cerrar detalle */
+qs("#detClose").addEventListener("click", cerrarDetalle);
+qs("#detOverlay").addEventListener("click", cerrarDetalle);
+
+/* ══════════════════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════════════════ */
+qs("#tabs").addEventListener("click", function(e){
+  var btn = e.target.closest(".tab-btn");
+  if(!btn) return;
+  qs(".tab-btn.activo").classList.remove("activo");
+  btn.classList.add("activo");
+  _tabActiva = btn.dataset.tab;
+  _busqueda  = "";
+  qs("#searchInput").value = "";
+  renderLista();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   BÚSQUEDA
+══════════════════════════════════════════════════════════════ */
+qs("#searchInput").addEventListener("input", function(){
+  _busqueda = this.value.trim();
+  renderLista();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════════════════════ */
+qs("#btnSettings").addEventListener("click", function(){
+  qs("#settings").classList.remove("oculto");
+});
+qs("#setOverlay").addEventListener("click", function(){
+  qs("#settings").classList.add("oculto");
+});
+qs("#togSonido").addEventListener("change", function(){
+  _sonidoActivo = this.checked;
+  localStorage.setItem("ped_sonido", _sonidoActivo ? "1" : "0");
+});
+qs("#togVibracion").addEventListener("change", function(){
+  _vibracionActiva = this.checked;
+  localStorage.setItem("ped_vibracion", _vibracionActiva ? "1" : "0");
+});
+qs("#btnLogout").addEventListener("click", function(){
+  if(!confirm("¿Cerrar sesión?")) return;
+  auth.signOut();
+  qs("#settings").classList.add("oculto");
+});
+
+/* Restaurar preferencias */
+function cargarPreferencias(){
+  var s = localStorage.getItem("ped_sonido");
+  var v = localStorage.getItem("ped_vibracion");
+  if(s !== null){ _sonidoActivo    = s === "1"; qs("#togSonido").checked    = _sonidoActivo; }
+  if(v !== null){ _vibracionActiva = v === "1"; qs("#togVibracion").checked = _vibracionActiva; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ARRANQUE
+══════════════════════════════════════════════════════════════ */
+initFirebase().then(function(){
+  cargarPreferencias();
+  arrancarAuth();
+});
+aplicarIconosGlobal(); // cubre el HTML estático (ej. "🔔 Notificaciones push" en Configuración)
+/* Refuerzo periódico — mismo criterio que index.html: idempotente,
+   cubre cualquier emoji insertado por fuera de los puntos ya
+   conectados (renderLista, renderDetalle, mostrarToast) sin tener que
+   identificar cada función una por una. */
+setInterval(function(){ aplicarIconosGlobal(); }, 2000);
+
+/* Repetir la limpieza cada 5 minutos mientras la pestaña quede abierta,
+   no solo al cargar — así un vendedor que deja pedidos.html abierto todo
+   el día igual mantiene la tienda libre de pedidos sin pagar. */
+setInterval(function(){
+  if(auth && auth.currentUser) limpiarPendientesVencidos();
+}, 5 * 60 * 1000);
+
+/* Activar AudioContext con primer toque del usuario (política de autoplay) */
+document.addEventListener("click", function activarAudio(){
+  if(!_audCtx){
+    try{ _audCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
+  }
+  document.removeEventListener("click", activarAudio);
+}, { once: true });
+</script>
+</body>
+</html>
