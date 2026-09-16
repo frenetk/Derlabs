@@ -51,16 +51,12 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    /* ── Ruta especial: /manifest.json — el navegador la pide sola al
-       ver <link rel="manifest"> en pedidos.html, nunca la arma
-       ningún JS del frontend, así que no puede pasar por el patrón
-       genérico de abajo. ── */
+    /* ── Ruta especial: /manifest.json ── */
     if (url.pathname === "/manifest.json") {
       return manifestTienda(request, env);
     }
 
-    /* ── Rutas de función: ambos patrones, viejo y nuevo (ver nota de
-       compatibilidad arriba). ── */
+    /* ── Rutas de función: ambos patrones, viejo y nuevo. ── */
     let nombreFuncion = null;
     if (url.pathname.startsWith("/.netlify/functions/")) {
       nombreFuncion = url.pathname.slice("/.netlify/functions/".length);
@@ -79,24 +75,26 @@ export default {
       }
     }
 
-    /* ── Landing de marca por dominio (ver comentario original de
-       este archivo, antes de la integración) — se evalúa DESPUÉS de
-       las rutas de función/manifest, para que esas nunca queden
-       atrapadas por esta regla incluso si alguna vez se sirven desde
-       el mismo hostname que el landing. ── */
+    /* ── Landing de marca por dominio. ── */
     if (DOMINIOS_LANDING.includes(url.hostname)) {
       const urlLanding = new URL(request.url);
       urlLanding.pathname = "/landing.html";
       return env.ASSETS.fetch(new Request(urlLanding, request));
     }
 
+    /* ── Con html_handling="none", Cloudflare Assets ya NO mapea "/" a
+       index.html automáticamente. Hay que reescribir explícitamente. ── */
+    if (url.pathname === "/" || url.pathname === "") {
+      const urlIndex = new URL(request.url);
+      urlIndex.pathname = "/index.html";
+      return env.ASSETS.fetch(new Request(urlIndex, request));
+    }
+
     // Cualquier otra ruta: archivo estático normal (index.html, pedidos.html, etc.)
     return env.ASSETS.fetch(request);
   },
 
-  /* ── Cron Trigger — reemplaza schedule() de @netlify/functions.
-     El cron en sí (cada 5 minutos) se declara en wrangler.toml, acá
-     solo vive la lógica que corre cuando dispara. ── */
+  /* ── Cron Trigger. ── */
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(limpiarPendientes(env));
   }
