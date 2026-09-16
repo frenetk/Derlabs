@@ -38,7 +38,8 @@
      const admin = adminNS.default || adminNS;
    que cubre el caso en que esbuild no reconozca el export default y
    lo deje envuelto en un namespace en vez de desenvolverlo solo. */
-import admin from "firebase-admin";
+import * as adminNS from "firebase-admin";
+const admin = adminNS.default || adminNS;
 
 let dbInstancia = null;
 
