@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>
+window.onerror = function(msg, url, line, col, error) {
+  var detalle = "MENSAJE: " + msg + "\nARCHIVO: " + url + "\nLINEA: " + line + ":" + col;
+  if (error && error.stack) detalle += "\nSTACK: " + error.stack;
+  alert(detalle);
+  return false;
+};
+window.addEventListener("unhandledrejection", function(e) {
+  alert("PROMESA RECHAZADA: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+});
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>TEST BURGERS</title>
