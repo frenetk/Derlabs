@@ -38,13 +38,13 @@
      const admin = adminNS.default || adminNS;
    que cubre el caso en que esbuild no reconozca el export default y
    lo deje envuelto en un namespace en vez de desenvolverlo solo. */
-import * as adminNS from "firebase-admin";
-const admin = adminNS.default || adminNS;
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
 let dbInstancia = null;
 
 export function getDb(env){
-  const _apps = admin.getApps ? admin.getApps() : (admin.apps || []);
+  const _apps = getApps();
   if (!_apps.length) {
     const raw = env.FIREBASE_SERVICE_ACCOUNT;
     if (!raw) {
@@ -71,8 +71,8 @@ export function getDb(env){
       serviceAccount.private_key = key;
     }
     try {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
+      initializeApp({
+        credential: cert(serviceAccount)
       });
     } catch (e) {
       throw new Error("No se pudo inicializar Firebase Admin — revisa el formato de FIREBASE_SERVICE_ACCOUNT (posible problema con private_key): " + e.message);
@@ -225,4 +225,4 @@ export async function validarPedidoCompleto(db, storeId, items, costoDelivery, c
   };
 }
 
-export { admin };
+export const admin = { initializeApp, cert, getFirestore, getApps };
