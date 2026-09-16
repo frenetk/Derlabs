@@ -1,37 +1,22 @@
 name = "derlabs-worker"
 main = "worker.js"
 compatibility_date = "2026-09-16"
-# nodejs_compat va por defecto con esta compatibility_date (>= 2026-08-04,
-# ver developers.cloudflare.com/changelog/post/2026-08-04-nodejs-compat-default/)
-# — no hace falta declararlo a mano, pero se deja explícito acá para que
-# quede documentado por qué las funciones que usan node:crypto, node:buffer,
-# etc. (a través de firebase-admin) pueden funcionar sin configuración extra.
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = "../"
 binding = "ASSETS"
-# run_worker_first hace que TODAS las peticiones pasen primero por
-# worker.js (para poder inspeccionar el Host y decidir si sirve
-# landing.html) — sin esto, Cloudflare intentaría servir el archivo
-# estático directo por la ruta pedida, sin darle al Worker la chance de
-# reescribirla primero (ver developers.cloudflare.com/workers/static-assets/routing/worker-script/).
 run_worker_first = true
+exclude = [
+  "/cloudflare/**",
+  "/netlify/**",
+  "/.git/**",
+  "/.gitignore"
+]
 
 [triggers]
-# Mismo cron que el schedule() original de limpiarPendientes.js — cada
-# 5 minutos. Confirmado contra developers.cloudflare.com/workers/configuration/cron-triggers/
-# que Cloudflare acepta la misma sintaxis estándar de 5 campos.
 crons = ["*/5 * * * *"]
 
-# El Worker ES el origen de ambos dominios (no hay ningún servidor
-# aparte detrás) — por eso "custom_domain = true" en las dos, según
-# developers.cloudflare.com/workers/best-practices/workers-best-practices/
-# (Opción 1 de esa guía: "Worker is the origin, DNS is managed
-# automatically"). Declararlo acá, versionado junto al código, es más
-# robusto que agregarlo solo a mano desde el dashboard — si alguna vez
-# se recrea el Worker desde cero, esto ya queda con los dominios
-# correctos sin tener que recordar reconfigurarlos.
 [[routes]]
 pattern = "derlabs.cl"
 custom_domain = true
