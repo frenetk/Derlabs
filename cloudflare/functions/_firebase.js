@@ -1,19 +1,20 @@
 /* cloudflare/functions/_firebase.js
-   Equivalente a netlify/functions/_firebase.js, en formato Worker (ESM).
-   Usa @ljoukov/firebase-admin-cloudflare (REST + WebChannel) en lugar de
-   firebase-admin oficial (gRPC), porque el runtime de Workers no soporta
-   gRPC ni la generación de código en runtime de protobufjs. */
+   Usa @ljoukov/firebase-admin-cloudflare (REST) en lugar de firebase-admin
+   (gRPC), porque el runtime de Workers no soporta gRPC ni __dirname.
+   createUser() se implementa vía REST API de Firebase Auth porque el
+   paquete no expone Auth. */
 
 import { initializeApp } from "@ljoukov/firebase-admin-cloudflare/app";
-import { getFirestore } from "@ljoukov/firebase-admin-cloudflare/firestore";
+import { getFirestore, FieldValue } from "@ljoukov/firebase-admin-cloudflare/firestore";
 
 let dbInstancia = null;
+let _serviceAccount = null;
 
 export function getDb(env){
   if (!dbInstancia) {
     const raw = env.FIREBASE_SERVICE_ACCOUNT;
     if (!raw) {
-      throw new Error("Falta la variable de entorno FIREBASE_SERVICE_ACCOUNT en Cloudflare (Workers → Settings → Variables)");
+      throw new Error("Falta la variable de entorno FIREBASE_SERVICE_ACCOUNT en Cloudflare");
     }
 
     let serviceAccount;
@@ -23,7 +24,6 @@ export function getDb(env){
       throw new Error("FIREBASE_SERVICE_ACCOUNT no es un JSON válido: " + e.message);
     }
 
-    // Normalizar private_key (el JSON puede tener \n escapados)
     if (serviceAccount && typeof serviceAccount.private_key === "string") {
       let key = serviceAccount.private_key.trim();
       if (key.indexOf("\\n") !== -1) {
@@ -32,10 +32,12 @@ export function getDb(env){
       serviceAccount.private_key = key;
     }
 
+    _serviceAccount = serviceAccount;
+
     try {
       initializeApp({ serviceAccountJson: JSON.stringify(serviceAccount) });
     } catch (e) {
-      throw new Error("No se pudo inicializar Firebase Admin — revisa el formato de FIREBASE_SERVICE_ACCOUNT: " + e.message);
+      throw new Error("No se pudo inicializar Firebase Admin: " + e.message);
     }
 
     dbInstancia = getFirestore();
@@ -119,11 +121,7 @@ export async function validarCuponServidor(db, storeId, codigoCrudo, clienteUid,
     ? Math.round(subtotal * valor / 100)
     : Math.round(valor);
 
-  return {
-    ok: true,
-    codigo,
-    descuento: Math.max(0, Math.min(descuento, subtotal))
-  };
+  return { ok: true, codigo, descuento: Math.max(0, Math.min(descuento, subtotal)) };
 }
 
 export async function validarItemsCatalogo(db, storeId, items){
@@ -137,12 +135,9 @@ export async function validarItemsCatalogo(db, storeId, items){
   const itemsValidados = [];
   for (const it of (items || [])) {
     const prod = catalogo[it.id];
-    if (!prod) {
-      return { ok: false, error: "Uno de los productos ya no existe en el catálogo" };
-    }
-    if (prod.activo === false) {
-      return { ok: false, error: "\"" + prod.nombre + "\" ya no está disponible" };
-    }
+    if (!prod) return { ok: false, error: "Uno de los productos ya no existe en el catálogo" };
+    if (prod.activo === false) return { ok: false, error: "\"" + prod.nombre + "\" ya no está disponible" };
+
     const cantidad = Math.max(1, Math.floor(Number(it.cantidad) || 1));
     if (prod.stock !== null && prod.stock !== undefined && prod.stock !== "" && Number(prod.stock) < cantidad) {
       return { ok: false, error: "No hay stock suficiente de \"" + prod.nombre + "\"" };
@@ -185,3 +180,84 @@ export async function validarPedidoCompleto(db, storeId, items, costoDelivery, c
     total
   };
 }
+
+/* ─── Auth.createUser vía REST API de Firebase Auth ───
+   El paquete @ljoukov/firebase-admin-cloudflare no expone Auth (solo
+   Firestore). Para createUser() firmamos un JWT con la service account,
+   lo intercambiamos por access_token en oauth2.googleapis.com, y hacemos
+   POST a identitytoolkit.googleapis.com. */
+
+function _b64url(str){
+  return btoa(str).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+async function _getAccessToken(sa){
+  const now = Math.floor(Date.now() / 1000);
+  const header = _b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const payload = _b64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/cloud-platform",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600
+  }));
+  const unsigned = header + "." + payload;
+
+  const pemContents = sa.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s/g, "");
+  const binaryDer = Uint8Array.from(atob(pemContents), function(c){ return c.charCodeAt(0); });
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    binaryDer,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    key,
+    new TextEncoder().encode(unsigned)
+  );
+  const sig64 = btoa(String.fromCharCode.apply(null, new Uint8Array(signature)))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const jwt = unsigned + "." + sig64;
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=" + jwt
+  });
+  const j = await res.json();
+  if (!res.ok) throw new Error("OAuth2: " + (j.error_description || j.error || res.status));
+  return j.access_token;
+}
+
+async function _createUserViaRest(data){
+  if (!_serviceAccount) throw new Error("Firebase no inicializado — llamá a getDb(env) primero");
+  const token = await _getAccessToken(_serviceAccount);
+  const res = await fetch(
+    "https://identitytoolkit.googleapis.com/v1/projects/" + _serviceAccount.project_id + "/accounts",
+    {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+        emailVerified: data.emailVerified || false,
+        displayName: data.displayName
+      })
+    }
+  );
+  const j = await res.json();
+  if (!res.ok) throw new Error("createUser: " + (j.error && j.error.message ? j.error.message : res.status));
+  return { uid: j.localId, email: j.email };
+}
+
+export const admin = {
+  firestore: { FieldValue },
+  auth: function(){
+    return { createUser: _createUserViaRest };
+  }
+};
