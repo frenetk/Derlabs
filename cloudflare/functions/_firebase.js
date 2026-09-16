@@ -44,7 +44,8 @@ const admin = adminNS.default || adminNS;
 let dbInstancia = null;
 
 export function getDb(env){
-  if (!admin.apps.length) {
+  const _apps = admin.getApps ? admin.getApps() : (admin.apps || []);
+  if (!_apps.length) {
     const raw = env.FIREBASE_SERVICE_ACCOUNT;
     if (!raw) {
       throw new Error("Falta la variable de entorno FIREBASE_SERVICE_ACCOUNT en Cloudflare (Workers → Settings → Variables)");
