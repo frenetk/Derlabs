@@ -1,0 +1,12 @@
+{
+  "name": "derlabs-worker",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.1.0",
+    "mercadopago": "^2.0.15",
+    "resend": "^3.4.0"
+  }
+}
