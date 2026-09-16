@@ -1,84 +1,45 @@
 /* cloudflare/functions/_firebase.js
-   Equivalente a netlify/functions/_firebase.js, en formato Worker (ESM,
-   export en vez de module.exports). Toda la lógica de negocio (líneas
-   68-246 del original: corsHeaders, validarCuponServidor,
-   validarItemsCatalogo, validarPedidoCompleto, etc.) es JS puro sin
-   dependencias de Node más allá de process.env — se copia sin cambios,
-   riesgo bajo real, verificado por lectura.
+   Equivalente a netlify/functions/_firebase.js, en formato Worker (ESM).
+   Usa @ljoukov/firebase-admin-cloudflare (REST + WebChannel) en lugar de
+   firebase-admin oficial (gRPC), porque el runtime de Workers no soporta
+   gRPC ni la generación de código en runtime de protobufjs. */
 
-   getDb() SÍ cambia de forma real: en Netlify, process.env.X lee una
-   variable de entorno global de Node. En Workers, las variables de
-   entorno no son globales — llegan como el segundo parámetro (env) de
-   cada fetch(request, env, ctx), así que getDb() ahora recibe env
-   como parámetro en vez de leer una variable ambiente propia. Cada
-   función que llamaba getDb(db) pasa a llamar getDb(env).
-
-   RIESGO REAL, NO VERIFICADO CON UN DEPLOY: firebase-admin usa
-   internamente APIs de Node (crypto, para firmar el JWT de la cuenta
-   de servicio) — con nodejs_compat habilitado por defecto (compatibility_date
-   2026-08-04+, ya configurado en wrangler.toml) hay evidencia de
-   proyectos reales usándolo en Workers, pero no pude correr esto
-   contra la infraestructura real de Cloudflare para confirmarlo con
-   certeza — no tengo acceso de red para instalar wrangler en este
-   entorno. Probar con `wrangler dev` antes de dar esto por definitivo
-   en producción. */
-
-/* RIESGO DE INTEROP CJS/ESM, sin poder confirmarlo desde este entorno:
-   firebase-admin se publica como CommonJS (module.exports), y este
-   archivo usa "import admin from" (sintaxis ESM) — Node hace esta
-   conversión automáticamente ("interop"), pero acá el que tiene que
-   hacerla es el bundler de Wrangler (esbuild) al empaquetar el Worker,
-   no Node en sí. Hay evidencia de que el propio equipo de Firebase
-   tuvo que ajustar configuración específica para que ESM/CJS
-   interoperen bien en sus propios paquetes — no es un caso
-   garantizado sin fricción.
-   SI EL DEPLOY FALLA ACÁ (error de tipo "admin is not a function" o
-   "admin.apps is undefined"), cambiar la línea de abajo por:
-     import * as adminNS from "firebase-admin";
-     const admin = adminNS.default || adminNS;
-   que cubre el caso en que esbuild no reconozca el export default y
-   lo deje envuelto en un namespace en vez de desenvolverlo solo. */
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { initializeApp } from "@ljoukov/firebase-admin-cloudflare/app";
+import { getFirestore } from "@ljoukov/firebase-admin-cloudflare/firestore";
 
 let dbInstancia = null;
 
 export function getDb(env){
-  const _apps = getApps();
-  if (!_apps.length) {
+  if (!dbInstancia) {
     const raw = env.FIREBASE_SERVICE_ACCOUNT;
     if (!raw) {
       throw new Error("Falta la variable de entorno FIREBASE_SERVICE_ACCOUNT en Cloudflare (Workers → Settings → Variables)");
     }
+
     let serviceAccount;
     try {
       serviceAccount = JSON.parse(raw);
     } catch (e) {
       throw new Error("FIREBASE_SERVICE_ACCOUNT no es un JSON válido: " + e.message);
     }
+
+    // Normalizar private_key (el JSON puede tener \n escapados)
     if (serviceAccount && typeof serviceAccount.private_key === "string") {
       let key = serviceAccount.private_key.trim();
       if (key.indexOf("\\n") !== -1) {
         key = key.replace(/\\n/g, "\n");
       }
-      if (key.indexOf("\n") === -1 && key.indexOf("-----BEGIN") !== -1) {
-        const headerTag = key.match(/-----BEGIN [^-]+-----/)[0];
-        const footerTag = key.match(/-----END [^-]+-----/)[0];
-        const body = key.replace(headerTag, "").replace(footerTag, "").trim();
-        const lines = body.match(/.{1,64}/g) || [body];
-        key = headerTag + "\n" + lines.join("\n") + "\n" + footerTag + "\n";
-      }
       serviceAccount.private_key = key;
     }
+
     try {
-      initializeApp({
-        credential: cert(serviceAccount)
-      });
+      initializeApp({ serviceAccountJson: JSON.stringify(serviceAccount) });
     } catch (e) {
-      throw new Error("No se pudo inicializar Firebase Admin — revisa el formato de FIREBASE_SERVICE_ACCOUNT (posible problema con private_key): " + e.message);
+      throw new Error("No se pudo inicializar Firebase Admin — revisa el formato de FIREBASE_SERVICE_ACCOUNT: " + e.message);
     }
+
+    dbInstancia = getFirestore();
   }
-  if (!dbInstancia) dbInstancia = admin.firestore();
   return dbInstancia;
 }
 
@@ -96,7 +57,7 @@ export function fmtPrecio(n){
 }
 
 export function resumenItems(items){
-  return (items || []).map(function(i){ return i.cantidad + "× " + i.nombre; }).join(", ");
+  return (items || []).map(function(i){ return i.cantidad + "x " + i.nombre; }).join(", ");
 }
 
 export function esc(s){
@@ -224,5 +185,3 @@ export async function validarPedidoCompleto(db, storeId, items, costoDelivery, c
     total
   };
 }
-
-export const admin = { initializeApp, cert, getFirestore, getApps };
