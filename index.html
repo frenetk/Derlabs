@@ -54,7 +54,7 @@ input,select,textarea{font-family:'Nunito',sans-serif;color:var(--texto)}
   background:var(--blanco);
   min-height:100vh;position:relative;
   box-shadow:0 0 30px rgba(0,0,0,.06);
-  padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 24px);
+  padding-bottom:calc(var(--tab-h) + 0px + 24px);
 }
 
 /* ─── Botones pill ─── */
@@ -168,10 +168,10 @@ body.cerrada #bannerCerrada{display:block}
   position:fixed;bottom:0;left:50%;transform:translateX(-50%);
   width:100%;max-width:480px;
   /* La altura incluye el safe-area inset (iPhone con notch): sin franja blanca debajo */
-  height:calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
+  height:calc(var(--tab-h) + 0px);
   background:#fff;border-top:1px solid #EEEEEE;
   display:flex;z-index:140;box-sizing:border-box;
-  padding-bottom:env(safe-area-inset-bottom, 0px);
+  padding-bottom:0px;
 }
 .tab{
   flex:1;background:none;border:none;cursor:pointer;
@@ -186,7 +186,7 @@ body.cerrada #bannerCerrada{display:block}
 
 /* ─── Botón flotante ─── */
 .float-btn{
-  position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 14px);
+  position:fixed;bottom:calc(var(--tab-h) + 0px + 14px);
   right:max(16px, calc(50% - 240px + 16px));
   z-index:138;display:none;
   background:var(--rojo);color:var(--rojo-texto);border:none;
@@ -427,7 +427,7 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
 .cart-foot{
   border-top:1px solid var(--borde);padding:14px 18px 18px;
   background:#fff;border-radius:0 0 0 0;flex-shrink:0;
-  padding-bottom:calc(18px + env(safe-area-inset-bottom));
+  padding-bottom:calc(18px + 0px);
 }
 .tot-row{display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;color:var(--muted);margin-bottom:5px}
 .tot-row.grande{font-size:18px;font-weight:900;color:var(--texto);margin:8px 0 14px}
