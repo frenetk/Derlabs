@@ -75,8 +75,11 @@ export default {
       }
     }
 
-    /* ── Landing de marca por dominio. ── */
-    if (DOMINIOS_LANDING.includes(url.hostname)) {
+    /* ── Landing de marca por dominio, EXCEPTO generar-tienda.html
+       y suscripciones.html, que el propio devmode del landing enlaza
+       y necesitan responder acá mismo, no quedar atrapadas por esta
+       regla. ── */
+    const RUTAS_EXCLUIDAS_DEL_LANDING = ["/generar-tienda.html", "/suscripciones.html"];
       const urlLanding = new URL(request.url);
       urlLanding.pathname = "/landing.html";
       return env.ASSETS.fetch(new Request(urlLanding, request));
