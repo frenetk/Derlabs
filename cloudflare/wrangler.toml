@@ -8,12 +8,6 @@ directory = "../"
 binding = "ASSETS"
 run_worker_first = true
 html_handling = "none"
-exclude = [
-  "/cloudflare/**",
-  "/netlify/**",
-  "/.git/**",
-  "/.gitignore"
-]
 
 [triggers]
 crons = ["*/5 * * * *"]
