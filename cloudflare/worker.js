@@ -79,12 +79,11 @@ export default {
        y suscripciones.html, que el propio devmode del landing enlaza
        y necesitan responder acá mismo, no quedar atrapadas por esta
        regla. ── */
-    const RUTAS_EXCLUIDAS_DEL_LANDING = ["/generar-tienda.html", "/suscripciones.html"];
+        if (DOMINIOS_LANDING.includes(url.hostname)) {
       const urlLanding = new URL(request.url);
       urlLanding.pathname = "/landing.html";
       return env.ASSETS.fetch(new Request(urlLanding, request));
     }
-
     /* ── Con html_handling="none", Cloudflare Assets ya NO mapea "/" a
        index.html automáticamente. Hay que reescribir explícitamente. ── */
     if (url.pathname === "/" || url.pathname === "") {
