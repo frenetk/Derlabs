@@ -170,7 +170,7 @@ body.cerrada #bannerCerrada{display:block}
   /* La altura incluye el safe-area inset (iPhone con notch): sin franja blanca debajo */
   height:calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
   background:#fff;border-top:1px solid #EEEEEE;
-  display:flex;z-index:140;
+  display:flex;z-index:140;box-sizing:border-box;
   padding-bottom:env(safe-area-inset-bottom, 0px);
 }
 .tab{
