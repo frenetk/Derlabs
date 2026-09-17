@@ -6,7 +6,7 @@
   },
   "dependencies": {
     "@ljoukov/firebase-admin-cloudflare": "^0.0.2",
-    "mercadopago": "^2.0.15",
+    "mercadopago": "^3.6.1",
     "resend": "^3.4.0"
   }
 }
