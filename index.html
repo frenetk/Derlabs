@@ -1961,7 +1961,21 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
       <label class="plabel" for="pRubro">Rubro</label>
       <select class="field" id="pRubro"></select>
       <p class="pnota" id="pRubroNota">Cambiar el rubro actualiza el color de marca a la paleta sugerida para ese rubro. Si ya personalizaste el color, se conserva tu elección — no se pisa sola.</p>
-      <h4>Estado</h4>
+              <h4>Encabezado de la tienda</h4>
+        <div class="header-tipo-selector">
+          <label class="radio-row"><input type="radio" name="headerTipo" id="pHeaderTexto" value="texto"><span>Nombre de la tienda (texto)</span></label>
+          <label class="radio-row"><input type="radio" name="headerTipo" id="pHeaderImagen" value="imagen"><span>Imagen / logo</span></label>
+        </div>
+        <div id="headerImagenBox" class="oculto">
+          <div id="headerImagenPreviewWrap">
+            <img id="headerImagenPreview" alt="Vista previa del encabezado">
+            <span id="headerImagenVacio">Todavia no subiste ninguna imagen</span>
+          </div>
+          <input type="file" id="headerImagenInput" accept="image/*" class="field">
+          <button class="btn-secundario" id="btnEditarHeaderImagen" disabled>Ajustar / recortar</button>
+        </div>
+        <p class="pnota">Si elegis imagen, tapa el nombre de texto en el encabezado.</p>
+        <h4>Estado</h4>
       <div class="switch-row">
         <span>Tienda abierta</span>
         <label class="switch"><input type="checkbox" id="pAbierto"><span class="slider"></span></label>
@@ -1969,7 +1983,15 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
       <p class="pnota">Si la cierras, la web muestra un aviso y no permite agregar productos ni confirmar pedidos.</p>
     </div>
 
-    <!-- TAB PRODUCTOS -->
+    <h4>Programa de puntos</h4>
+        <div class="switch-row">
+          <span>Mostrar recuadro de puntos en el inicio</span>
+          <label class="switch"><input type="checkbox" id="pPuntosVisible"><span class="slider"></span></label>
+        </div>
+        <p class="pnota">Si lo ocultas, el resto de la pagina se acomoda solo.</p>
+      </div>
+
+      <!-- TAB PRODUCTOS -->
     <div class="psec" id="pt-productos">
       <button class="pill pill-outline pill-sm panel-full" id="btnNuevoProd">＋ Nuevo producto</button>
       <div id="panelProds" style="margin-top:12px"></div>
@@ -3382,8 +3404,8 @@ function renderNombre(){
   document.title = n;
 }
 function renderFooter(){
-  qs("#crTexto").textContent = state.config.footerTexto || "Todos los derechos reservados.";
-  qs("#crAnno").textContent  = state.config.footerAno   || "2026";
+  qs("#crTexto").textContent = "Todos los derechos reservados.";
+  qs("#crAnno").textContent  = new Date().getFullYear();
 }
 function renderConfTextos(){
   qs("#confTitulo").textContent = state.config.confTitulo || "¡Pago confirmado!";
@@ -6433,6 +6455,7 @@ async function moverProd(pid, dir){
 
 function renderPanel(){
   renderPanelProds();
+  initHeaderEditor();
   fillPanel(false);
   renderMpEstado();
   renderPanelNotif();
@@ -7862,6 +7885,120 @@ function initCkResumen(){
 
 /* ═══ SPLASH SCREEN ═══ */
 function ocultarSplash(){
+let headerImgState = { file:null, dataUri:null, offsetX:50, offsetY:50, zoom:1 };
+
+function initHeaderEditor(){
+  const rTexto = qs("#pHeaderTexto"), rImagen = qs("#pHeaderImagen");
+  const box = qs("#headerImagenBox"), input = qs("#headerImagenInput"), btn = qs("#btnEditarHeaderImagen");
+  if(!rTexto || !rImagen) return;
+  const actual = state.config.headerTipo || "texto";
+  if(actual === "imagen"){ rImagen.checked = true; box.classList.remove("oculto"); } else { rTexto.checked = true; box.classList.add("oculto"); }
+  if(state.config.headerImagenBase64){
+    qs("#headerImagenPreview").src = state.config.headerImagenBase64;
+    qs("#headerImagenPreview").style.display = "block";
+    qs("#headerImagenVacio").style.display = "none";
+    btn.disabled = false;
+  }
+  rTexto.onchange = () => { box.classList.add("oculto"); guardarHeaderTipo("texto"); };
+  rImagen.onchange = () => { box.classList.remove("oculto"); guardarHeaderTipo("imagen"); };
+  input.onchange = (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      headerImgState = { file, dataUri: ev.target.result, offsetX:50, offsetY:50, zoom:1 };
+      qs("#headerImagenPreview").src = ev.target.result;
+      qs("#headerImagenPreview").style.display = "block";
+      qs("#headerImagenVacio").style.display = "none";
+      btn.disabled = false;
+      abrirHeaderCropModal();
+    };
+    reader.readAsDataURL(file);
+  };
+  btn.onclick = () => abrirHeaderCropModal();
+}
+
+function guardarHeaderTipo(tipo){
+  state.config.headerTipo = tipo;
+  col("config").doc("general").set({ headerTipo: tipo }, { merge:true });
+}
+
+function abrirHeaderCropModal(){
+  if(!headerImgState.dataUri) return;
+  let modal = qs("#headerCropModal");
+  if(!modal){
+    modal = document.createElement("div");
+    modal.id = "headerCropModal";
+    modal.className = "overlay";
+    modal.innerHTML = `<div class="modal-card">
+      <h3>Ajustar imagen</h3>
+      <div id="headerCropCanvasWrap" style="position:relative;overflow:hidden;width:100%;aspect-ratio:16/6;background:#000;border-radius:8px;touch-action:none">
+        <canvas id="headerCropCanvas" style="width:100%;height:100%"></canvas>
+      </div>
+      <label class="plabel">Zoom</label>
+      <input type="range" id="headerCropZoom" min="1" max="3" step="0.01" value="1" style="width:100%">
+      <div class="modal-actions">
+        <button class="pill pill-outline-muted pill-sm" id="headerCropCancel">Cancelar</button>
+        <button class="pill pill-sm" id="headerCropConfirm">Confirmar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    qs("#headerCropCancel").onclick = () => { modal.classList.remove("open"); };
+    qs("#headerCropConfirm").onclick = () => confirmarHeaderCrop();
+    qs("#headerCropZoom").oninput = (e) => { headerImgState.zoom = parseFloat(e.target.value); dibujarHeaderCrop(); };
+    let dragging=false, lastX=0, lastY=0;
+    const wrap = qs("#headerCropCanvasWrap");
+    const start=(x,y)=>{dragging=true;lastX=x;lastY=y;};
+    const move=(x,y)=>{
+      if(!dragging) return;
+      const dx=x-lastX, dy=y-lastY; lastX=x; lastY=y;
+      headerImgState.offsetX = Math.min(100, Math.max(0, headerImgState.offsetX - dx/3));
+      headerImgState.offsetY = Math.min(100, Math.max(0, headerImgState.offsetY - dy/3));
+      dibujarHeaderCrop();
+    };
+    const end=()=>{dragging=false;};
+    wrap.addEventListener("mousedown", e=>start(e.clientX,e.clientY));
+    wrap.addEventListener("mousemove", e=>move(e.clientX,e.clientY));
+    window.addEventListener("mouseup", end);
+    wrap.addEventListener("touchstart", e=>{const t=e.touches[0];start(t.clientX,t.clientY);});
+    wrap.addEventListener("touchmove", e=>{const t=e.touches[0];move(t.clientX,t.clientY);e.preventDefault();}, {passive:false});
+    wrap.addEventListener("touchend", end);
+  }
+  modal.classList.add("open");
+  setTimeout(dibujarHeaderCrop, 50);
+}
+
+function dibujarHeaderCrop(){
+  const canvas = qs("#headerCropCanvas"); if(!canvas) return;
+  const wrap = qs("#headerCropCanvasWrap");
+  canvas.width = wrap.clientWidth; canvas.height = wrap.clientHeight;
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const zoom = headerImgState.zoom;
+    const scale = Math.max(canvas.width/img.width, canvas.height/img.height) * zoom;
+    const w = img.width*scale, h = img.height*scale;
+    const x = (canvas.width - w) * (headerImgState.offsetX/100);
+    const y = (canvas.height - h) * (headerImgState.offsetY/100);
+    ctx.drawImage(img, x, y, w, h);
+  };
+  img.src = headerImgState.dataUri;
+}
+
+function confirmarHeaderCrop(){
+  const canvas = qs("#headerCropCanvas"); if(!canvas) return;
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = 1200; outCanvas.height = 450;
+  const ctx = outCanvas.getContext("2d");
+  ctx.drawImage(canvas, 0, 0, outCanvas.width, outCanvas.height);
+  const finalUri = outCanvas.toDataURL("image/jpeg", 0.85);
+  state.config.headerImagenBase64 = finalUri;
+  qs("#headerImagenPreview").src = finalUri;
+  col("config").doc("general").set({ headerImagenBase64: finalUri, headerTipo:"imagen" }, { merge:true });
+  qs("#headerCropModal").classList.remove("open");
+  renderNombre();
+}
+
   const s = document.getElementById("splashScreen");
   if (s) s.classList.add("oculto");
 }
