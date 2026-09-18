@@ -6914,7 +6914,10 @@ function initPanel(){
     if (!el) return;
     let v = el.type === "checkbox" ? el.checked : el.value;
     if (el.dataset.pf === "precio") v = Number(el.value) || 0;
-    saveField("productos", el.dataset.pid, el.dataset.pf, v);
+    const camposQueRerenderizan = ["variantesActivas", "permitePersonalizacion", "activo"];
+    saveField("productos", el.dataset.pid, el.dataset.pf, v).then(() => {
+      if (camposQueRerenderizan.includes(el.dataset.pf)) renderPanelProds();
+    });
   });
 
   /* — Tab Pagos — */
