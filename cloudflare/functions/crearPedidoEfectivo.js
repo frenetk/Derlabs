@@ -31,12 +31,20 @@ export async function crearPedidoEfectivo(request, env){
     }
     const { itemsValidados, subtotal, costoDelivery: costoDeliveryReal, descuento, cuponFinal, total } = val;
 
+    const itemsConVariantes = itemsValidados.map(function(it){
+      const itemOriginal = (items || []).find(function(i){ return i.id === it.id; }) || {};
+      return Object.assign({}, it, {
+        variantes: itemOriginal.variantes || null,
+        notaPersonal: itemOriginal.notaPersonal || null
+      });
+    });
+
     const id = pedidoId || ("TB" + Date.now().toString().slice(-5));
     const ahora = new Date().toISOString();
 
     const pedidoObj = {
       id, storeId, tipo, cliente,
-      items: itemsValidados, subtotal, descuento, cuponAplicado: cuponFinal,
+      items: itemsConVariantes, subtotal, descuento, cuponAplicado: cuponFinal,
       costoDelivery: costoDeliveryReal, total,
       metodoPago: "efectivo",
       estado: "nuevo",
@@ -51,8 +59,8 @@ export async function crearPedidoEfectivo(request, env){
       });
     }
 
-    if (Array.isArray(itemsValidados)) {
-      await Promise.all(itemsValidados.map(async function(it){
+    if (Array.isArray(itemsConVariantes)) {
+      await Promise.all(itemsConVariantes.map(async function(it){
         try {
           const prodRef = db.doc("tiendas/" + storeId + "/productos/" + it.id);
           const prodDoc = await prodRef.get();

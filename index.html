@@ -4863,7 +4863,7 @@ async function confirmarPedido(){
           body: JSON.stringify({
             storeId: STORE_ID,
             pedidoId: pedidoIdLocal,
-            items: ped.items.map(function(i){ return { id: i.id, cantidad: i.cantidad }; }),
+            items: ped.items.map(function(i){ return { id: i.id, cantidad: i.cantidad, variantes: i.variantes || null, notaPersonal: i.notaPersonal || null }; }),
             cliente: cliente,
             cuponAplicado: ped.cuponAplicado,
             costoDelivery: ped.costoDelivery,
