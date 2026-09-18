@@ -79,7 +79,7 @@ export default {
        y suscripciones.html, que el propio devmode del landing enlaza
        y necesitan responder acá mismo, no quedar atrapadas por esta
        regla. ── */
-        if (DOMINIOS_LANDING.includes(url.hostname)) {
+        if (DOMINIOS_LANDING.includes(url.hostname) && (url.pathname === "/" || url.pathname === "")) {
       const urlLanding = new URL(request.url);
       urlLanding.pathname = "/landing.html";
       return env.ASSETS.fetch(new Request(urlLanding, request));
