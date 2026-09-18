@@ -2584,13 +2584,8 @@ const DEMO_DATA = {
   dispositivos: []
 };
 
-const CATEGORIAS_GRID = [
-  { nombre:"Hamburguesas", img:DEMO_IMAGES.burger3 },
-  { nombre:"Combos",       img:DEMO_IMAGES.combo2 },
-  { nombre:"Bebidas",      img:DEMO_IMAGES.drink },
-  { nombre:"Postres",      img:DEMO_IMAGES.dessert }
-];
-const FILTROS = ["Todos","Hamburguesas","Combos","Acompañamientos","Bebidas","Postres"];
+const CATEGORIAS_GRID = [];
+let FILTROS = ["Todos"];
 const VARIABLES_MSJ = ["{nombre_cliente}","{numero_pedido}","{pedido}","{total}","{negocio}","{tiempo_estimado}"];
 
 /* ─── Estado en memoria ─── */
@@ -3023,10 +3018,14 @@ function actualizarSplashConConfig(){
   if (imagenReal) {
     splash.style.backgroundImage = "url('" + imagenReal + "')";
     splash.classList.add("con-imagen");
+    var burgerSvg = splash.querySelector(".splash-burger");
+    if (burgerSvg) burgerSvg.style.display = "none";
   } else {
     const colorReal = state.config && state.config.colorPrimario;
     if (colorReal) splash.style.background = colorReal;
     splash.classList.remove("con-imagen");
+    var burgerSvg = splash.querySelector(".splash-burger");
+    if (burgerSvg) burgerSvg.style.display = "";
   }
 }
 
@@ -3449,11 +3448,13 @@ function renderInicio(){
     : '<p class="vacio">Aún no hay productos. Agrégalos desde el panel admin.</p>';
 
   /* Categorías 2×2 */
-  qs("#catGrid").innerHTML = CATEGORIAS_GRID.map(c2 => `
-    <button class="cat-tile" data-cat="${esc(c2.nombre)}">
-      <img src="${esc(c2.img)}" alt="${esc(c2.nombre)}" loading="lazy">
-      <span>${esc(c2.nombre)}</span>
-    </button>`).join("");
+  const catsReales = Array.from(new Set(productosActivos().map(p => p.categoria).filter(Boolean))).sort();
+  qs("#catGrid").innerHTML = catsReales.length
+    ? catsReales.map(cat => `
+      <button class="cat-tile" data-cat="${esc(cat)}">
+        <span class="cat-tile-nombre">${esc(cat)}</span>
+      </button>`).join("")
+    : "";
 
   /* 📢 Banners promocionales (2I) */
   renderPromos();
@@ -3683,6 +3684,10 @@ function initDetProducto(){
 let filtroActual = "Todos";
 
 function renderMenu(){
+  const catsSeen = new Set();
+  productosActivos().forEach(p => { if (p.categoria) catsSeen.add(p.categoria); });
+  FILTROS = ["Todos", ...Array.from(catsSeen).sort()];
+  if (filtroActual !== "Todos" && !catsSeen.has(filtroActual)) filtroActual = "Todos";
   qs("#filtrosBar").innerHTML = FILTROS.map(f => `
     <button class="fpill ${f === filtroActual ? "active" : ""}" data-f="${esc(f)}">${esc(f)}</button>`).join("");
 
@@ -6395,9 +6400,10 @@ function renderPanelProds(){
         <label class="plabel">Descripción</label>
         <textarea class="field pe" style="min-height:70px" data-pid="${esc(p.id)}" data-pf="descripcion">${esc(p.descripcion || "")}</textarea>
         <label class="plabel">Categoría</label>
-        <select class="field pe" data-pid="${esc(p.id)}" data-pf="categoria">
-          ${cats.map(f => `<option ${f === p.categoria ? "selected" : ""}>${esc(f)}</option>`).join("")}
-        </select>
+        <input class="field pe" list="cats-${esc(p.id)}" data-pid="${esc(p.id)}" data-pf="categoria" value="${esc(p.categoria || "")}" placeholder="Ej: Hamburguesas, Bebidas...">
+        <datalist id="cats-${esc(p.id)}">
+          ${cats.map(f => `<option value="${esc(f)}">`).join("")}
+        </datalist>
         <button class="pill pill-outline pill-sm panel-full" data-imgprod="${esc(p.id)}">🖼 Cambiar imagen</button>
         <div class="switch-row">
           <span>Activo</span>
