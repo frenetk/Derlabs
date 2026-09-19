@@ -6400,10 +6400,11 @@ function renderPanelProds(){
         <label class="plabel">Descripción</label>
         <textarea class="field pe" style="min-height:70px" data-pid="${esc(p.id)}" data-pf="descripcion">${esc(p.descripcion || "")}</textarea>
         <label class="plabel">Categoría</label>
-        <input class="field pe" list="cats-${esc(p.id)}" data-pid="${esc(p.id)}" data-pf="categoria" value="${esc(p.categoria || "")}" placeholder="Ej: Hamburguesas, Bebidas...">
-        <datalist id="cats-${esc(p.id)}">
-          ${cats.map(f => `<option value="${esc(f)}">`).join("")}
-        </datalist>
+        <select class="field pe" data-pid="${esc(p.id)}" data-pf="categoria">
+          ${cats.map(f => `<option value="${esc(f)}" ${f === p.categoria ? "selected" : ""}>${esc(f)}</option>`).join("")}
+          <option value="__nueva__">✏️ Escribir nueva...</option>
+        </select>
+        ${!cats.length || p.categoria === "__nueva__" ? `<input class="field pe" style="margin-top:6px" data-pid="${esc(p.id)}" data-pf="categoria" value="${esc(p.categoria !== "__nueva__" ? p.categoria : "")}" placeholder="Nueva categoría">` : ""}
         <button class="pill pill-outline pill-sm panel-full" data-imgprod="${esc(p.id)}">🖼 Cambiar imagen</button>
         <div class="switch-row">
           <span>Activo</span>
@@ -6915,6 +6916,10 @@ function initPanel(){
     let v = el.type === "checkbox" ? el.checked : el.value;
     if (el.dataset.pf === "precio") v = Number(el.value) || 0;
     const camposQueRerenderizan = ["variantesActivas", "permitePersonalizacion", "activo"];
+    if (el.dataset.pf === "categoria" && v === "__nueva__"){
+      renderPanelProds();
+      return;
+    }
     saveField("productos", el.dataset.pid, el.dataset.pf, v).then(() => {
       if (camposQueRerenderizan.includes(el.dataset.pf)) renderPanelProds();
     });
