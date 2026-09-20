@@ -488,6 +488,12 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
   }
 }
 
+
+.img-feature-wrap{width:100%;max-width:720px;margin:32px auto 8px;border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(20,18,31,.10)}
+.img-feature{width:100%;height:auto;display:block}
+@media (min-width: 900px) {
+  .img-feature-wrap { max-width: 900px; margin: 44px auto 12px; }
+}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -513,7 +519,7 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
   <div class="wrap">
     <span class="badge"><span class="punto"></span>PARA TIENDAS Y DELIVERY</span>
     <h1><span id="heroTituloPre">Tu tienda online,<br>lista para </span><span class="acento" id="heroAcento">vender hoy</span></h1>
-    <p class="sub" id="heroBajada">Catálogo, carrito, pasarela de pago y gestor de pedidos en tiempo real. Todo en un solo sistema, listo para que empieces a vender desde el primer día.</p>
+    <p class="sub" id="heroBajada">Catálogo, pagos, pedidos y reparto en un solo sistema. Con Google Maps integrado para calcular zonas, direcciones y tiempos de entrega.</p>
     <div class="hero-ctas">
       <a href="#contacto" class="btn-primario">Cotiza tu tienda →</a>
       <a href="#features" class="btn-secundario">Ver cómo funciona</a>
@@ -529,23 +535,23 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
     <div class="features-grid">
       <div class="feature-card">
         <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/> <line x1="3" y1="6" x2="21" y2="6"/> <path d="M16 10a4 4 0 0 1-8 0"/> </svg></span></div>
-        <h3>Catálogo completo</h3>
-        <p>Productos con fotos, categorías, variantes (color, tamaño) y personalización por pedido cuando la necesitas.</p>
+        <h3>Tu tienda lista para vender</h3>
+        <p>Productos con fotos, categorías, precios y variantes. Todo editable desde tu panel, sin depender de nadie.</p>
       </div>
       <div class="feature-card">
         <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="5" width="20" height="14" rx="2"/> <line x1="2" y1="10" x2="22" y2="10"/> </svg></span></div>
-        <h3>Pasarela de pago integrada</h3>
+        <h3>Cobra al instante</h3>
         <p>El cliente paga, la pasarela confirma sola y el dinero cae directo a tu cuenta bancaria. Sin retenciones ni comisiones por parte de DerLabs.</p>
       </div>
       <div class="feature-card">
         <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/> </svg></span></div>
-        <h3>Aviso solo de lo que importa</h3>
-        <p>Notificación push apenas entra un pedido pagado. Sin ruido, sin pedidos fantasma, aunque tengas el celular bloqueado.</p>
+        <h3>Notificaciones en tiempo real</h3>
+        <p>Recibe un aviso en tu celular al instante cuando entra un pedido, incluso con la pantalla bloqueada.</p>
       </div>
       <div class="feature-card">
         <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/> <circle cx="12" cy="10" r="3"/> </svg></span></div>
-        <h3>Zonas de reparto automáticas</h3>
-        <p>Defines tus zonas de reparto y el costo de cada una. El sistema calcula el envío automáticamente al momento de la compra.</p>
+        <h3>Reparto con Google Maps</h3>
+        <p>Define tus zonas en el mapa y el costo de cada una. El sistema valida direcciones y calcula el envío automáticamente al momento de la compra.</p>
       </div>
     </div>
   </div>
@@ -555,23 +561,33 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
   <div class="wrap">
     <span class="badge verde"><span class="punto"></span>EL DINERO, DIRECTO A TU CUENTA</span>
     <h2 class="section-tit" style="margin-top:16px">Tu venta se paga. <span class="acento">Tu dinero llega</span></h2>
-    <p class="section-sub">Sin retenciones, sin esperar días. El pago va directo a tu cuenta bancaria. DerLabs nunca toca tu dinero.</p>
+    <p class="section-sub">El pago se procesa por una pasarela segura, se acredita al instante y cae directo en tu cuenta bancaria. Sin retenciones, sin esperas, sin intermediarios.</p>
+      <div class="img-feature-wrap"><img src="/img-pagos.png" alt="Flujo de pago DerLabs" class="img-feature"></div>
     <div class="pasos-row">
       <span class="paso-chip">Cliente paga</span>
-      <span class="paso-chip">Pago confirmado</span>
+      <span class="paso-chip">Pasarela acredita</span>
       <span class="paso-chip">Cae a tu cuenta</span>
     </div>
     <div class="banner-verde">
       <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/> </svg></span></div>
       <div>
         <h3>0% de comisión por venta</h3>
-        <p>Solo pagas la comisión estándar de la pasarela de pago. DerLabs nunca retiene ni un peso de tus ventas.</p>
+        <p>DerLabs no cobra comisiones sobre tus ventas. Solo se aplica la comisión estándar de la pasarela de pago.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section id="precios">
+<section id="gestor">
+    <div class="wrap">
+      <span class="badge">GESTOR DE PEDIDOS</span>
+      <h2 class="section-tit" style="margin-top:16px">Cada pedido, <span class="acento">en su lugar</span></h2>
+      <p class="section-sub">Recibe, prepara, despacha y entrega desde una sola pantalla. Ve el estado de cada pedido en tiempo real, con mapa de la dirección y contacto directo con el cliente.</p>
+      <div class="img-feature-wrap"><img src="/img-gestor.png" alt="Gestor de pedidos DerLabs" class="img-feature"></div>
+    </div>
+  </section>
+
+  <section id="precios">
   <div class="wrap">
     <span class="badge">DOS FORMAS DE EMPEZAR</span>
     <h2 class="section-tit" style="margin-top:16px">Elegí la que <span class="acento">se ajuste a tu negocio</span></h2>
