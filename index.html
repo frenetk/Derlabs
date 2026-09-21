@@ -515,11 +515,11 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
 /* SPLASH */
 #splashScreen{
   position:fixed;inset:0;z-index:9999;
-  background:var(--crema,#ffffff);
+  background:#ffffff;
   background-size:cover;background-position:center;
   display:flex;align-items:center;justify-content:center;
   flex-direction:column;gap:20px;
-  transition:background .8s ease,opacity .6s ease .1s,visibility .6s ease .1s;
+  transition:opacity .6s ease .1s,visibility .6s ease .1s;
 }
 #splashScreen.oculto{opacity:0;visibility:hidden;pointer-events:none}
 /* Overlay oscuro — se activa solo cuando el splash usa una foto real
@@ -3003,7 +3003,6 @@ function aplicarColor(){
   document.documentElement.style.setProperty("--rojo", c);
   document.documentElement.style.setProperty("--rojo-h", hover);
   document.documentElement.style.setProperty("--crema", fondo);
-  document.documentElement.style.setProperty("--splash-color", c);
   /* --rojo-texto: calculado por contraste (WCAG), no fijo en blanco.
      TODAVÍA no reemplaza los usos existentes de "color:#fff" sobre
      var(--rojo) en el resto del archivo (decenas de puntos) — eso es
@@ -3035,6 +3034,15 @@ function nombreLegibleDesdeStoreId(id){
     .trim() || "Tu Tienda";
 }
 function actualizarSplashBasico(){
+  /* Aplicar color cacheado de la ultima visita — para que el splash
+     no muestre el color por defecto (rojo vino) mientras Firebase
+     responde. Se actualiza en cargarFirebase() con el color real. */
+  try {
+    const colorCache = localStorage.getItem("tb_splash_color");
+    if (colorCache) {
+      document.documentElement.style.setProperty("--splash-color", colorCache);
+    }
+  } catch(e){}
   const nombreEl = document.getElementById("splashNombre");
   const subEl = document.getElementById("splashSub");
   if (!nombreEl || !subEl) return;
@@ -3042,30 +3050,9 @@ function actualizarSplashBasico(){
   subEl.textContent = nombreLegibleDesdeStoreId(STORE_ID);
 }
 function actualizarSplashConConfig(){
-  const subEl = document.getElementById("splashSub");
-  if (!subEl) return;
-  const nombreReal = state.config && state.config.nombre;
-  if (nombreReal) subEl.textContent = nombreReal;
-  const splash = document.getElementById("splashScreen");
-  if (!splash) return;
-  /* Prioridad: imagen real que el cliente proporcionó (guardada como
-     splashImagenBase64 al crear la tienda, ver crearTienda.js) > color
-     de marca como fondo plano. Con imagen, se activa el overlay
-     oscuro (ver CSS de #splashScreen.con-imagen) para que el texto
-     blanco fijo siga siendo legible sin importar la foto. */
-  const imagenReal = state.config && state.config.splashImagenBase64;
-  if (imagenReal) {
-    splash.style.backgroundImage = "url('" + imagenReal + "')";
-    splash.classList.add("con-imagen");
-    var burgerSvg = splash.querySelector(".splash-burger");
-    if (burgerSvg) burgerSvg.style.display = "none";
-  } else {
-    const colorReal = state.config && state.config.colorPrimario;
-    if (colorReal) splash.style.background = colorReal;
-    splash.classList.remove("con-imagen");
-    var burgerSvg = splash.querySelector(".splash-burger");
-    if (burgerSvg) burgerSvg.style.display = "";
-  }
+  /* Ya no aplica — el splash nuevo usa --splash-color actualizado en
+     cargarFirebase(). Se mantiene la función vacía por compatibilidad
+     con el código que la llama. */
 }
 
 /* FIREBASE */
@@ -3214,6 +3201,14 @@ async function cargarFirebase(){
       col("locales").get()
     ]);
     if (cf.exists) state.config = Object.assign({}, DEMO_DATA.config, cf.data());
+    /* Actualizar --splash-color SOLO acá, con el color real de Firestore.
+       Esto garantiza que el splash arranca negro (default del :root) y
+       solo se tiñe cuando Firebase responde con el color verdadero —
+       nunca con el valor DEMO intermedio. */
+    if (state.config.colorPrimario) {
+      document.documentElement.style.setProperty("--splash-color", state.config.colorPrimario);
+      try { localStorage.setItem("tb_splash_color", state.config.colorPrimario); } catch(e){}
+    }
     state.productos    = normalizarOrden(mapDocs(pr));
     state.cupones      = mapDocs(cu);
     state.locales      = mapDocs(lo);
