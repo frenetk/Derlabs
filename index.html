@@ -515,11 +515,11 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
 /* SPLASH */
 #splashScreen{
   position:fixed;inset:0;z-index:9999;
-  background:#ffffff;
+  background:var(--crema,#ffffff);
   background-size:cover;background-position:center;
   display:flex;align-items:center;justify-content:center;
   flex-direction:column;gap:20px;
-  transition:opacity .6s ease .1s, visibility .6s ease .1s;
+  transition:background .8s ease,opacity .6s ease .1s,visibility .6s ease .1s;
 }
 #splashScreen.oculto{opacity:0;visibility:hidden;pointer-events:none}
 /* Overlay oscuro — se activa solo cuando el splash usa una foto real
@@ -552,7 +552,9 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
 }
 .splash-dots{display:flex;gap:6px;align-items:center}
 .splash-dots span{
-  width:5px;height:5px;border-radius:50%;background:rgba(20,18,31,0.35);
+  width:5px;height:5px;border-radius:50%;
+  background:var(--splash-color,#14121f);opacity:.4;
+  transition:background .8s ease;
   animation:splashD .8s ease-in-out infinite alternate;
 }
 .splash-dots span:nth-child(2){animation-delay:.2s}
@@ -1368,6 +1370,7 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   margin-bottom:32px;
   animation:splashIconFloat 2.4s ease-in-out infinite;
   opacity:.95;
+  mix-blend-mode:multiply;
 }
 @keyframes splashIconFloat{
   0%,100%{transform:translateY(0) rotate(-2deg);opacity:.85}
@@ -1376,7 +1379,9 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 .splash-titulo{
   font-family:'Plus Jakarta Sans',sans-serif;
   font-size:34px;font-weight:800;letter-spacing:-1.2px;line-height:1;
-  color:#14121f;margin-bottom:12px;
+  color:var(--splash-color,#14121f);
+  transition:color .8s ease;
+  margin-bottom:12px;
   animation:splashFadeIn .9s ease-out both;
 }
 @keyframes splashFadeIn{
@@ -1388,13 +1393,15 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   font-size:16px;font-weight:700;letter-spacing:-.2px;
   display:flex;gap:6px;justify-content:center;flex-wrap:wrap;
   margin-bottom:26px;
+  color:var(--splash-color,#14121f);
+  transition:color .8s ease;
 }
 .splash-subtitulo span{
   animation:splashWordIn .8s ease-out both;
 }
-.palabra-1{color:#A29BFE;animation-delay:.35s}
-.palabra-2{color:#C8102E;animation-delay:.5s}
-.palabra-3{color:#55EFC4;animation-delay:.65s}
+.palabra-1{opacity:.55;animation-delay:.35s}
+.palabra-2{opacity:.85;animation-delay:.5s}
+.palabra-3{opacity:.55;animation-delay:.65s}
 @keyframes splashWordIn{
   from{opacity:0;transform:translateY(6px)}
   to{opacity:1;transform:translateY(0)}
@@ -2996,6 +3003,7 @@ function aplicarColor(){
   document.documentElement.style.setProperty("--rojo", c);
   document.documentElement.style.setProperty("--rojo-h", hover);
   document.documentElement.style.setProperty("--crema", fondo);
+  document.documentElement.style.setProperty("--splash-color", c);
   /* --rojo-texto: calculado por contraste (WCAG), no fijo en blanco.
      TODAVÍA no reemplaza los usos existentes de "color:#fff" sobre
      var(--rojo) en el resto del archivo (decenas de puntos) — eso es
