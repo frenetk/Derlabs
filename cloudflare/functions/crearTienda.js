@@ -52,13 +52,13 @@ export async function crearTienda(request, env){
 
   try {
     const body = JSON.parse(await request.text() || "{}");
-    const { nombreNegocio, rubro, hostname, colorPrimario, logoBase64, splashBase64, emailPropietario, passwordPropietario } = body;
+    const { nombreNegocio, rubro, hostname, colorPrimario, logoBase64, emailPropietario, passwordPropietario } = body;
 
     if (!nombreNegocio || !hostname) {
       return new Response(JSON.stringify({ ok: false, error: "Faltan nombreNegocio o hostname" }), { status: 400, headers });
     }
     const LIMITE_IMAGENES_COMBINADO = 700 * 1024;
-    const pesoImagenes = (logoBase64 ? logoBase64.length : 0) + (splashBase64 ? splashBase64.length : 0);
+    const pesoImagenes = logoBase64 ? logoBase64.length : 0;
     if (pesoImagenes > LIMITE_IMAGENES_COMBINADO) {
       return new Response(JSON.stringify({ ok: false, error: "Las imágenes combinadas son demasiado grandes — probá con archivos más livianos o de menor resolución." }), { status: 400, headers });
     }
@@ -101,7 +101,6 @@ export async function crearTienda(request, env){
       rubro: rubroValido,
       colorPrimario: color,
       logoBase64: logoBase64 || "",
-      splashImagenBase64: splashBase64 || "",
       confTitulo: "¡Pago confirmado!",
       confSub: "Tu pedido está siendo procesado",
       timeline1: "Pedido recibido",

@@ -215,23 +215,15 @@ header p{color:var(--txt2);font-size:14px}
     </div>
 
     <div class="campo">
-      <label>Logo / ícono <span style="color:var(--txt3);font-weight:600">(opcional)</span></label>
+      <label>Logo <span style="color:var(--txt3);font-weight:600">(opcional)</span></label>
       <div id="logoPreviewWrap"></div>
       <div class="img-upload" id="logoUpload">
         <div class="img-upload-ico">📷</div>
         <div class="img-upload-txt">Toca para subir el logo del cliente</div>
       </div>
       <input type="file" id="fLogo" accept="image/*" style="display:none">
-      <div class="ayuda">Se usa como ícono del acceso directo en el celular del dueño. Si no lo subes ahora, la tienda usa el ícono del rubro hasta que lo agregues después desde devmode.</div>
+      <div class="ayuda">Se muestra en el header de la tienda, como favicon en el navegador, y como ícono del acceso directo. Si no lo subes ahora, la tienda muestra el nombre en texto.</div>
     </div>
-
-    <div class="campo">
-      <label>Imagen para el splash de carga <span style="color:var(--txt3);font-weight:600">(opcional)</span></label>
-      <div id="splashPreviewWrap"></div>
-      <div class="img-upload" id="splashUpload">
-        <div class="img-upload-ico">🖼️</div>
-        <div class="img-upload-txt">Toca para subir una imagen del negocio</div>
-      </div>
       <input type="file" id="fSplash" accept="image/*" style="display:none">
       <div class="ayuda">Se muestra a pantalla completa mientras carga la tienda. Una foto del local, del producto, o el logo en grande funcionan bien. Si no la subes, la tienda usa un ícono genérico del rubro mientras carga.</div>
     </div>
@@ -394,7 +386,7 @@ let rubroSeleccionado = "hamburguesas";
 let colorTocadoAMano = false;
 let ADMIN_SECRET = "";
 let logoBase64 = "";
-let splashBase64 = "";
+
 
 const qs = s => document.querySelector(s);
 
@@ -402,7 +394,7 @@ const qs = s => document.querySelector(s);
    Mismo patrón que manejarSubidaLogo() en formulario.html: comprimir
    en el navegador antes de guardar, para no depender de que el
    archivo original ya venga liviano. Acá el presupuesto es más chico
-   porque van DOS imágenes (logo + splash) en el mismo documento de
+   porque va la imagen del logo en el mismo documento de
    Firestore junto con el resto de config/general — 1 MiB de límite
    total repartido entre ambas más el resto de los campos de texto. */
 const IMG_MAX_ARCHIVO_ENTRADA = 15 * 1024 * 1024; // solo evita trabar el navegador
@@ -475,26 +467,6 @@ qs("#fLogo").addEventListener("change", async (e) => {
     alert(err.message);
   } finally {
     qs("#logoUpload .img-upload-txt").textContent = "Toca para subir el logo del cliente";
-    e.target.value = "";
-  }
-});
-
-qs("#splashUpload").addEventListener("click", () => qs("#fSplash").click());
-qs("#fSplash").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  qs("#splashUpload .img-upload-txt").textContent = "Procesando…";
-  try {
-    // 900px de lado: se ve a pantalla completa, necesita más resolución que el ícono.
-    splashBase64 = await comprimirImagen(file, 900, 380 * 1024);
-    renderImgPreview("#splashPreviewWrap", splashBase64, () => {
-      splashBase64 = ""; e.target.value = "";
-      renderImgPreview("#splashPreviewWrap", "", null);
-    });
-  } catch (err){
-    alert(err.message);
-  } finally {
-    qs("#splashUpload .img-upload-txt").textContent = "Toca para subir una imagen del negocio";
     e.target.value = "";
   }
 });
@@ -646,7 +618,6 @@ qs("#formTienda").addEventListener("submit", async (e) => {
         hostname,
         colorPrimario: qs("#fColor").value,
         logoBase64: logoBase64 || undefined,
-        splashBase64: splashBase64 || undefined,
         emailPropietario: emailPropietario || undefined,
         passwordPropietario: passwordPropietario || undefined
       })
