@@ -315,26 +315,43 @@ body[data-page="menu"] .float-btn{display:block}
 .btn-add-circ:active{transform:scale(.9)}
 
 /* — Categorías grid — */
-.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cat-tile{
-  position:relative;border-radius:16px;overflow:hidden;
-  aspect-ratio:1/1;background:#E8E4E1;cursor:pointer;
-  box-shadow:0 4px 24px var(--sombra);
-  border:none;padding:0;transition:all .2s ease;
+  position:relative;border-radius:14px;
+  background:linear-gradient(135deg, var(--crema) 0%, #fff 100%);
+  border:2px solid var(--rojo);
+  padding:16px 14px;
+  cursor:pointer;text-align:left;
+  min-height:64px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  transition:all .18s ease;
 }
-@media (hover:hover){ .cat-tile:hover{transform:translateY(-4px)} }
+.cat-tile::after{display:none}
+@media (hover:hover){
+  .cat-tile:hover{
+    background:var(--rojo);
+    transform:translateY(-2px);
+    box-shadow:0 6px 18px var(--sombra);
+  }
+}
 .cat-tile:active{transform:scale(.97)}
-.cat-tile img{width:100%;height:100%;object-fit:cover}
-.cat-tile::after{
-  content:"";position:absolute;inset:0;
-  background:linear-gradient(to bottom, rgba(0,0,0,.05) 30%, rgba(0,0,0,.62) 100%);
+.cat-tile .cat-tile-nombre{
+  position:static;
+  font-family:'Anton',sans-serif;font-weight:400;
+  font-size:16px;letter-spacing:0.8px;line-height:1.15;
+  color:var(--rojo);text-transform:uppercase;
+  text-shadow:none;padding:0;text-align:left;
+  flex:1;transition:color .18s ease;
 }
-.cat-tile span{
-  position:absolute;inset:0;z-index:2;
-  display:flex;align-items:flex-end;justify-content:center;
-  padding-bottom:14px;
-  color:#fff;font-weight:800;font-size:15.5px;letter-spacing:.3px;
-  text-shadow:0 1px 6px rgba(0,0,0,.45);
+.cat-tile .cat-arrow{
+  font-family:'Anton',sans-serif;
+  font-size:20px;line-height:1;
+  color:var(--rojo);flex-shrink:0;
+  transition:all .18s ease;
+}
+@media (hover:hover){
+  .cat-tile:hover .cat-tile-nombre{color:#fff}
+  .cat-tile:hover .cat-arrow{color:#fff;transform:translateX(3px)}
 }
 
 /* — Más pedidos / lista de productos — */
@@ -1510,6 +1527,11 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
     </div>
 
     <div class="bloque">
+      <h2 class="sec-title">Más pedidos</h2>
+      <div id="popularesList"></div>
+    </div>
+
+    <div class="bloque">
       <h2 class="sec-title">¿Qué se te antoja?</h2>
       <div class="cat-grid" id="catGrid"></div>
     </div>
@@ -1519,10 +1541,6 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
       <div class="promo-scroll" id="promoScroll"></div>
     </div>
 
-    <div class="bloque">
-      <h2 class="sec-title">Más pedidos</h2>
-      <div id="popularesList"></div>
-    </div>
   </div>
 
   <!-- ══════════════ SUBPÁGINA MENU ══════════════ -->
@@ -3568,6 +3586,7 @@ function renderInicio(){
     ? catsReales.map(cat => `
       <button class="cat-tile" data-cat="${esc(cat)}">
         <span class="cat-tile-nombre">${esc(cat)}</span>
+        <span class="cat-arrow">→</span>
       </button>`).join("")
     : "";
 
