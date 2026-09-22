@@ -963,6 +963,26 @@ body.dev-on:not(.preview-cliente) [data-ecol]{position:relative;border-radius:6p
   width:48px;height:34px;border:none;border-radius:10px;cursor:pointer;
   padding:0;background:none;
 }
+.pending-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;background:#FFF8E1;border-bottom:1px solid #FFE082;
+  font-size:12px;font-weight:800;flex-shrink:0;
+}
+.pending-bar #pendingCount{flex:1;color:#8A6D00}
+.pending-bar .pill{margin:0;padding:5px 12px;font-size:11.5px}
+.panel-min{
+  background:none;border:none;cursor:pointer;font-size:16px;
+  padding:2px 8px;margin-right:4px;
+}
+.panel-chip{
+  display:none;position:fixed;bottom:calc(var(--tab-h) + 16px);
+  right:16px;z-index:499;
+  background:var(--rojo);color:var(--rojo-texto);border:none;
+  border-radius:999px;padding:11px 18px;font-size:13px;font-weight:800;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;
+}
+body.panel-min-on #adminPanel{transform:translateX(110%)}
+body.panel-min-on #panelChip{display:block}
 
 @media (prefers-reduced-motion:reduce){
   *{animation:none !important;transition:none !important}
@@ -1973,8 +1993,15 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 <!-- ══════════════ PANEL ADMIN ══════════════ -->
 <aside id="adminPanel">
   <div class="panel-head">
-    <span>⚙ Panel de administración</span>
+    <span>⚙ Panel</span>
+    <span style="flex:1"></span>
+    <button class="panel-min" id="panelMin" aria-label="Minimizar" title="Ver la tienda">👁</button>
     <button class="panel-close" id="panelClose" aria-label="Cerrar panel">✕</button>
+  </div>
+  <div id="pendingBar" class="pending-bar" style="display:none">
+    <span id="pendingCount">0 cambios sin guardar</span>
+    <button class="pill pill-outline pill-sm" id="btnDiscard">Descartar</button>
+    <button class="pill pill-solid pill-sm" id="btnSave">Guardar</button>
   </div>
 
   <div class="ptabs">
@@ -2328,6 +2355,8 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   </div>
 </aside>
 
+<button id="panelChip" class="panel-chip" aria-label="Volver al panel">⚙ Volver al panel</button>
+
 <!-- ══════════ DETALLE DE PEDIDO (vendedor) ══════════ -->
 <div id="pedidoDetalle" role="dialog" aria-label="Detalle del pedido">
   <div class="det-header">
@@ -2642,6 +2671,8 @@ let db = null, storage = null, auth = null, authUser = null, clienteUser = null,
    operador del día a día. Se resuelve consultando Firestore cada vez
    que cambia authUser — ver resolverRolPropietario(). */
 let esPropietario = false;
+let _modoBorrador = false;
+let _pendingChanges = [];
 
 /* ─── Snapshot embebido (generado por "Exportar HTML") ─── */
 let snapshotData = null;
@@ -3246,6 +3277,13 @@ function applyLocal(colName, docId, field, value){
 }
 
 async function saveField(colName, docId, field, value){
+  if (_modoBorrador && !DEMO){
+    const oldValue = valorActual(colName, docId, field);
+    applyLocal(colName, docId, field, value);
+    _pushChange(colName, docId, field, value, oldValue);
+    renderAll();
+    return true;
+  }
   if (DEMO){
     applyLocal(colName, docId, field, value);
     renderAll();
@@ -5653,12 +5691,19 @@ async function intentarLogin(){
 }
 
 function valorActual(colName, docId, field){
-  if (colName === "config") return state.config[field];
+  if (colName === "config" && docId === "general") return state.config[field];
+  if (colName === "config" && docId === "privado") return state.configPrivado[field];
   const it = (state[colName] || []).find(x => x.id === docId);
   return it ? it[field] : "";
 }
 
 async function guardarInline(colName, docId, field, valor){
+  if (_modoBorrador && !DEMO){
+    const oldValue = valorActual(colName, docId, field);
+    applyLocal(colName, docId, field, valor);
+    _pushChange(colName, docId, field, valor, oldValue);
+    return true;
+  }
   applyLocal(colName, docId, field, valor);
   if (DEMO) return true;
   try {
@@ -6482,9 +6527,87 @@ function renderPanel(){
   if (window._renderInventario) window._renderInventario();
 }
 
+function _pushChange(col, doc, field, value, oldValue){
+  const idx = _pendingChanges.findIndex(c => c.col===col && c.doc===doc && c.field===field);
+  if (idx >= 0){ _pendingChanges[idx].value = value; _actualizarPendingBar(); return; }
+  _pendingChanges.push({ col, doc, field, value, oldValue });
+  _actualizarPendingBar();
+}
+function _actualizarPendingBar(){
+  const bar = qs("#pendingBar");
+  if (!bar) return;
+  if (!_pendingChanges.length){ bar.style.display = "none"; return; }
+  bar.style.display = "flex";
+  qs("#pendingCount").textContent = _pendingChanges.length === 1
+    ? "1 cambio sin guardar"
+    : _pendingChanges.length + " cambios sin guardar";
+}
+async function _commitPending(){
+  if (!_pendingChanges.length) return true;
+  const lista = _pendingChanges.slice();
+  const btn = qs("#btnSave");
+  if (btn){ btn.disabled = true; btn.textContent = "Guardando…"; }
+  try {
+    for (const ch of lista){
+      await col(ch.col).doc(ch.doc).set({ [ch.field]: ch.value }, { merge:true });
+    }
+    _pendingChanges = [];
+    _actualizarPendingBar();
+    if (btn){ btn.disabled = false; btn.textContent = "Guardar"; }
+    toast("✅ Cambios guardados");
+    return true;
+  } catch(e){
+    console.error("Error al guardar cambios:", e);
+    toast("Error al guardar — intenta de nuevo");
+    if (btn){ btn.disabled = false; btn.textContent = "Guardar"; }
+    return false;
+  }
+}
+function _discardPending(){
+  if (!_pendingChanges.length) return;
+  if (!confirm("¿Descartar los " + _pendingChanges.length + " cambios sin guardar?")) return;
+  for (const ch of _pendingChanges){
+    applyLocal(ch.col, ch.doc, ch.field, ch.oldValue);
+  }
+  _pendingChanges = [];
+  _actualizarPendingBar();
+  renderAll();
+  toast("Cambios descartados");
+}
+function _activarModoBorrador(){
+  if (_modoBorrador) return;
+  _modoBorrador = true;
+  _pendingChanges = [];
+  _actualizarPendingBar();
+}
+function _desactivarModoBorrador(){
+  _modoBorrador = false;
+  _pendingChanges = [];
+  _actualizarPendingBar();
+}
+function _cerrarPanel(){
+  if (_pendingChanges.length){
+    const guardar = confirm("Tenés " + _pendingChanges.length + " cambio(s) sin guardar.\n\nAceptar = Guardar y cerrar\nCancelar = Descartar y cerrar");
+    if (guardar){ _commitPending().then(_doCerrarPanel); return; }
+    for (const ch of _pendingChanges){
+      applyLocal(ch.col, ch.doc, ch.field, ch.oldValue);
+    }
+    _pendingChanges = [];
+    _actualizarPendingBar();
+    renderAll();
+  }
+  _doCerrarPanel();
+}
+function _doCerrarPanel(){
+  qs("#adminPanel").classList.remove("open");
+  document.body.classList.remove("panel-min-on");
+  _desactivarModoBorrador();
+}
+
 function initPanel(){
   qs("#btnPanel").addEventListener("click", () => {
     qs("#adminPanel").classList.add("open");
+    _activarModoBorrador();
     renderPanelProds();
     fillPanel(true);
     renderMpEstado();
@@ -6492,7 +6615,19 @@ function initPanel(){
     renderFinanzas();
     renderInventario();
   });
-  qs("#panelClose").addEventListener("click", () => qs("#adminPanel").classList.remove("open"));
+  qs("#panelClose").addEventListener("click", _cerrarPanel);
+  const _btnMin = qs("#panelMin");
+  if (_btnMin) _btnMin.addEventListener("click", function(){
+    document.body.classList.toggle("panel-min-on");
+  });
+  const _chip = qs("#panelChip");
+  if (_chip) _chip.addEventListener("click", function(){
+    document.body.classList.remove("panel-min-on");
+  });
+  const _btnSave = qs("#btnSave");
+  if (_btnSave) _btnSave.addEventListener("click", _commitPending);
+  const _btnDisc = qs("#btnDiscard");
+  if (_btnDisc) _btnDisc.addEventListener("click", _discardPending);
 
   /* ── TAB FINANZAS ─────────────────────────────────────────── */
   var _finPer = "hoy";
