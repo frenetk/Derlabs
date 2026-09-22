@@ -980,13 +980,13 @@ body.dev-on:not(.preview-cliente) [data-ecol]{position:relative;border-radius:6p
 .panel-chip{
   display:none;position:fixed;bottom:calc(var(--tab-h) + 16px);
   right:16px;z-index:499;
-  background:var(--rojo);color:var(--rojo-texto);
-  border:1.5px solid #000;
+  background:var(--rojo);color:var(--rojo-texto);border:none;
   border-radius:999px;padding:11px 18px;font-size:13px;font-weight:800;
-  box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;
 }
 body.panel-min-on #adminPanel{transform:translateX(110%)}
 body.panel-min-on #panelChip{display:block}
+body.panel-min-on .float-btn{display:none !important}
 
 @media (prefers-reduced-motion:reduce){
   *{animation:none !important;transition:none !important}
