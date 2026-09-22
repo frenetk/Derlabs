@@ -122,11 +122,21 @@ body[data-page]:not([data-page="inicio"]) #btnBurger{display:none}
   cursor:pointer;user-select:none;-webkit-user-select:none;
   position:absolute;left:50%;transform:translateX(-50%);
   white-space:nowrap;
+  height:calc(var(--nav-h) - 10px);
   display:inline-flex;align-items:center;justify-content:center;
-  max-width:60vw;overflow:hidden;
+  max-width:min(220px, 60vw);overflow:hidden;
 }
-.logo img{max-height:36px;max-width:220px;object-fit:contain;display:block}
+.logo img{
+  max-height:100%;max-width:100%;width:auto;height:auto;
+  object-fit:contain;display:block;
+  mix-blend-mode:multiply;
+}
 .logo #logoTexto{white-space:nowrap}
+/* Con logo cargado, el navbar crece para darle mas espacio al logo
+   horizontal (aspect ~3:1): mas alto = mas ancho visible. */
+body.con-logo{ --nav-h: 72px; }
+body.con-logo .logo{ height:calc(var(--nav-h) - 10px); max-width:min(320px, 78vw); }
+body.con-logo .logo img{ max-height:100%; max-width:100%; }
 #cartBadge{
   position:absolute;top:2px;right:0;
   min-width:18px;height:18px;padding:0 5px;
@@ -3471,10 +3481,12 @@ function renderNombre(){
       imgEl.alt = n;
       imgEl.style.display = "block";
       txtEl.style.display = "none";
+      document.body.classList.add("con-logo");
     } else {
       imgEl.style.display = "none";
       txtEl.style.display = "";
       txtEl.textContent = n;
+      document.body.classList.remove("con-logo");
     }
   }
   qsa('[data-bind="nombre"]').forEach(el => {
