@@ -200,7 +200,7 @@ body.cerrada #bannerCerrada{display:block}
 
 /* ─── Botón flotante ─── */
 .float-btn{
-  position:fixed;bottom:calc(var(--tab-h) + 0px + 14px);
+  position:fixed;bottom:calc(var(--tab-h) + 14px);
   right:max(16px, calc(50% - 240px + 16px));
   z-index:138;display:none;
   background:var(--rojo);color:var(--rojo-texto);border:none;
@@ -209,6 +209,7 @@ body.cerrada #bannerCerrada{display:block}
   box-shadow:0 4px 18px rgba(155,27,48,0.35);
   transition:all .2s ease;
   opacity:.92;
+  max-width:calc(100vw - 32px);
 }
 .float-btn:active{transform:scale(.97)}
 body[data-page="inicio"] .float-btn,
@@ -315,17 +316,27 @@ body[data-page="menu"] .float-btn{display:block}
 .btn-add-circ:active{transform:scale(.9)}
 
 /* — Categorías grid — */
-.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .cat-tile{
-  position:relative;border-radius:14px;
-  background:linear-gradient(135deg, var(--crema) 0%, #fff 100%);
-  border:2px solid var(--rojo);
-  padding:16px 14px;
-  cursor:pointer;text-align:left;
-  min-height:64px;
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  transition:all .18s ease;
+  position:relative;border-radius:16px;overflow:hidden;
+  aspect-ratio:1/1;background:#E8E4E1;cursor:pointer;
+  box-shadow:0 4px 24px var(--sombra);
+  border:none;padding:0;transition:all .2s ease;
 }
+.cat-tile img{width:100%;height:100%;object-fit:cover}
+.cat-tile::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(to bottom, rgba(0,0,0,.05) 30%, rgba(0,0,0,.62) 100%);
+  pointer-events:none;
+}
+.cat-tile span{
+  position:absolute;inset:0;z-index:2;
+  display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:14px;
+  color:#fff;font-weight:800;font-size:15.5px;letter-spacing:.3px;
+  text-shadow:0 1px 6px rgba(0,0,0,.45);
+}
+.cat-tile .cat-arrow{display:none}
 .cat-tile::after{display:none}
 @media (hover:hover){
   .cat-tile:hover{
@@ -3583,11 +3594,15 @@ function renderInicio(){
   /* Categorías 2×2 */
   const catsReales = Array.from(new Set(productosActivos().map(p => p.categoria).filter(Boolean))).sort();
   qs("#catGrid").innerHTML = catsReales.length
-    ? catsReales.map(cat => `
+    ? catsReales.map(cat => {
+        const prods = productosActivos().filter(p => p.categoria === cat && p.imagen);
+        const img = prods.length ? prods[0].imagen : "";
+        return `
       <button class="cat-tile" data-cat="${esc(cat)}">
+        ${img ? `<img src="${esc(img)}" alt="${esc(cat)}" loading="lazy">` : ""}
         <span class="cat-tile-nombre">${esc(cat)}</span>
-        <span class="cat-arrow">→</span>
-      </button>`).join("")
+      </button>`;
+      }).join("")
     : "";
 
   /* 📢 Banners promocionales (2I) */
