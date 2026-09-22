@@ -1472,6 +1472,89 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   from{opacity:0;transform:translateY(6px)}
   to{opacity:1;transform:translateY(0)}
 }
+
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP — adaptación a pantallas grandes (>= 900px)
+   El CSS mobile queda intacto, esto solo se activa en escritorio.
+   ══════════════════════════════════════════════════════════════ */
+@media (min-width: 900px) {
+  /* Fondo con marco alrededor del wrapper */
+  body { background: #F0EFED; }
+
+  /* Wrapper más ancho, sombra más marcada */
+  .wrapper {
+    max-width: 720px;
+    box-shadow: 0 0 60px rgba(0,0,0,.10);
+  }
+
+  /* Tabbar ancho del wrapper */
+  .tabbar { max-width: 720px; }
+
+  /* Hero más grande y con más aire */
+  .hero {
+    margin: 22px 22px 0;
+    height: 320px;
+  }
+  .hero-title { font-size: 52px; }
+  .hero-sub   { font-size: 15px; }
+
+  /* Secciones con más padding */
+  .bloque { padding: 0 22px; margin-bottom: 34px; }
+
+  /* Títulos más grandes */
+  .sec-title { font-size: 36px; }
+
+  /* Categorías en 4 columnas */
+  .cat-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  /* Ofertas más anchas */
+  .ofertas-scroll {
+    padding: 6px 22px 16px;
+    margin: 0 -22px;
+  }
+  .oferta-card { flex: 0 0 240px; }
+
+  /* Lista de productos con más aire */
+  .menu-list { padding: 10px 22px 10px; }
+  .prod-item { padding: 18px 0; }
+  .prod-img  { width: 100px; height: 100px; }
+
+  /* Filtros */
+  .filtros { padding: 18px 22px 10px; }
+
+  /* Botón flotante alineado al borde del wrapper */
+  .float-btn { right: max(24px, calc(50% - 360px + 24px)); }
+
+  /* Cupones, locales, cuenta con más aire */
+  .cup-wrap, .loc-wrap { padding: 24px 22px; }
+
+  /* Footer */
+  .footer-cr { padding: 40px 22px 80px; }
+
+  /* Banner de puntos */
+  .puntos-banner {
+    margin: 0 22px 34px;
+    padding: 36px 28px 32px;
+  }
+
+  /* Banners promocionales */
+  .promo-scroll {
+    padding: 6px 22px 16px;
+    margin: 0 -22px;
+  }
+  .promo-card {
+    width: calc(100% - 44px);
+    max-width: 640px;
+    min-height: 140px;
+  }
+
+  /* Resumen del checkout */
+  .ck-resumen { max-width: 720px; }
+  .ck-wrap    { padding: 24px 22px 140px; }
+}
 </style>
 </head>
 <body data-page="inicio">
