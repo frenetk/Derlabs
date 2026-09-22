@@ -122,7 +122,11 @@ body[data-page]:not([data-page="inicio"]) #btnBurger{display:none}
   cursor:pointer;user-select:none;-webkit-user-select:none;
   position:absolute;left:50%;transform:translateX(-50%);
   white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;
+  max-width:60vw;overflow:hidden;
 }
+.logo img{max-height:36px;max-width:220px;object-fit:contain;display:block}
+.logo #logoTexto{white-space:nowrap}
 #cartBadge{
   position:absolute;top:2px;right:0;
   min-width:18px;height:18px;padding:0 5px;
@@ -1450,7 +1454,10 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   <nav class="navbar">
     <button class="nav-icon" id="btnBack" aria-label="Volver">←</button>
     <button class="nav-icon" id="btnBurger" aria-label="Abrir menú">☰</button>
-    <div class="logo" id="logoTop" data-bind="nombre">TEST BURGERS</div>
+    <div class="logo" id="logoTop">
+      <img id="logoImg" src="" alt="" style="display:none">
+      <span id="logoTexto">TEST BURGERS</span>
+    </div>
     <button class="nav-icon" id="btnCart" aria-label="Ver carrito"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1.2 12.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 7z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg><span id="cartBadge" class="oculto">0</span></button>
   </nav>
   <div id="bannerCerrada">🔴 Tienda cerrada por ahora — no estamos recibiendo pedidos</div>
@@ -2038,6 +2045,8 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
       <input class="field" id="pNombre" type="text">
       <label class="plabel" for="pTagline">Tagline</label>
       <input class="field" id="pTagline" type="text">
+      <button class="pill pill-outline pill-sm panel-full" id="btnLogo" style="margin-top:8px">🖼 Cambiar logo</button>
+      <p class="pnota">Recomendado: PNG transparente, ~240×88 px. Si no subís logo, se muestra el nombre como texto.</p>
       <label class="plabel" for="pRubro">Rubro</label>
       <select class="field" id="pRubro"></select>
       <p class="pnota" id="pRubroNota">Cambiar el rubro actualiza el color de marca a la paleta sugerida para ese rubro. Si ya personalizaste el color, se conserva tu elección — no se pisa sola.</p>
@@ -3453,7 +3462,25 @@ function renderAll(){
 
 function renderNombre(){
   const n = state.config.nombre || "TEST BURGERS";
-  qsa('[data-bind="nombre"]').forEach(el => { el.textContent = n; });
+  const logo = state.config.logoBase64;
+  const imgEl = qs("#logoImg");
+  const txtEl = qs("#logoTexto");
+  if (imgEl && txtEl){
+    if (logo){
+      imgEl.src = logo;
+      imgEl.alt = n;
+      imgEl.style.display = "block";
+      txtEl.style.display = "none";
+    } else {
+      imgEl.style.display = "none";
+      txtEl.style.display = "";
+      txtEl.textContent = n;
+    }
+  }
+  qsa('[data-bind="nombre"]').forEach(el => {
+    if (el.id === "logoTop" || el.id === "logoImg" || el.id === "logoTexto") return;
+    el.textContent = n;
+  });
   document.title = n;
 }
 function renderFooter(){
@@ -6933,6 +6960,10 @@ function initPanel(){
   bindCfg("pTl4", "timeline4", "trim");
   bindCfg("pMostrarGPS", "mostrarGPS");
 
+  const _btnLogo = qs("#btnLogo");
+  if (_btnLogo) _btnLogo.addEventListener("click", function(){
+    abrirImgModal({ col:"config", doc:"general", field:"logoBase64" });
+  });
   var _btnEmail = qs("#btnGuardarEmail");
   if (_btnEmail) _btnEmail.addEventListener("click", function(){
     var em = (qs("#pEmailNotif").value || "").trim();
