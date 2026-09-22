@@ -971,15 +971,19 @@ body.dev-on:not(.preview-cliente) [data-ecol]{position:relative;border-radius:6p
 .pending-bar #pendingCount{flex:1;color:#8A6D00}
 .pending-bar .pill{margin:0;padding:5px 12px;font-size:11.5px}
 .panel-min{
-  background:none;border:none;cursor:pointer;font-size:16px;
-  padding:2px 8px;margin-right:4px;
+  background:#fff;border:1.5px solid var(--borde);cursor:pointer;
+  font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;
+  margin-right:4px;color:var(--texto);font-family:'Nunito',sans-serif;
+  display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
 }
+.panel-min:hover{background:var(--crema);border-color:var(--rojo);color:var(--rojo)}
 .panel-chip{
   display:none;position:fixed;bottom:calc(var(--tab-h) + 16px);
   right:16px;z-index:499;
-  background:var(--rojo);color:var(--rojo-texto);border:none;
+  background:var(--rojo);color:var(--rojo-texto);
+  border:1.5px solid #000;
   border-radius:999px;padding:11px 18px;font-size:13px;font-weight:800;
-  box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;
 }
 body.panel-min-on #adminPanel{transform:translateX(110%)}
 body.panel-min-on #panelChip{display:block}
@@ -1995,7 +1999,7 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   <div class="panel-head">
     <span>⚙ Panel</span>
     <span style="flex:1"></span>
-    <button class="panel-min" id="panelMin" aria-label="Minimizar" title="Ver la tienda">👁</button>
+    <button class="panel-min" id="panelMin" aria-label="Ver cambios" title="Ver los cambios en la tienda">👁 Ver cambios</button>
     <button class="panel-close" id="panelClose" aria-label="Cerrar panel">✕</button>
   </div>
   <div id="pendingBar" class="pending-bar" style="display:none">
@@ -7090,7 +7094,10 @@ function initPanel(){
       return;
     }
     saveField("productos", el.dataset.pid, el.dataset.pf, v).then(() => {
-      if (camposQueRerenderizan.includes(el.dataset.pf)) renderPanelProds();
+      if (camposQueRerenderizan.includes(el.dataset.pf)){
+        el.blur();
+        renderPanelProds();
+      }
     });
   });
 
