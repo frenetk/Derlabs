@@ -1477,83 +1477,115 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
    DESKTOP — adaptación a pantallas grandes (>= 900px)
    El CSS mobile queda intacto, esto solo se activa en escritorio.
    ══════════════════════════════════════════════════════════════ */
-@media (min-width: 900px) {
-  /* Fondo con marco alrededor del wrapper */
-  body { background: #F0EFED; }
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP — adaptación a pantallas grandes (>= 1024px)
+   El CSS mobile queda intacto, esto solo se activa en escritorio.
+   ══════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  /* Fondo gris neutro tipo "marco" */
+  body { background: #EBEBEB; }
 
-  /* Wrapper más ancho, sombra más marcada */
-  .wrapper {
-    max-width: 720px;
-    box-shadow: 0 0 60px rgba(0,0,0,.10);
-  }
+  /* Wrapper ancho */
+  .wrapper { max-width: 1280px; box-shadow: 0 0 80px rgba(0,0,0,.12); }
 
-  /* Tabbar ancho del wrapper */
-  .tabbar { max-width: 720px; }
+  /* Navbar más ancha y alta */
+  .navbar { padding: 0 40px; height: 72px; }
+  .logo { font-size: 28px; letter-spacing: 2px; }
 
-  /* Hero más grande y con más aire */
-  .hero {
-    margin: 22px 22px 0;
-    height: 320px;
-  }
-  .hero-title { font-size: 52px; }
-  .hero-sub   { font-size: 15px; }
+  /* Hero grande */
+  .hero { margin: 32px 40px 0; height: 420px; border-radius: 24px; }
+  .hero-title { font-size: 64px; letter-spacing: 1px; }
+  .hero-sub { font-size: 18px; }
+  .hero-badge { font-size: 13px; padding: 8px 16px; }
+  .hero-content { left: 40px; right: 40px; bottom: 32px; }
 
-  /* Secciones con más padding */
-  .bloque { padding: 0 22px; margin-bottom: 34px; }
+  /* Secciones */
+  .bloque { padding: 0 40px; margin-bottom: 48px; }
+  .sec-title { font-size: 42px; margin: 0 0 24px; letter-spacing: 1px; }
 
-  /* Títulos más grandes */
-  .sec-title { font-size: 36px; }
+  /* Puntos banner */
+  .puntos-banner { margin: 0 40px 48px; padding: 48px 40px 44px; border-radius: 24px; }
+  .puntos-titulo { font-size: 34px; }
+  .puntos-linea { font-size: 16px; }
 
-  /* Categorías en 4 columnas */
-  .cat-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-  }
-
-  /* Ofertas más anchas */
+  /* Ofertas: 4 en grid */
   .ofertas-scroll {
-    padding: 6px 22px 16px;
-    margin: 0 -22px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+    padding: 0; margin: 0; overflow: visible;
   }
-  .oferta-card { flex: 0 0 240px; }
+  .oferta-card { flex: none; aspect-ratio: 4/5; border-radius: 20px; }
 
-  /* Lista de productos con más aire */
-  .menu-list { padding: 10px 22px 10px; }
-  .prod-item { padding: 18px 0; }
-  .prod-img  { width: 100px; height: 100px; }
+  /* Categorías: 4 columnas */
+  .cat-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; }
+
+  /* Promocionales: ancho completo */
+  .promo-scroll {
+    display: grid; grid-template-columns: 1fr; gap: 20px;
+    padding: 0; margin: 0; overflow: visible;
+  }
+  .promo-card { width: 100%; max-width: none; min-height: 140px; border-radius: 24px; }
+
+  /* Lista de productos en 3 columnas */
+  .menu-list, #popularesList {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    padding: 0 40px;
+  }
+  .prod-item {
+    display: block; padding: 18px;
+    border: none; background: #fff;
+    border-radius: 20px; box-shadow: 0 4px 24px var(--sombra);
+  }
+  .prod-img { width: 100%; height: 200px; border-radius: 14px; }
+  .prod-info { margin-top: 16px; }
+  .prod-nombre { font-size: 17px; }
+  .prod-desc { font-size: 14.5px; -webkit-line-clamp: 3; }
+  .prod-precio { font-size: 18px; }
+  .prod-cta { margin-top: 14px; width: 100%; padding: 12px; }
 
   /* Filtros */
-  .filtros { padding: 18px 22px 10px; }
+  .filtros { padding: 24px 40px 10px; }
+  .fpill { font-size: 15px; padding: 10px 22px; }
 
-  /* Botón flotante alineado al borde del wrapper */
-  .float-btn { right: max(24px, calc(50% - 360px + 24px)); }
+  /* Cupones y locales en 2 columnas */
+  .cup-wrap, .loc-wrap { padding: 40px; }
+  #cuponesList, #localesList {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+  }
+  .cupon-card, .local-card { margin-bottom: 0; }
 
-  /* Cupones, locales, cuenta con más aire */
-  .cup-wrap, .loc-wrap { padding: 24px 22px; }
+  /* Tabbar */
+  .tabbar { max-width: 1280px; padding: 0 40px; }
+  .tab { font-size: 12.5px; gap: 6px; }
+  .tab .t-svg { width: 26px; height: 26px; }
+
+  /* Cart: drawer lateral derecho */
+  #cartSheet {
+    top: 0; bottom: 0; right: 0; left: auto;
+    width: 520px; max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 24px 0 0 24px;
+    transform: translateX(100%);
+  }
+  #cartSheet.open { transform: translateX(0); }
+
+  /* Botón flotante */
+  .float-btn { right: 40px; padding: 14px 26px; font-size: 15px; }
+
+  /* Checkout: formulario a la izquierda, resumen fijo a la derecha */
+  .ck-wrap { padding: 40px 40px 160px; max-width: 720px; }
+  .ck-resumen {
+    right: 40px; left: auto; transform: none;
+    bottom: 20px; max-width: 420px;
+    border-radius: 20px;
+  }
+
+  /* Confirmación */
+  .conf-wrap { padding: 60px 40px 40px; max-width: 720px; margin: 0 auto; }
+  .conf-titulo { font-size: 48px; }
 
   /* Footer */
-  .footer-cr { padding: 40px 22px 80px; }
-
-  /* Banner de puntos */
-  .puntos-banner {
-    margin: 0 22px 34px;
-    padding: 36px 28px 32px;
-  }
-
-  /* Banners promocionales */
-  .promo-scroll {
-    padding: 6px 22px 16px;
-    margin: 0 -22px;
-  }
-  .promo-card {
-    width: calc(100% - 44px);
-    max-width: 640px;
-    min-height: 140px;
-  }
-
-  /* Resumen del checkout */
-  .ck-resumen { max-width: 720px; }
-  .ck-wrap    { padding: 24px 22px 140px; }
+  .footer-cr { padding: 48px 40px 100px; }
+  .cr-logo { font-size: 28px; }
 }
 </style>
 </head>
