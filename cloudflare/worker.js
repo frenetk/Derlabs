@@ -169,7 +169,12 @@ export default {
     const esHTML = (url.pathname === "/" || url.pathname === "" || url.pathname === "/index.html");
     if (esHTML) {
       try {
-        const respuesta = await env.ASSETS.fetch(request);
+        /* Forzar rewrite a /index.html antes de pedirle a Assets.
+           Con html_handling:none, Cloudflare NO mapea "/" -> "/index.html"
+           automáticamente, así que hay que reescribir la URL acá. */
+        const urlIndex = new URL(request.url);
+        urlIndex.pathname = "/index.html";
+        const respuesta = await env.ASSETS.fetch(new Request(urlIndex, request));
         const html = await respuesta.text();
         const htmlInyectado = await inyectarNombreReal(html, url.hostname, env, ctx);
         return new Response(htmlInyectado, {
