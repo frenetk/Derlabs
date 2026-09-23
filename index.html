@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/png" href="/favicon.png">
 <meta name="color-scheme" content="only light">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>TEST BURGERS</title>
@@ -334,12 +335,22 @@ body[data-page="menu"] .float-btn{display:block}
 .cat-tile span{
   position:absolute;inset:0;z-index:2;
   display:flex;align-items:flex-end;justify-content:center;
-  padding-bottom:14px;
-  color:#fff;font-weight:800;font-size:15.5px;letter-spacing:.3px;
-  text-shadow:0 1px 6px rgba(0,0,0,.45);
+  padding-bottom:18px;
+  color:#fff;
+  font-weight:800;
+  font-size:15px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  text-align:center;
+  text-shadow:0 2px 8px rgba(0,0,0,.6);
+  line-height:1.2;
 }
 .cat-tile .cat-arrow{display:none}
-.cat-tile::after{display:none}
+.cat-tile::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(to bottom, rgba(0,0,0,0) 45%, rgba(0,0,0,.75) 100%);
+  pointer-events:none;
+}
 @media (hover:hover){
   .cat-tile:hover{
     background:var(--rojo);
