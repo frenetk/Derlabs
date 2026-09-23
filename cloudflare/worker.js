@@ -166,7 +166,9 @@ export default {
        Antes de servir / o /index.html, reemplaza "TEST BURGERS" por
        el nombre real de la tienda (leído de Firestore, cacheado 5 min).
        Esto elimina el flash donde el usuario ve el nombre por defecto. */
-    const esHTML = (url.pathname === "/" || url.pathname === "" || url.pathname === "/index.html");
+    /* Solo aplica a tiendas (no al landing de DerLabs) */
+    const esLanding = DOMINIOS_LANDING.includes(url.hostname);
+    const esHTML = !esLanding && (url.pathname === "/" || url.pathname === "" || url.pathname === "/index.html");
     if (esHTML) {
       try {
         /* Forzar rewrite a /index.html antes de pedirle a Assets.
