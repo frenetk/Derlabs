@@ -6100,6 +6100,60 @@ window.addEventListener("pageshow", function(e){
 });
 
 /* ════════════════════════════════════════════════════════════════
+   FIX BOTONES AGREGAR — bind directo a las cards renderizadas.
+   El delegado global no garantiza orden sobre el handler del modal.
+   Este listener corre en fase de captura sobre cada botón específico,
+   por lo que detiene el evento antes de que abra el detalle.
+   ════════════════════════════════════════════════════════════════ */
+(function(){
+  function _bindAdd(root){
+    if (!root || !root.querySelectorAll) return;
+    var botones = root.querySelectorAll("[data-add], .btn-add-circ, .prod-add, .prod-cta");
+    botones.forEach(function(btn){
+      if (btn._addBound) return;
+      btn._addBound = true;
+      btn.addEventListener("click", function(ev){
+        var pid = btn.dataset.add;
+        if (!pid){
+          var card = btn.closest("[data-id]");
+          if (card) pid = card.dataset.id;
+        }
+        if (!pid) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation();
+        if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
+        var p = state.productos.find(function(x){ return x.id === pid; });
+        if (p && (p.variantesActivas || p.permitePersonalizacion)){
+          abrirDetProducto(pid);
+          return;
+        }
+        agregarAlCarrito(pid);
+      }, true);
+    });
+  }
+
+  window._bindAdd = _bindAdd;
+
+  function _init(){
+    _bindAdd(document.body);
+    ["ofertasScroll","menuList","popularesList","catGrid","promoScroll"].forEach(function(id){
+      var el = document.getElementById(id);
+      if (!el) return;
+      _bindAdd(el);
+      var mo = new MutationObserver(function(){ _bindAdd(el); });
+      mo.observe(el, { childList: true, subtree: true });
+    });
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", _init);
+  } else {
+    setTimeout(_init, 0);
+  }
+})();
+
+/* ════════════════════════════════════════════════════════════════
    BACKEND — netlify/functions/:
      _firebase.js            → helper compartido (Admin SDK, config,
                                 validación de pedido/cupón)
