@@ -12,14 +12,24 @@
 import { admin, getDb, corsHeaders } from "./_firebase.js";
 
 const RUBROS = {
-  "hamburguesas":  { colorPrimario: "#9B1B30" },
-  "comida-rapida": { colorPrimario: "#C83D09" },
-  "cafeteria":     { colorPrimario: "#5C3D2E" },
-  "pasteleria":    { colorPrimario: "#C2185B" },
-  "ropa":          { colorPrimario: "#1A1A1A" },
-  "belleza":       { colorPrimario: "#D46A9F" },
-  "servicios":     { colorPrimario: "#1565C0" },
-  "otro":          { colorPrimario: "#546E7A" }
+  "comida": {
+    subrubros: {
+      "hamburguesas":  { colorPrimario: "#9B1B30" },
+      "comida-rapida": { colorPrimario: "#C83D09" },
+      "cafeteria":     { colorPrimario: "#5C3D2E" },
+      "pasteleria":    { colorPrimario: "#C2185B" },
+      "servicios":     { colorPrimario: "#1565C0" },
+    }
+  },
+  "retail": {
+    subrubros: {
+      "tecnologia": { colorPrimario: "#0066FF" },
+      "ropa":       { colorPrimario: "#1A1A1A" },
+      "belleza":    { colorPrimario: "#D46A9F" },
+      "limpieza":   { colorPrimario: "#00A88A" },
+      "hogar":      { colorPrimario: "#8B6914" },
+    }
+  }
 };
 
 function slugify(texto){
@@ -52,7 +62,7 @@ export async function crearTienda(request, env){
 
   try {
     const body = JSON.parse(await request.text() || "{}");
-    const { nombreNegocio, rubro, hostname, colorPrimario, logoBase64, emailPropietario, passwordPropietario } = body;
+    const { nombreNegocio, rubro, subrubro, hostname, colorPrimario, logoBase64, emailPropietario, passwordPropietario } = body;
 
     if (!nombreNegocio || !hostname) {
       return new Response(JSON.stringify({ ok: false, error: "Faltan nombreNegocio o hostname" }), { status: 400, headers });
@@ -63,8 +73,10 @@ export async function crearTienda(request, env){
       return new Response(JSON.stringify({ ok: false, error: "Las imágenes combinadas son demasiado grandes — probá con archivos más livianos o de menor resolución." }), { status: 400, headers });
     }
 
-    const rubroValido = RUBROS[rubro] ? rubro : "otro";
-    const color = colorPrimario || RUBROS[rubroValido].colorPrimario;
+    const rubroValido = RUBROS[rubro] ? rubro : "comida";
+    const subrubrosValidos = RUBROS[rubroValido].subrubros;
+    const subrubroValido = subrubrosValidos[subrubro] ? subrubro : Object.keys(subrubrosValidos)[0];
+    const color = colorPrimario || subrubrosValidos[subrubroValido].colorPrimario;
     const hostnameLimpio = String(hostname).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
     const db = getDb(env);
@@ -99,6 +111,7 @@ export async function crearTienda(request, env){
       deliveryActivo: true,
       retiroActivo: true,
       rubro: rubroValido,
+      subrubro: subrubroValido,
       colorPrimario: color,
       logoBase64: logoBase64 || "",
       confTitulo: "¡Pago confirmado!",

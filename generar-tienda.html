@@ -202,6 +202,7 @@ header p{color:var(--txt2);font-size:14px}
     <div class="campo">
       <label>Rubro</label>
       <div class="rubro-grid" id="rubroGrid"></div>
+<div class="rubro-grid" id="subrubroGrid" style="margin-top:10px"></div>
     </div>
 
     <div class="campo">
@@ -289,14 +290,20 @@ header p{color:var(--txt2);font-size:14px}
    también.
 ══════════════════════════════════════════════════════════════ */
 const RUBROS = [
-  { id:"hamburguesas",  nombre:"Hamburguesas",         ico:"🍔", color:"#9B1B30" },
-  { id:"comida-rapida", nombre:"Comida rápida",        ico:"🌭", color:"#C83D09" },
-  { id:"cafeteria",     nombre:"Cafetería",            ico:"☕", color:"#5C3D2E" },
-  { id:"pasteleria",    nombre:"Pastelería",           ico:"🧁", color:"#C2185B" },
-  { id:"ropa",          nombre:"Ropa y accesorios",    ico:"👕", color:"#1A1A1A" },
-  { id:"belleza",       nombre:"Belleza y estética",   ico:"💅", color:"#D46A9F" },
-  { id:"servicios",     nombre:"Servicios y reservas", ico:"📅", color:"#1565C0" },
-  { id:"otro",          nombre:"Otro rubro",           ico:"🏪", color:"#546E7A" }
+  { id:"comida", nombre:"Comida", ico:"🍔", subrubros:[
+      { id:"hamburguesas",   nombre:"Hamburguesas",          ico:"🍔", color:"#9B1B30" },
+      { id:"comida-rapida",  nombre:"Comida rápida",         ico:"🌭", color:"#C83D09" },
+      { id:"cafeteria",      nombre:"Cafetería",             ico:"☕", color:"#5C3D2E" },
+      { id:"pasteleria",     nombre:"Pastelería",            ico:"🧁", color:"#C2185B" },
+      { id:"servicios",      nombre:"Servicios y reservas",  ico:"📅", color:"#1565C0" },
+  ]},
+  { id:"retail", nombre:"Retail", ico:"🛍️", subrubros:[
+      { id:"tecnologia",     nombre:"Tecnología",            ico:"📱", color:"#0066FF" },
+      { id:"ropa",           nombre:"Ropa y accesorios",     ico:"👕", color:"#1A1A1A" },
+      { id:"belleza",        nombre:"Belleza y estética",    ico:"💄", color:"#D46A9F" },
+      { id:"limpieza",       nombre:"Productos de limpieza", ico:"🧴", color:"#00A88A" },
+      { id:"hogar",          nombre:"Hogar y deco",          ico:"🛋️", color:"#8B6914" },
+  ]},
 ];
 
 /* ── Utilidades de color — mismas fórmulas que index.html (HSL,
@@ -382,7 +389,8 @@ function fondoSuaveDesde(hex){
 }
 
 /* ── Estado ── */
-let rubroSeleccionado = "hamburguesas";
+let rubroSeleccionado = "comida";
+let subrubroSeleccionado = "hamburguesas";
 let colorTocadoAMano = false;
 let ADMIN_SECRET = "";
 let logoBase64 = "";
@@ -494,12 +502,25 @@ if (secretGuardado){
 }
 
 /* ── Render de chips de rubro ── */
+function rubroActual(){ return RUBROS.find(x => x.id === rubroSeleccionado) || RUBROS[0]; }
+function subrubroActual(){
+  const r = rubroActual();
+  return r.subrubros.find(x => x.id === subrubroSeleccionado) || r.subrubros[0];
+}
 function renderRubros(){
   qs("#rubroGrid").innerHTML = RUBROS.map(r => `
     <button type="button" class="rubro-chip${r.id === rubroSeleccionado ? ' activo' : ''}"
-            data-rubro="${r.id}" style="--chip-color:${r.color}">
+      data-rubro="${r.id}" style="--chip-color:#1D1D1F">
       <span class="ico">${r.ico}</span>
       <span>${r.nombre}</span>
+    </button>
+  `).join("");
+  const r = rubroActual();
+  qs("#subrubroGrid").innerHTML = r.subrubros.map(s => `
+    <button type="button" class="rubro-chip${s.id === subrubroSeleccionado ? ' activo' : ''}"
+      data-subrubro="${s.id}" style="--chip-color:${s.color}">
+      <span class="ico">${s.ico}</span>
+      <span>${s.nombre}</span>
     </button>
   `).join("");
 }
@@ -509,10 +530,24 @@ qs("#rubroGrid").addEventListener("click", e => {
   const chip = e.target.closest("[data-rubro]");
   if (!chip) return;
   rubroSeleccionado = chip.dataset.rubro;
+  subrubroSeleccionado = rubroActual().subrubros[0].id;
   renderRubros();
   if (!colorTocadoAMano){
-    const r = RUBROS.find(x => x.id === rubroSeleccionado);
-    qs("#fColor").value = r.color;
+    const s = subrubroActual();
+    qs("#fColor").value = s.color;
+    actualizarColorHex();
+  }
+  actualizarPreview();
+});
+
+qs("#subrubroGrid").addEventListener("click", e => {
+  const chip = e.target.closest("[data-subrubro]");
+  if (!chip) return;
+  subrubroSeleccionado = chip.dataset.subrubro;
+  renderRubros();
+  if (!colorTocadoAMano){
+    const s = subrubroActual();
+    qs("#fColor").value = s.color;
     actualizarColorHex();
   }
   actualizarPreview();
@@ -529,15 +564,15 @@ qs("#fColor").addEventListener("input", () => {
 });
 qs("#btnResetColor").addEventListener("click", () => {
   colorTocadoAMano = false;
-  const r = RUBROS.find(x => x.id === rubroSeleccionado);
-  qs("#fColor").value = r.color;
+  const s = subrubroActual();
+  qs("#fColor").value = s.color;
   actualizarColorHex();
   actualizarPreview();
 });
 
 /* ── Vista previa ── */
 function actualizarPreview(){
-  const r = RUBROS.find(x => x.id === rubroSeleccionado);
+  const r = subrubroActual();
   const color = qs("#fColor").value;
   const hover = colorHover(color);
   const fondo = fondoSuaveDesde(color);

@@ -59,6 +59,41 @@ const FUNCIONES = {
    Cachea el resultado 5 minutos en el edge de Cloudflare para no
    golpear Firestore en cada request.
    ════════════════════════════════════════════════════════════════ */
+async function leerConfigTenant(hostname, env, ctx) {
+  try {
+    const cacheKey = new Request("https://cache.local/tenant/" + hostname);
+    const cache = caches.default;
+    const cached = await cache.match(cacheKey);
+    if (cached) return await cached.json();
+
+    const db = getDb(env);
+    const domSnap = await db.collection("dominios").doc(hostname).get();
+    if (!domSnap.exists) return null;
+    const storeId = domSnap.data().storeId;
+    if (!storeId) return null;
+
+    const cfgSnap = await db.collection("tiendas").doc(storeId)
+      .collection("config").doc("general").get();
+    if (!cfgSnap.exists) return null;
+    const data = cfgSnap.data();
+
+    const config = {
+      nombre: data.nombre || "",
+      logoBase64: data.logoBase64 || "",
+      rubro: data.rubro || "comida"
+    };
+
+    const respCache = new Response(JSON.stringify(config), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "max-age=300" }
+    });
+    ctx.waitUntil(cache.put(cacheKey, respCache));
+    return config;
+  } catch(e) {
+    console.error("leerConfigTenant:", e.message);
+    return null;
+  }
+}
+
 async function inyectarNombreReal(html, hostname, env, ctx) {
   try {
     /* Caché de 5 min para no golpear Firestore en cada visita */
@@ -84,7 +119,8 @@ async function inyectarNombreReal(html, hostname, env, ctx) {
 
       config = {
         nombre: data.nombre || "",
-        logoBase64: data.logoBase64 || ""
+        logoBase64: data.logoBase64 || "",
+        rubro: data.rubro || "comida"
       };
 
       /* Guardar en caché del edge 5 min */
@@ -174,8 +210,13 @@ export default {
         /* Forzar rewrite a /index.html antes de pedirle a Assets.
            Con html_handling:none, Cloudflare NO mapea "/" -> "/index.html"
            automáticamente, así que hay que reescribir la URL acá. */
+        /* Elegir template segun rubro */
+        const cfgTpl = await leerConfigTenant(url.hostname, env, ctx);
+        const rubroTpl = (cfgTpl && cfgTpl.rubro) || "comida";
+        const archivoTpl = (rubroTpl === "retail") ? "/index-retail.html" : "/index.html";
+
         const urlIndex = new URL(request.url);
-        urlIndex.pathname = "/index.html";
+        urlIndex.pathname = archivoTpl;
         const respuesta = await env.ASSETS.fetch(new Request(urlIndex, request));
         const html = await respuesta.text();
         const htmlInyectado = await inyectarNombreReal(html, url.hostname, env, ctx);
@@ -200,9 +241,11 @@ export default {
     /* ── Con html_handling="none", Cloudflare Assets ya NO mapea "/" a
        index.html automáticamente. Hay que reescribir explícitamente. ── */
     if (url.pathname === "/" || url.pathname === "") {
-      const urlIndex = new URL(request.url);
-      urlIndex.pathname = "/index.html";
-      return env.ASSETS.fetch(new Request(urlIndex, request));
+        const cfgFb = await leerConfigTenant(url.hostname, env, ctx);
+        const rubroFb = (cfgFb && cfgFb.rubro) || "comida";
+        const urlIndex = new URL(request.url);
+        urlIndex.pathname = (rubroFb === "retail") ? "/index-retail.html" : "/index.html";
+        return env.ASSETS.fetch(new Request(urlIndex, request));
     }
 
     // Cualquier otra ruta: archivo estático normal (index.html, pedidos.html, etc.)
