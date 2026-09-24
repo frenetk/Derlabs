@@ -1349,7 +1349,7 @@ function initMenu(){
     if (b) {
       prodId = b.dataset.add;
     } else {
-      const br = e.target.closest(".prod-add");
+      const br = e.target.closest(".prod-add, .btn-add-circ");
       if (br) {
         const card = br.closest("[data-id]");
         if (card) prodId = card.dataset.id;
