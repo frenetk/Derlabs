@@ -1298,8 +1298,7 @@ function initDetProducto(){
      ese botón solo agrega al carrito. */
   document.addEventListener("click", function(e){
     if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
-    if (e.target.closest("[data-add]")) return;
-    if (e.target.closest(".prod-add")) return;
+    if (e.target.closest("[data-add], .prod-add, .btn-add-circ, .prod-cta, .prod-cta-dis")) return;
     const ver = e.target.closest("[data-ver]");
     if (!ver) return;
     abrirDetProducto(ver.dataset.ver);
@@ -6106,23 +6105,45 @@ window.addEventListener("pageshow", function(e){
    por lo que detiene el evento antes de que abra el detalle.
    ════════════════════════════════════════════════════════════════ */
 (function(){
+  /* Resolver id del producto por 3 vias: data-add → data-id del padre → nombre visible */
+  function _resolverId(btn){
+    var pid = btn.dataset && btn.dataset.add;
+    if (pid) return pid;
+
+    var card = btn.closest("[data-id]");
+    if (card && card.dataset.id) return card.dataset.id;
+
+    var card2 = btn.closest(".prod-item, .oferta-card, article");
+    if (!card2) card2 = btn.parentElement;
+    if (!card2) return null;
+
+    var nombreEl = card2.querySelector(".prod-nombre, .prod-name, .card-title, h3, h4");
+    if (!nombreEl) return null;
+    var nombre = (nombreEl.textContent || "").trim().toLowerCase();
+    if (!nombre) return null;
+
+    var encontrado = state.productos.find(function(x){
+      return (x.nombre || "").trim().toLowerCase() === nombre;
+    });
+    return encontrado ? encontrado.id : null;
+  }
+
   function _bindAdd(root){
     if (!root || !root.querySelectorAll) return;
-    var botones = root.querySelectorAll("[data-add], .btn-add-circ, .prod-add, .prod-cta");
+    var botones = root.querySelectorAll("[data-add], .btn-add-circ, .prod-add, .prod-cta, .prod-cta-dis");
     botones.forEach(function(btn){
       if (btn._addBound) return;
       btn._addBound = true;
       btn.addEventListener("click", function(ev){
-        var pid = btn.dataset.add;
-        if (!pid){
-          var card = btn.closest("[data-id]");
-          if (card) pid = card.dataset.id;
-        }
-        if (!pid) return;
+        /* SIEMPRE bloquear: nunca abrir modal al tocar boton agregar */
         ev.preventDefault();
         ev.stopPropagation();
         ev.stopImmediatePropagation();
+
+        var pid = _resolverId(btn);
+        if (!pid) return;
         if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
+
         var p = state.productos.find(function(x){ return x.id === pid; });
         if (p && (p.variantesActivas || p.permitePersonalizacion)){
           abrirDetProducto(pid);
