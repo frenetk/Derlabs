@@ -2749,6 +2749,7 @@ const DEMO_DATA = {
     retiroActivo: true,
     rubro: "hamburguesas",
     colorPrimario: "#9B1B30",
+    categorias: ["Hamburguesas", "Combos", "Acompañamientos", "Bebidas"],
     heroImagen: DEMO_IMAGES.banner,
     heroBadge: "🔥 Más pedido hoy",
     heroTitulo: "La Monster Doble",
@@ -6646,6 +6647,81 @@ function actualizarCampoVariante(pid, idx, campo, valor){
      el editor, o al recargar) ya muestra el valor actualizado. */
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   CATEGORÍAS — helpers
+   Fuente de verdad: state.config.categorias (array de strings).
+   Si no existe (instalaciones viejas), se deriva de productos.
+   ══════════════════════════════════════════════════════════════ */
+function obtenerCategorias(){
+  if (Array.isArray(state.config.categorias) && state.config.categorias.length){
+    return state.config.categorias.slice();
+  }
+  const cats = Array.from(new Set(productosActivos().map(p => p.categoria).filter(Boolean))).sort();
+  if (cats.length){
+    state.config.categorias = cats;
+    saveConfig("categorias", cats);
+  }
+  return cats;
+}
+
+async function agregarCategoria(nombre){
+  nombre = String(nombre || "").trim();
+  if (!nombre) return false;
+  const cats = obtenerCategorias();
+  if (cats.some(c => c.toLowerCase() === nombre.toLowerCase())){
+    toast("Esa categoría ya existe");
+    return false;
+  }
+  cats.push(nombre);
+  cats.sort((a, b) => a.localeCompare(b, "es"));
+  state.config.categorias = cats;
+  await saveConfig("categorias", cats);
+  toast("Categoría agregada: " + nombre);
+  return true;
+}
+
+async function renombrarCategoria(viejo, nuevo){
+  viejo = String(viejo || "").trim();
+  nuevo = String(nuevo || "").trim();
+  if (!viejo || !nuevo || viejo === nuevo) return false;
+  const cats = obtenerCategorias();
+  const idx = cats.findIndex(c => c === viejo);
+  if (idx === -1) return false;
+  if (cats.some(c => c.toLowerCase() === nuevo.toLowerCase())){
+    toast("Ya existe una categoría con ese nombre");
+    return false;
+  }
+  cats[idx] = nuevo;
+  cats.sort((a, b) => a.localeCompare(b, "es"));
+  state.config.categorias = cats;
+  await saveConfig("categorias", cats);
+  const afectados = state.productos.filter(p => p.categoria === viejo);
+  for (const p of afectados){
+    await saveField("productos", p.id, "categoria", nuevo);
+  }
+  toast("Renombrada: " + viejo + " -> " + nuevo + " (" + afectados.length + " productos)");
+  return true;
+}
+
+async function eliminarCategoria(nombre){
+  nombre = String(nombre || "").trim();
+  if (!nombre) return false;
+  const afectados = state.productos.filter(p => p.categoria === nombre);
+  const msg = afectados.length
+    ? "Eliminar la categoría \"" + nombre + "\"?\n\n" + afectados.length + " producto(s) van a quedar sin categoría."
+    : "Eliminar la categoría \"" + nombre + "\"?";
+  if (!confirm(msg)) return false;
+  const cats = obtenerCategorias().filter(c => c !== nombre);
+  state.config.categorias = cats;
+  await saveConfig("categorias", cats);
+  for (const p of afectados){
+    await saveField("productos", p.id, "categoria", "");
+  }
+  toast("Categoría eliminada (" + afectados.length + " productos desasignados)");
+  return true;
+}
+
 function renderPanelProds(){
   const wrap = qs("#panelProds");
   const ae = document.activeElement;
@@ -7284,7 +7360,29 @@ function initPanel(){
     if (el.dataset.pf === "precio") v = Number(el.value) || 0;
     const camposQueRerenderizan = ["variantesActivas", "permitePersonalizacion", "activo"];
     if (el.dataset.pf === "categoria" && v === "__nueva__"){
-      renderPanelProds();
+      const wrap = el.closest(".prod-editor");
+      const inputNueva = wrap ? wrap.querySelector('input[data-pf="categoria"][placeholder="Nueva categoría"]') : null;
+      if (inputNueva){
+        inputNueva.value = "";
+        inputNueva.focus();
+        el.style.display = "none";
+        inputNueva.onblur = function(){
+          const val = inputNueva.value.trim();
+          if (val){
+            saveField("productos", inputNueva.dataset.pid, "categoria", val).then(function(){
+              toast("Categoría guardada: " + val);
+              renderPanelProds();
+            });
+          } else {
+            el.style.display = "";
+            renderPanelProds();
+          }
+        };
+        inputNueva.onkeydown = function(ev){
+          if (ev.key === "Enter"){ ev.preventDefault(); inputNueva.blur(); }
+          if (ev.key === "Escape"){ inputNueva.value = ""; inputNueva.blur(); }
+        };
+      }
       return;
     }
     saveField("productos", el.dataset.pid, el.dataset.pf, v).then(() => {
