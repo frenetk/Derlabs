@@ -1356,6 +1356,9 @@ function initMenu(){
       }
     }
     if (!prodId) return;
+    /* Cortar el evento acá para que el handler del modal no lo procese */
+    e.stopPropagation();
+    e.preventDefault();
     if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
     const p = state.productos.find(x => x.id === prodId);
     if (p && (p.variantesActivas || p.permitePersonalizacion)){
@@ -1363,7 +1366,7 @@ function initMenu(){
       return;
     }
     agregarAlCarrito(prodId);
-  });
+  }, true);  /* capture:true — corre ANTES que el handler del modal */
 }
 
 /* ════════════════════════════════════════════════════════════════
