@@ -1589,6 +1589,36 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   .footer-cr { padding: 48px 40px 100px; }
   .cr-logo { font-size: 28px; }
 }
+
+/* ═══ Gestión de categorías (devmode) ═══ */
+.cat-admin-row{
+  display:flex;align-items:center;gap:8px;
+  background:#FAFAFA;border-radius:12px;padding:10px 12px;margin-bottom:6px;
+  border:1px solid var(--borde);
+}
+.cat-admin-row .cat-nombre{
+  flex:1;font-weight:800;font-size:13.5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.cat-admin-row .cat-count{
+  font-size:11px;font-weight:700;color:var(--muted);
+  background:#EFEFEF;border-radius:999px;padding:2px 8px;
+  flex-shrink:0;
+}
+.cat-admin-row .cat-btns{
+  display:flex;gap:4px;flex-shrink:0;
+}
+.cat-admin-row .cat-btns .ibtn{
+  width:26px;height:26px;font-size:12px;
+}
+.cat-edit-inline{
+  display:flex;gap:6px;align-items:center;margin-top:6px;
+}
+.cat-edit-inline input{
+  flex:1;padding:8px 10px;font-size:13px;
+  border:1.5px solid var(--borde);border-radius:10px;outline:none;
+}
+.cat-edit-inline input:focus{border-color:var(--rojo);}
 </style>
 </head>
 <body data-page="inicio">
@@ -2216,6 +2246,16 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 
     <!-- TAB PRODUCTOS -->
     <div class="psec" id="pt-productos">
+      <!-- Gestión de categorías -->
+      <div id="panelCatsGestion" style="margin-bottom:20px">
+        <h4 style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+          <span>📂 Categorías</span>
+        </h4>
+        <div id="catListaAdmin"></div>
+        <button class="pill pill-outline pill-sm panel-full" id="btnNuevaCatAdmin" style="margin-top:8px">＋ Nueva categoría</button>
+      </div>
+
+      <!-- Productos -->
       <button class="pill pill-outline pill-sm panel-full" id="btnNuevoProd">＋ Nuevo producto</button>
       <div id="panelProds" style="margin-top:12px"></div>
     </div>
@@ -6708,17 +6748,18 @@ async function eliminarCategoria(nombre){
   nombre = String(nombre || "").trim();
   if (!nombre) return false;
   const afectados = state.productos.filter(p => p.categoria === nombre);
-  const msg = afectados.length
-    ? "Eliminar la categoría \"" + nombre + "\"?\n\n" + afectados.length + " producto(s) van a quedar sin categoría."
-    : "Eliminar la categoría \"" + nombre + "\"?";
-  if (!confirm(msg)) return false;
+  /* No permitir eliminar si tiene productos asignados */
+  if (afectados.length){
+    alert("No se puede eliminar la categoría \"" + nombre + "\"\n\n" +
+          "Tiene " + afectados.length + " producto(s) asignado(s).\n" +
+          "Reasigná esos productos a otra categoría primero.");
+    return false;
+  }
+  if (!confirm("¿Eliminar la categoría \"" + nombre + "\"?")) return false;
   const cats = obtenerCategorias().filter(c => c !== nombre);
   state.config.categorias = cats;
   await saveConfig("categorias", cats);
-  for (const p of afectados){
-    await saveField("productos", p.id, "categoria", "");
-  }
-  toast("Categoría eliminada (" + afectados.length + " productos desasignados)");
+  toast("Categoría eliminada: " + nombre);
   return true;
 }
 
@@ -6792,6 +6833,120 @@ function abrirInputNuevaCategoria(selectEl){
   });
 }
 
+
+/* ════════════════════════════════════════════════════════════════
+   GESTIÓN DE CATEGORÍAS — lista con editar y eliminar
+   ════════════════════════════════════════════════════════════════ */
+function renderPanelCats(){
+  const wrap = document.getElementById("catListaAdmin");
+  if (!wrap) return;
+  const cats = obtenerCategorias();
+
+  if (!cats.length){
+    wrap.innerHTML = '<p class="pnota">Sin categorías todavía. Creá la primera abajo.</p>';
+    return;
+  }
+
+  wrap.innerHTML = cats.map(cat => {
+    const count = state.productos.filter(p => p.categoria === cat).length;
+    return `
+      <div class="cat-admin-row" data-cat="${esc(cat)}">
+        <span class="cat-nombre">${esc(cat)}</span>
+        <span class="cat-count">${count} prod.</span>
+        <span class="cat-btns">
+          <button class="ibtn" data-cat-edit="${esc(cat)}" title="Renombrar">✎</button>
+          <button class="ibtn" data-cat-del="${esc(cat)}" title="Eliminar">🗑</button>
+        </span>
+      </div>
+    `;
+  }).join("");
+}
+
+function abrirEditarCat(nombreViejo){
+  const wrap = document.getElementById("catListaAdmin");
+  if (!wrap) return;
+  const fila = wrap.querySelector('[data-cat="' + CSS.escape(nombreViejo) + '"]');
+  if (!fila) return;
+
+  /* Reemplazar la fila completa por el input inline */
+  const cont = document.createElement("div");
+  cont.className = "cat-edit-inline";
+  cont.style.cssText = "background:#FFFDE7;padding:8px 10px;border-radius:12px;margin-bottom:6px;";
+  cont.innerHTML = `
+    <input type="text" value="${esc(nombreViejo)}" placeholder="Nuevo nombre">
+    <button class="pill pill-solid pill-sm" data-cat-save style="margin:0;padding:6px 12px;font-size:12px">Guardar</button>
+    <button class="pill pill-outline-muted pill-sm" data-cat-cancel style="margin:0;padding:6px 12px;font-size:12px">✕</button>
+  `;
+  fila.replaceWith(cont);
+
+  const input = cont.querySelector("input");
+  const btnSave = cont.querySelector("[data-cat-save]");
+  const btnCancel = cont.querySelector("[data-cat-cancel]");
+  input.focus();
+  input.select();
+
+  function cancelar(){
+    cont.replaceWith(fila);
+  }
+
+  async function guardar(){
+    const nuevo = input.value.trim();
+    if (!nuevo || nuevo === nombreViejo){ cancelar(); return; }
+    const ok = await renombrarCategoria(nombreViejo, nuevo);
+    if (ok){
+      renderPanelCats();
+      renderPanelProds();
+    } else {
+      cancelar();
+    }
+  }
+
+  btnSave.addEventListener("click", guardar);
+  btnCancel.addEventListener("click", cancelar);
+  input.addEventListener("keydown", function(e){
+    if (e.key === "Enter"){ e.preventDefault(); guardar(); }
+    if (e.key === "Escape"){ e.preventDefault(); cancelar(); }
+  });
+}
+
+function abrirNuevaCatAdmin(){
+  const wrap = document.getElementById("catListaAdmin");
+  if (!wrap) return;
+  if (wrap.querySelector(".cat-edit-inline")) return; /* ya hay uno abierto */
+
+  const cont = document.createElement("div");
+  cont.className = "cat-edit-inline";
+  cont.style.cssText = "background:#E8F5E9;padding:8px 10px;border-radius:12px;margin-bottom:6px;";
+  cont.innerHTML = `
+    <input type="text" placeholder="Nombre de la nueva categoría">
+    <button class="pill pill-solid pill-sm" data-cat-save style="margin:0;padding:6px 12px;font-size:12px">Guardar</button>
+    <button class="pill pill-outline-muted pill-sm" data-cat-cancel style="margin:0;padding:6px 12px;font-size:12px">✕</button>
+  `;
+  wrap.insertBefore(cont, wrap.firstChild);
+
+  const input = cont.querySelector("input");
+  const btnSave = cont.querySelector("[data-cat-save]");
+  const btnCancel = cont.querySelector("[data-cat-cancel]");
+  input.focus();
+
+  function cancelar(){ cont.remove(); }
+
+  async function guardar(){
+    const nombre = input.value.trim();
+    if (!nombre){ input.focus(); return; }
+    const ok = await agregarCategoria(nombre);
+    if (ok){ renderPanelCats(); }
+    else { input.focus(); }
+  }
+
+  btnSave.addEventListener("click", guardar);
+  btnCancel.addEventListener("click", cancelar);
+  input.addEventListener("keydown", function(e){
+    if (e.key === "Enter"){ e.preventDefault(); guardar(); }
+    if (e.key === "Escape"){ e.preventDefault(); cancelar(); }
+  });
+}
+
 function renderPanelProds(){
   const wrap = qs("#panelProds");
   const ae = document.activeElement;
@@ -6858,6 +7013,7 @@ async function moverProd(pid, dir){
 }
 
 function renderPanel(){
+  renderPanelCats();
   renderPanelProds();
   fillPanel(false);
   renderMpEstado();
@@ -7403,6 +7559,28 @@ function initPanel(){
     });
     if (id){ openProdId = id; renderPanelProds(); }
   });
+  /* ═══ Handlers de gestión de categorías ═══ */
+  const catListaAdmin = document.getElementById("catListaAdmin");
+  if (catListaAdmin && !catListaAdmin._listenerOk){
+    catListaAdmin._listenerOk = true;
+    catListaAdmin.addEventListener("click", async e => {
+      const btnEdit = e.target.closest("[data-cat-edit]");
+      const btnDel = e.target.closest("[data-cat-del]");
+      if (btnEdit){ abrirEditarCat(btnEdit.dataset.catEdit); return; }
+      if (btnDel){
+        const cat = btnDel.dataset.catDel;
+        const ok = await eliminarCategoria(cat);
+        if (ok) renderPanelCats();
+        return;
+      }
+    });
+  }
+  const btnNuevaCatAdmin = document.getElementById("btnNuevaCatAdmin");
+  if (btnNuevaCatAdmin && !btnNuevaCatAdmin._listenerOk){
+    btnNuevaCatAdmin._listenerOk = true;
+    btnNuevaCatAdmin.addEventListener("click", abrirNuevaCatAdmin);
+  }
+
   qs("#panelProds").addEventListener("click", e => {
     const img = e.target.closest("[data-imgprod]");
     if (img){ abrirImgModal({ col:"productos", doc: img.dataset.imgprod, field:"imagen" }); return; }
