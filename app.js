@@ -1299,6 +1299,7 @@ function initDetProducto(){
   document.addEventListener("click", function(e){
     if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
     if (e.target.closest("[data-add]")) return;
+    if (e.target.closest(".prod-add")) return;
     const ver = e.target.closest("[data-ver]");
     if (!ver) return;
     abrirDetProducto(ver.dataset.ver);
@@ -1343,15 +1344,25 @@ function initMenu(){
      directo — abre el modal de detalle, que es donde vive el
      selector, en vez de agregar una combinación no elegida. */
   document.addEventListener("click", e => {
+    let prodId = null;
     const b = e.target.closest("[data-add]");
-    if (!b) return;
+    if (b) {
+      prodId = b.dataset.add;
+    } else {
+      const br = e.target.closest(".prod-add");
+      if (br) {
+        const card = br.closest("[data-id]");
+        if (card) prodId = card.dataset.id;
+      }
+    }
+    if (!prodId) return;
     if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
-    const p = state.productos.find(x => x.id === b.dataset.add);
+    const p = state.productos.find(x => x.id === prodId);
     if (p && (p.variantesActivas || p.permitePersonalizacion)){
-      abrirDetProducto(b.dataset.add);
+      abrirDetProducto(prodId);
       return;
     }
-    agregarAlCarrito(b.dataset.add);
+    agregarAlCarrito(prodId);
   });
 }
 
