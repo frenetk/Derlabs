@@ -6722,6 +6722,76 @@ async function eliminarCategoria(nombre){
   return true;
 }
 
+
+/* ════════════════════════════════════════════════════════════════
+   EDITOR INLINE DE NUEVA CATEGORÍA
+   Cuando el usuario elige "Escribir nueva..." en el select,
+   se oculta el select y se muestra un input + Guardar/Cancelar.
+   ════════════════════════════════════════════════════════════════ */
+function abrirInputNuevaCategoria(selectEl){
+  const wrap = selectEl.closest(".prod-editor") || selectEl.parentNode;
+  if (!wrap) return;
+
+  /* Evitar duplicado si ya está abierto */
+  if (wrap.querySelector(".cat-inline-nueva")) {
+    const inp = wrap.querySelector(".cat-inline-nueva input");
+    if (inp) inp.focus();
+    return;
+  }
+
+  /* Ocultar el select */
+  selectEl.style.display = "none";
+
+  /* Crear contenedor */
+  const cont = document.createElement("div");
+  cont.className = "cat-inline-nueva";
+  cont.style.cssText = "display:flex;gap:6px;align-items:center;margin-top:6px;";
+  cont.innerHTML = `
+    <input type="text" class="field" placeholder="Nombre de la categoría" style="flex:1;margin:0;padding:10px 12px;font-size:13px;border:1.5px solid var(--borde);border-radius:10px;outline:none">
+    <button type="button" class="pill pill-solid pill-sm" data-cat-guardar style="margin:0;padding:8px 14px;font-size:12px">Guardar</button>
+    <button type="button" class="pill pill-outline-muted pill-sm" data-cat-cancelar style="margin:0;padding:8px 14px;font-size:12px">Cancelar</button>
+  `;
+  selectEl.parentNode.insertBefore(cont, selectEl.nextSibling);
+
+  const input = cont.querySelector("input");
+  const btnGuardar = cont.querySelector("[data-cat-guardar]");
+  const btnCancelar = cont.querySelector("[data-cat-cancelar]");
+
+  input.focus();
+
+  function cerrar(){
+    cont.remove();
+    selectEl.style.display = "";
+    selectEl.value = "";
+  }
+
+  async function guardar(){
+    const nombre = input.value.trim();
+    if (!nombre){
+      toast("Escribe un nombre");
+      input.focus();
+      return;
+    }
+    /* Agregar al config si no existe (usando helper del Script A) */
+    if (typeof agregarCategoria === "function"){
+      await agregarCategoria(nombre);
+    }
+    /* Asignar al producto */
+    await saveField("productos", selectEl.dataset.pid, "categoria", nombre);
+    toast("Categoría: " + nombre);
+    cerrar();
+    renderPanelProds();
+  }
+
+  btnGuardar.addEventListener("click", guardar);
+  btnCancelar.addEventListener("click", cerrar);
+
+  input.addEventListener("keydown", function(e){
+    if (e.key === "Enter"){ e.preventDefault(); guardar(); }
+    if (e.key === "Escape"){ e.preventDefault(); cerrar(); }
+  });
+}
+
 function renderPanelProds(){
   const wrap = qs("#panelProds");
   const ae = document.activeElement;
@@ -7360,29 +7430,7 @@ function initPanel(){
     if (el.dataset.pf === "precio") v = Number(el.value) || 0;
     const camposQueRerenderizan = ["variantesActivas", "permitePersonalizacion", "activo"];
     if (el.dataset.pf === "categoria" && v === "__nueva__"){
-      const wrap = el.closest(".prod-editor");
-      const inputNueva = wrap ? wrap.querySelector('input[data-pf="categoria"][placeholder="Nueva categoría"]') : null;
-      if (inputNueva){
-        inputNueva.value = "";
-        inputNueva.focus();
-        el.style.display = "none";
-        inputNueva.onblur = function(){
-          const val = inputNueva.value.trim();
-          if (val){
-            saveField("productos", inputNueva.dataset.pid, "categoria", val).then(function(){
-              toast("Categoría guardada: " + val);
-              renderPanelProds();
-            });
-          } else {
-            el.style.display = "";
-            renderPanelProds();
-          }
-        };
-        inputNueva.onkeydown = function(ev){
-          if (ev.key === "Enter"){ ev.preventDefault(); inputNueva.blur(); }
-          if (ev.key === "Escape"){ inputNueva.value = ""; inputNueva.blur(); }
-        };
-      }
+      abrirInputNuevaCategoria(el);
       return;
     }
     saveField("productos", el.dataset.pid, el.dataset.pf, v).then(() => {
