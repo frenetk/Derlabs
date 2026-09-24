@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#9B1B30">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Barlow+Condensed:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════════
    IDENTIDAD VISUAL — tokens
@@ -42,15 +42,15 @@ html{scroll-behavior:smooth}
 body{
   margin:0;
   background:#F0F0F0;
-  font-family:'Nunito',sans-serif;
+  font-family:'Plus Jakarta Sans',sans-serif;
   color:var(--texto);
   -webkit-font-smoothing:antialiased;
   -webkit-tap-highlight-color:transparent;
 }
 img{display:block;max-width:100%}
-button{font-family:'Nunito',sans-serif;color:inherit}
-input,select,textarea{font-family:'Nunito',sans-serif;color:var(--texto)}
-.bc{font-family:'Barlow Condensed',sans-serif;font-weight:700}
+button{font-family:'Plus Jakarta Sans',sans-serif;color:inherit}
+input,select,textarea{font-family:'Plus Jakarta Sans',sans-serif;color:var(--texto)}
+.bc{font-family:'Nunito',sans-serif;font-weight:700}
 
 .wrapper{
   max-width:480px;margin:0 auto;
@@ -91,7 +91,7 @@ input,select,textarea{font-family:'Nunito',sans-serif;color:var(--texto)}
 @media (hover:hover){ .card.lift:hover{transform:translateY(-4px)} }
 
 .sec-title{
-  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-family:'Nunito',sans-serif;font-weight:700;
   font-size:28px;letter-spacing:.5px;text-transform:uppercase;
   margin:0 0 14px;
 }
@@ -120,7 +120,7 @@ input,select,textarea{font-family:'Nunito',sans-serif;color:var(--texto)}
 body[data-page]:not([data-page="inicio"]) #btnBack{display:flex}
 body[data-page]:not([data-page="inicio"]) #btnBurger{display:none}
 .logo{
-  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-family:'Nunito',sans-serif;font-weight:700;
   font-size:24px;letter-spacing:1.5px;color:var(--rojo);
   cursor:pointer;user-select:none;-webkit-user-select:none;
   position:absolute;left:50%;transform:translateX(-50%);
@@ -250,7 +250,7 @@ body[data-page="menu"] .float-btn{display:block}
   font-size:11.5px;font-weight:800;letter-spacing:.3px;margin-bottom:8px;
 }
 .hero-title{
-  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-family:'Nunito',sans-serif;font-weight:700;
   font-size:36px;letter-spacing:1px;line-height:1;
   color:#fff;margin:0 0 3px;text-transform:uppercase;
 }
@@ -585,12 +585,12 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
   to{transform:translateY(-8px) scale(1.04)}
 }
 .splash-nombre{
-  font-family:'Barlow Condensed',sans-serif;
+  font-family:'Nunito',sans-serif;
   font-size:11px;font-weight:700;color:rgba(255,255,255,0.55);
   letter-spacing:4px;text-transform:uppercase;margin-bottom:2px;
 }
 .splash-sub{
-  font-family:'Barlow Condensed',sans-serif;
+  font-family:'Nunito',sans-serif;
   font-size:9px;font-weight:600;color:rgba(255,255,255,0.35);
   letter-spacing:5px;margin-bottom:10px;
 }
@@ -659,7 +659,7 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
   50%{ opacity:.6 }
 }
 .conf-titulo{
-  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-family:'Nunito',sans-serif;font-weight:700;
   font-size:36px;letter-spacing:1px;margin:0 0 4px;text-transform:uppercase;
 }
 .conf-sub{color:var(--muted);font-size:14px;font-weight:600;margin:0 0 14px}
@@ -710,7 +710,7 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
   font-size:13px;font-weight:700;letter-spacing:.5px;
 }
 .cup-desc-grande{
-  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-family:'Nunito',sans-serif;font-weight:700;
   font-size:32px;color:var(--rojo);letter-spacing:.5px;line-height:1;
 }
 .cup-detalle{font-size:13.5px;color:var(--muted);font-weight:600;margin:0 0 6px}
@@ -740,7 +740,7 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
   text-align:center;background:var(--crema);
 }
 .cr-logo{
-  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-family:'Nunito',sans-serif;font-weight:700;
   font-size:22px;letter-spacing:2px;color:var(--rojo);margin:0 0 5px;
 }
 .cr-texto{font-size:12px;color:var(--muted);margin:0 0 2px;font-weight:600}
@@ -839,7 +839,7 @@ body.dev-on:not(.preview-cliente) [data-ecol]{position:relative;border-radius:6p
     content:"✏ Editar";
     position:absolute;top:-24px;left:0;z-index:50;
     background:var(--rojo);color:var(--rojo-texto);border-radius:999px;
-    padding:2px 10px;font-size:10.5px;font-weight:800;font-family:'Nunito',sans-serif;
+    padding:2px 10px;font-size:10.5px;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;
     letter-spacing:.3px;white-space:nowrap;pointer-events:none;
     text-transform:none;line-height:1.6;
   }
@@ -1017,7 +1017,7 @@ body.dev-on:not(.preview-cliente) [data-ecol]{position:relative;border-radius:6p
 .panel-min{
   background:#fff;border:1.5px solid var(--borde);cursor:pointer;
   font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;
-  margin-right:4px;color:var(--texto);font-family:'Nunito',sans-serif;
+  margin-right:4px;color:var(--texto);font-family:'Plus Jakarta Sans',sans-serif;
   display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
 }
 .panel-min:hover{background:var(--crema);border-color:var(--rojo);color:var(--rojo)}
@@ -1129,7 +1129,7 @@ body.panel-min-on .float-btn{display:none !important}
   display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);
   background:#fff;border:1.5px solid var(--borde);border-radius:14px;
   box-shadow:0 8px 28px rgba(0,0,0,.13);overflow:hidden;z-index:99999;
-  font-family:'Nunito',sans-serif;
+  font-family:'Plus Jakarta Sans',sans-serif;
 }
 .gp-drop.open{display:block}
 .gp-item{padding:11px 14px;cursor:pointer;line-height:1.35;border-top:1px solid #f2f2f2}
@@ -1172,7 +1172,7 @@ body.panel-min-on .float-btn{display:none !important}
 .ck-gate-sub{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 24px;text-align:center;line-height:1.5}
 .ck-gate-btn{
   width:100%;padding:14px;border-radius:14px;border:none;
-  font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;cursor:pointer;
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:10px;
   margin-bottom:10px;transition:opacity .15s;
 }
@@ -1250,7 +1250,7 @@ body.panel-min-on .float-btn{display:none !important}
 }
 .puntos-titulo{
   position:relative;z-index:1;margin:0 0 8px;
-  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-family:'Nunito',sans-serif;font-weight:700;
   font-size:26px;letter-spacing:2.5px;color:var(--dorado);text-transform:uppercase;
 }
 .puntos-linea{position:relative;z-index:1;margin:0 0 3px;color:#F6EBD2;font-size:13.5px;font-weight:700;line-height:1.45}
@@ -1281,7 +1281,7 @@ body.panel-min-on .float-btn{display:none !important}
 .promo-emoji{font-size:44px;line-height:1;flex-shrink:0;position:relative;z-index:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.25))}
 .promo-txt{position:relative;z-index:1;min-width:0}
 .promo-titulo{
-  margin:0 0 4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  margin:0 0 4px;font-family:'Nunito',sans-serif;font-weight:700;
   font-size:24px;letter-spacing:1px;line-height:1.05;text-transform:uppercase;
 }
 .promo-sub{margin:0;font-size:12.5px;font-weight:700;opacity:.94;line-height:1.4}
@@ -1410,7 +1410,7 @@ body.dev-on:not(.preview-cliente) [data-selprod]{outline:2px dashed rgba(155,27,
 .promo-admin-head .ibtn{flex-shrink:0}
 .promo-mini-prev{border-radius:12px;padding:12px 14px;color:#fff;display:flex;align-items:center;gap:10px;margin-top:8px}
 .promo-mini-prev .pe{font-size:24px;line-height:1}
-.promo-mini-prev .pt{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:.5px;text-transform:uppercase;margin:0}
+.promo-mini-prev .pt{font-family:'Nunito',sans-serif;font-weight:700;font-size:16px;letter-spacing:.5px;text-transform:uppercase;margin:0}
 .promo-mini-prev .ps{font-size:11px;font-weight:700;opacity:.92;margin:0}
 .cup-admin-row{
   display:flex;align-items:flex-start;gap:10px;
@@ -1919,13 +1919,13 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
         <div style="width:62px;height:62px;border-radius:999px;background:var(--dorado);
              color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;
              margin:0 auto 14px;box-shadow:0 4px 16px rgba(212,160,23,.4)">👑</div>
-        <h3 style="margin:0 0 4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+        <h3 style="margin:0 0 4px;font-family:'Nunito',sans-serif;font-weight:700;
              font-size:26px;letter-spacing:.5px;text-transform:uppercase">Club Test Burgers</h3>
         <p style="margin:0 0 18px;font-size:13.5px;color:var(--muted);font-weight:600;line-height:1.4">
           Acumula puntos con cada pedido y canjéalos por descuentos exclusivos.</p>
         <div style="background:var(--crema);border-radius:14px;padding:16px;margin-bottom:18px">
           <p style="margin:0 0 2px;font-size:13px;font-weight:700;color:var(--muted)">Tus puntos</p>
-          <p style="margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+          <p style="margin:0;font-family:'Nunito',sans-serif;font-weight:700;
                font-size:48px;color:var(--rojo);line-height:1" id="cuentaPuntos">—</p>
           <p style="margin:4px 0 0;font-size:12px;color:var(--muted);font-weight:600" id="cuentaPuntosLabel">Inicia sesión para ver tu saldo</p>
         </div>
