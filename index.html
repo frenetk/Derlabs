@@ -72,9 +72,9 @@ input,select,textarea{font-family:'Plus Jakarta Sans',sans-serif;color:var(--tex
 }
 .pill:active{transform:scale(.97)}
 .pill-solid{background:var(--rojo);color:var(--rojo-texto)}
-.pill-solid:hover{background:var(--rojo-h)}
+
 .pill-outline{background:transparent;border-color:var(--rojo);color:var(--rojo)}
-.pill-outline:hover{background:var(--rojo);color:var(--rojo-texto)}
+
 .pill-white{background:#fff;color:var(--rojo)}
 .pill-gris{background:#F5F5F5;color:var(--muted)}
 .pill-outline-white{background:transparent;border-color:#fff;color:#fff}
@@ -166,7 +166,7 @@ body.dev-on #menuDrop{top:calc(var(--nav-h) + 48px)}
   padding:10px 14px;font-size:14px;font-weight:700;border-radius:10px;
   cursor:pointer;transition:all .2s ease;
 }
-.mlink:hover{background:var(--crema);color:var(--rojo)}
+
 
 /* ─── Banner tienda cerrada ─── */
 #bannerCerrada{
@@ -215,8 +215,7 @@ body.cerrada #bannerCerrada{display:block}
   max-width:calc(100vw - 32px);
 }
 .float-btn:active{transform:scale(.97)}
-body[data-page="inicio"] .float-btn,
-body[data-page="menu"] .float-btn{display:block}
+body[data-page="inicio"] .float-btn{display:block}
 
 /* SPA NAVIGATION */
 /* ══════════════════════════════════════════════════════════════
@@ -315,7 +314,7 @@ body[data-page="menu"] .float-btn{display:block}
   box-shadow:0 3px 12px rgba(155,27,48,.5);
   transition:all .2s ease;
 }
-.btn-add-circ:hover{background:var(--rojo-h)}
+
 .btn-add-circ:active{transform:scale(.9)}
 
 /* — Categorías grid — */
@@ -1020,7 +1019,7 @@ body.dev-on:not(.preview-cliente) [data-ecol]{position:relative;border-radius:6p
   margin-right:4px;color:var(--texto);font-family:'Plus Jakarta Sans',sans-serif;
   display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
 }
-.panel-min:hover{background:var(--crema);border-color:var(--rojo);color:var(--rojo)}
+
 .panel-chip{
   display:none;position:fixed;bottom:calc(var(--tab-h) + 16px);
   right:16px;z-index:499;
@@ -1198,7 +1197,7 @@ body.panel-min-on .float-btn{display:none !important}
 .zona-card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .zona-card-head .field{margin:0;font-weight:800;font-size:13px;flex:1}
 .zona-del{background:none;border:none;font-size:17px;cursor:pointer;padding:4px;opacity:.6;flex-shrink:0}
-.zona-del:hover{opacity:1}
+
 .zona-row2{display:flex;gap:8px;margin-top:8px}
 .zona-row2>div{flex:1}
 .zona-row2 .plabel{margin-top:0;font-size:11px}
@@ -1619,6 +1618,16 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   border:1.5px solid var(--borde);border-radius:10px;outline:none;
 }
 .cat-edit-inline input:focus{border-color:var(--rojo);}
+
+/* :hover solo en dispositivos con mouse (evita que quede pegado tras un tap en móvil) */
+@media (hover:hover){
+  .pill-solid:hover{background:var(--rojo-h)}
+  .pill-outline:hover{background:var(--rojo);color:var(--rojo-texto)}
+  .mlink:hover{background:var(--crema);color:var(--rojo)}
+  .btn-add-circ:hover{background:var(--rojo-h)}
+  .panel-min:hover{background:var(--crema);border-color:var(--rojo);color:var(--rojo)}
+  .zona-del:hover{opacity:1}
+}
 </style>
 </head>
 <body data-page="inicio">
