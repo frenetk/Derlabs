@@ -16,7 +16,7 @@
   - Colores de marca por tienda: cambiá --accent (y --on-accent si el color es claro) en :root.
 
   MODO DEMO
-  - <body class="demo"> fuerza el estado "lleno" para revisar el diseño (cupón aplicado,
+  - <body> fuerza el estado "lleno" para revisar el diseño (cupón aplicado,
     sesión iniciada, direcciones guardadas, seguimiento). Al integrar, sacá la clase o hacé
     document.body.classList.remove('demo') al arrancar. La sección 27 del CSS se puede borrar entera.
   - data-demo marca relleno estático que no pertenece a ningún ID.
@@ -1094,9 +1094,534 @@ body.demo:has(:is(#page-producto,#page-checkout):is(.active,:target,:has(:target
 .demo-nav-panel a{display:block;padding:7px 8px;border-radius:6px;color:var(--ink);font-weight:500;line-height:1.3}
 .demo-nav-panel a:hover{background:var(--bg-2)}
 .demo-nav-note{margin:10px 4px 4px;padding:8px 10px;border-radius:6px;background:var(--bg-2);font-size:12px;line-height:1.45;color:var(--ink-2)}
+
+
+/* DEVMODE */
+/* ══════════════════════════════════════════════════════════════
+   DEVMODE
+   ══════════════════════════════════════════════════════════════ */
+#devBar{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:400;
+  background:#1A3A1A;color:#fff;height:44px;
+  align-items:center;justify-content:space-between;gap:8px;
+  padding:0 12px;font-size:12.5px;font-weight:800;
+}
+#devBar .db-badge{
+  background:#2E7D32;border-radius:999px;padding:4px 11px;
+  font-size:11px;letter-spacing:.5px;
+}
+#devPageName{
+  position:absolute;left:50%;transform:translateX(-50%);
+  font-size:12px;opacity:.85;text-transform:capitalize;
+}
+#devBar .db-actions{display:flex;gap:7px}
+body.dev-on #devBar{display:flex}
+body.dev-on{padding-top:44px}
+body.dev-on .navbar{top:44px}
+body.dev-on .ck-resumen{z-index:124}
+body.preview-cliente #devBar{display:none}
+body.preview-cliente{padding-top:0}
+body.preview-cliente .navbar{top:0}
+#previewChip{
+  display:none;position:fixed;bottom:calc(var(--tab-h) + 16px);
+  left:max(16px, calc(50% - 240px + 16px));z-index:410;
+  background:#1A3A1A;color:#fff;border:none;border-radius:999px;
+  padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+}
+body.preview-cliente #previewChip{display:block}
+
+/* — Elementos editables — */
+body.dev-on:not(.preview-cliente) [data-ecol]{position:relative;border-radius:6px;cursor:pointer}
+@media (hover:hover){
+  body.dev-on:not(.preview-cliente) [data-ecol]:not(.editing):hover{
+    outline:2px dashed rgba(155,27,48,0.4);outline-offset:3px;
+  }
+  body.dev-on:not(.preview-cliente) [data-ecol]:not(.editing):hover::after{
+    content:"✏ Editar";
+    position:absolute;top:-24px;left:0;z-index:50;
+    background:var(--rojo);color:var(--rojo-texto);border-radius:999px;
+    padding:2px 10px;font-size:10.5px;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;
+    letter-spacing:.3px;white-space:nowrap;pointer-events:none;
+    text-transform:none;line-height:1.6;
+  }
+}
+[data-ecol].editing{
+  outline:2px solid var(--rojo) !important;outline-offset:2px;
+  background:#FFFDE7 !important;color:var(--texto) !important;
+  min-width:24px;
+}
+@keyframes flashOk{
+  0%{box-shadow:0 0 0 3px rgba(30,123,60,0)}
+  30%{box-shadow:0 0 0 3px rgba(30,123,60,.8);background:rgba(30,123,60,.12)}
+  100%{box-shadow:0 0 0 3px rgba(30,123,60,0)}
+}
+.save-ok{animation:flashOk .8s ease}
+
+
+/* PANEL ADMIN */
+/* ══════════════════════════════════════════════════════════════
+   PANEL ADMIN
+   ══════════════════════════════════════════════════════════════ */
+#adminPanel{
+  position:fixed;top:0;right:0;height:100%;
+  width:340px;max-width:92vw;
+  background:#fff;z-index:500;
+  box-shadow:-10px 0 30px rgba(0,0,0,.15);
+  transform:translateX(110%);transition:transform .25s ease;
+  display:flex;flex-direction:column;
+}
+#adminPanel.open{transform:translateX(0)}
+.panel-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:15px 16px;border-bottom:1px solid var(--borde);
+  font-weight:900;font-size:15px;flex-shrink:0;
+}
+.panel-close{background:none;border:none;font-size:20px;cursor:pointer;padding:2px 8px}
+.ptabs{
+  display:flex;gap:5px;overflow-x:auto;padding:10px 12px;
+  border-bottom:1px solid var(--borde);flex-shrink:0;scrollbar-width:none;
+}
+.ptabs::-webkit-scrollbar{display:none}
+.ptab{
+  flex-shrink:0;border:none;border-radius:999px;
+  padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;
+  background:#F5F5F5;color:var(--muted);transition:all .2s ease;
+}
+.ptab.active{background:var(--rojo);color:var(--rojo-texto)}
+.panel-body{overflow-y:auto;padding:16px;flex:1}
+.psec{display:none}
+.psec.active{display:block}
+.psec h4{
+  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--rojo);margin:20px 0 10px;font-weight:900;
+}
+.psec h4:first-child{margin-top:0}
+.plabel{font-size:11px;font-weight:800;color:#888;display:block;margin:10px 0 4px;text-align:left}
+.psec .field{margin-bottom:4px;font-size:13px;padding:9px 12px}
+.psec textarea.field{min-height:100px;resize:vertical;line-height:1.45}
+.pnota{font-size:11px;color:var(--muted);font-weight:600;margin:3px 0 8px;line-height:1.45;text-align:left}
+.prow{
+  display:flex;align-items:center;gap:8px;
+  background:#FAFAFA;border-radius:12px;
+  padding:8px 10px;margin-bottom:8px;
+  font-size:13px;font-weight:700;
+}
+.prow.inactivo{opacity:.45}
+.prow .mini{width:38px;height:38px;border-radius:9px;overflow:hidden;background:#E8E4E1;flex-shrink:0}
+.prow .mini img{width:100%;height:100%;object-fit:cover}
+.prow .ttl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left;line-height:1.3}
+.prow .ttl small{display:block;color:var(--rojo);font-size:11.5px}
+.pbtns{display:flex;gap:4px;flex-shrink:0}
+.ibtn{
+  border:none;background:#fff;border-radius:8px;
+  width:27px;height:27px;cursor:pointer;font-size:12.5px;line-height:1;
+  box-shadow:0 1px 4px rgba(0,0,0,.12);transition:all .2s ease;
+}
+.ibtn:active{transform:scale(.9)}
+.prod-editor{
+  background:#FFF;border:1.5px solid var(--borde);border-radius:14px;
+  padding:12px;margin:-4px 0 12px;text-align:left;
+}
+.panel-full{width:100%;margin-top:6px}
+.switch-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 2px;font-size:13px;font-weight:800;text-align:left;
+}
+.switch{position:relative;width:44px;height:25px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{
+  position:absolute;inset:0;border-radius:999px;background:#D8D8D8;
+  transition:all .2s ease;cursor:pointer;
+}
+.slider::before{
+  content:"";position:absolute;width:19px;height:19px;border-radius:999px;
+  left:3px;top:3px;background:#fff;transition:all .2s ease;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
+}
+.switch input:checked + .slider{background:var(--verde)}
+.switch input:checked + .slider::before{transform:translateX(19px)}
+.varpills{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 4px}
+.vpill{
+  border:none;background:var(--crema);color:var(--rojo);
+  border-radius:999px;padding:4px 10px;font-size:10.5px;font-weight:800;
+  cursor:pointer;font-family:ui-monospace,monospace;
+}
+.vpill:active{transform:scale(.95)}
+.msj-preview{
+  background:#E8F5E9;border-radius:12px;padding:10px 12px;
+  font-size:11.5px;line-height:1.5;white-space:pre-wrap;text-align:left;
+  color:#1B3C22;margin:6px 0 14px;font-weight:600;
+}
+.mp-guia{
+  background:var(--crema);border-radius:14px;padding:13px 14px;
+  font-size:12.5px;line-height:1.65;text-align:left;font-weight:600;
+  margin-bottom:12px;color:#4A4A4A;
+}
+.mp-estado{font-size:13px;font-weight:800;margin:10px 0;text-align:left}
+.token-row{display:flex;gap:6px;align-items:center}
+.token-row .field{flex:1;margin-bottom:0}
+.device-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:#FAFAFA;border-radius:12px;padding:10px 12px;margin-bottom:8px;
+  font-size:12px;font-weight:700;text-align:left;
+}
+.device-row small{display:block;color:var(--muted);font-weight:600}
+.btn-quitar{
+  border:none;background:none;color:var(--rojo);
+  font-size:12px;font-weight:800;cursor:pointer;padding:4px 6px;
+}
+.cup-admin-card{
+  background:#FAFAFA;border-radius:12px;padding:12px 14px;margin-bottom:10px;
+  border:1px solid var(--borde);
+}
+.cup-admin-card.inactivo{opacity:.55}
+.cup-admin-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cup-admin-codigo{font-weight:900;font-size:15px;letter-spacing:.3px}
+.cup-admin-valor{font-weight:800;font-size:14px;color:var(--rojo)}
+.cup-admin-sub{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
+.cup-admin-actions{display:flex;gap:8px;margin-top:10px}
+.pill-mini{
+  flex:1;padding:7px 10px;border-radius:999px;font-size:11.5px;font-weight:800;
+  background:#EFEFEF;color:var(--texto);border:none;cursor:pointer;
+}
+.pill-mini-del{background:rgba(155,27,48,.1);color:var(--rojo)}
+.promo-preview-wrap{
+  background:#F4F4F4;border-radius:16px;padding:14px;
+  display:flex;justify-content:center;overflow:hidden;
+}
+.promo-preview-wrap .promo-card{width:100%;min-height:96px}
+.promo-admin-card{
+  background:#FAFAFA;border-radius:14px;padding:12px;margin-bottom:12px;
+  border:1px solid var(--borde);
+}
+.promo-admin-mini{
+  width:100%;min-height:80px;padding:14px 16px;border-radius:14px;
+}
+.promo-admin-mini .promo-emoji{font-size:30px}
+.promo-admin-mini .promo-titulo{font-size:15px}
+.promo-admin-mini .promo-sub{font-size:12px}
+.promo-admin-estado{
+  font-size:11px;font-weight:700;color:var(--verde);margin:8px 2px 0;
+}
+.promo-admin-estado.inactivo{color:var(--muted)}
+.color-row{display:flex;align-items:center;gap:12px;padding:6px 2px}
+.color-row input[type=color]{
+  width:48px;height:34px;border:none;border-radius:10px;cursor:pointer;
+  padding:0;background:none;
+}
+.pending-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;background:#FFF8E1;border-bottom:1px solid #FFE082;
+  font-size:12px;font-weight:800;flex-shrink:0;
+}
+.pending-bar #pendingCount{flex:1;color:#8A6D00}
+.pending-bar .pill{margin:0;padding:5px 12px;font-size:11.5px}
+.panel-min{
+  background:#fff;border:1.5px solid var(--borde);cursor:pointer;
+  font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;
+  margin-right:4px;color:var(--texto);font-family:'Plus Jakarta Sans',sans-serif;
+  display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
+}
+
+.panel-chip{
+  display:none;position:fixed;bottom:calc(var(--tab-h) + 16px);
+  right:16px;z-index:499;
+  background:var(--rojo);color:var(--rojo-texto);border:none;
+  border-radius:999px;padding:11px 18px;font-size:13px;font-weight:800;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;
+}
+body.panel-min-on #adminPanel{transform:translateX(110%)}
+body.panel-min-on #panelChip{display:block}
+body.panel-min-on .float-btn{display:none !important}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+  html{scroll-behavior:auto}
+}
+
+/* ══ Pedidos (panel vendedor) ══ */
+.ped-card{background:var(--crema);border-radius:14px;padding:13px 14px;margin-bottom:10px;border-left:4px solid var(--rojo);cursor:pointer}
+.ped-card:active{opacity:.85}
+.ped-top{display:flex;justify-content:space-between;margin-bottom:3px}
+.ped-id{font-weight:900;font-size:12px;color:var(--rojo)}
+.ped-time{font-size:11px;color:var(--muted);font-weight:600}
+.ped-nombre{font-weight:800;font-size:14px}
+.ped-items{font-size:12px;color:var(--muted);margin:2px 0 8px;font-weight:600}
+.ped-bottom{display:flex;justify-content:space-between;align-items:center}
+.ped-total{font-weight:900;font-size:15px}
+.ped-badge{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.ped-badge.nuevo{background:#FFF3E0;color:#E65100}
+.ped-badge.preparando{background:#E3F2FD;color:#1565C0}
+.ped-badge.camino{background:#F3E5F5;color:#6A1B9A}
+.ped-badge.entregado{background:#E8F5E9;color:#2E7D32}
+.ped-badge.cancelado{background:#FFEBEE;color:#C62828}
+#pedidoDetalle{display:none;position:fixed;inset:0;z-index:9999;background:#fff;overflow-y:auto}
+#pedidoDetalle.open{display:block}
+.det-header{background:var(--rojo);color:var(--rojo-texto);padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:2}
+.det-back{font-size:24px;background:none;border:none;color:var(--rojo-texto);cursor:pointer;line-height:1;padding:2px 6px}
+.det-titulo{font-weight:900;font-size:17px}
+.det-body{padding:16px;padding-bottom:40px}
+.det-sec{background:var(--crema);border-radius:14px;padding:14px;margin-bottom:12px}
+.det-sec h5{font-size:11px;font-weight:900;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin:0 0 8px}
+.det-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.06);font-size:13px}
+.det-row:last-child{border-bottom:none}
+.det-lbl{color:var(--muted);font-weight:600}
+.det-val{font-weight:800;text-align:right;max-width:62%;word-break:break-word}
+.det-total{font-size:18px;font-weight:900;color:var(--rojo);text-align:right;padding-top:8px}
+.est-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.est-btn{padding:10px 6px;border-radius:10px;border:2px solid #E4DCD3;background:#fff;font-weight:800;font-size:12px;cursor:pointer;text-align:center}
+.est-btn.active{border-color:var(--rojo);background:var(--rojo);color:var(--rojo-texto)}
+.mapa-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#E8F0FE;border-radius:10px;padding:11px 14px;color:#1A73E8;font-weight:800;font-size:13px;margin-top:8px;text-decoration:none}
+
+
+/* ══ Mi Cuenta — secciones extra ══ */
+.ctab{white-space:nowrap;padding:8px 14px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-weight:800;font-size:12.5px;cursor:pointer;color:var(--texto)}
+.ctab.active{background:var(--rojo);border-color:var(--rojo);color:var(--rojo-texto)}
+.cuenta-sec{padding-bottom:20px}
+.hist-filtros{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
+.hist-filtros::-webkit-scrollbar{display:none}
+.hfpill{white-space:nowrap;padding:6px 14px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-weight:700;font-size:12px;cursor:pointer}
+.hfpill.active{background:var(--rojo);border-color:var(--rojo);color:var(--rojo-texto)}
+.hist-card{background:var(--crema);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.hist-head{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;cursor:pointer}
+.hist-body{display:none;padding:0 14px 14px}
+.hist-card.abierto .hist-body{display:block}
+.hist-card.abierto .hist-arrow{transform:rotate(180deg)}
+.hist-arrow{transition:transform .2s;font-size:13px;color:var(--muted)}
+.hist-linea{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid #eee}
+.hist-linea:last-child{border:none}
+.hist-linea.total{font-weight:900;font-size:14px;padding-top:8px;margin-top:4px;border-top:1px solid #ddd;border-bottom:none}
+.dir-card{background:var(--crema);border-radius:14px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+.dir-card.favorita{border:2px solid var(--dorado)}
+.dir-ico{font-size:26px;flex-shrink:0;margin-top:2px}
+.dir-cta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pago-hist-item{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #eee}
+.pago-hist-item:last-child{border:none}
+/* Modal dirección */
+#dirModal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.5);align-items:flex-end}
+#dirModal.open{display:flex}
+.dir-modal-box{background:#fff;border-radius:22px 22px 0 0;padding:22px 18px 34px;width:100%;max-height:90vh;overflow-y:auto}
+.lset-btn{padding:8px 16px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-weight:800;font-size:13px;cursor:pointer}
+.lset-btn.active{background:var(--rojo);border-color:var(--rojo);color:var(--rojo-texto)}
+
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP — adaptación a pantallas grandes (>= 900px)
+   El CSS mobile queda intacto, esto solo se activa en escritorio.
+   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP — adaptación a pantallas grandes (>= 1024px)
+   El CSS mobile queda intacto, esto solo se activa en escritorio.
+   ══════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  /* Fondo gris neutro tipo "marco" */
+  body { background: #EBEBEB; }
+
+  /* Wrapper ancho */
+  .wrapper { max-width: 1280px; box-shadow: 0 0 80px rgba(0,0,0,.12); }
+
+  /* Navbar más ancha y alta */
+  .navbar { padding: 0 40px; height: 72px; }
+  .logo { font-size: 28px; letter-spacing: 2px; }
+
+  /* Hero grande */
+  .hero { margin: 32px 40px 0; height: 420px; border-radius: 24px; }
+  .hero-title { font-size: 64px; letter-spacing: 1px; }
+  .hero-sub { font-size: 18px; }
+  .hero-badge { font-size: 13px; padding: 8px 16px; }
+  .hero-content { left: 40px; right: 40px; bottom: 32px; }
+
+  /* Secciones */
+  .bloque { padding: 0 40px; margin-bottom: 48px; }
+  .sec-title { font-size: 42px; margin: 0 0 24px; letter-spacing: 1px; }
+
+  /* Puntos banner */
+  .puntos-banner { margin: 0 40px 48px; padding: 48px 40px 44px; border-radius: 24px; }
+  .puntos-titulo { font-size: 34px; }
+  .puntos-linea { font-size: 16px; }
+
+  /* Ofertas: 4 en grid */
+  .ofertas-scroll {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+    padding: 0; margin: 0; overflow: visible;
+  }
+  .oferta-card { flex: none; aspect-ratio: 4/5; border-radius: 20px; }
+
+  /* Categorías: 4 columnas */
+  .cat-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; }
+
+  /* Promocionales: ancho completo */
+  .promo-scroll {
+    display: grid; grid-template-columns: 1fr; gap: 20px;
+    padding: 0; margin: 0; overflow: visible;
+  }
+  .promo-card { width: 100%; max-width: none; min-height: 140px; border-radius: 24px; }
+
+  /* Lista de productos en 3 columnas */
+  .menu-list, #popularesList {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    padding: 0 40px;
+  }
+  .prod-item {
+    display: block; padding: 18px;
+    border: none; background: #fff;
+    border-radius: 20px; box-shadow: 0 4px 24px var(--sombra);
+  }
+  .prod-img { width: 100%; height: 200px; border-radius: 14px; }
+  .prod-info { margin-top: 16px; }
+  .prod-nombre { font-size: 17px; }
+  .prod-desc { font-size: 14.5px; -webkit-line-clamp: 3; }
+  .prod-precio { font-size: 18px; }
+  .prod-cta { margin-top: 14px; width: 100%; padding: 12px; }
+
+  /* Filtros */
+  .filtros { padding: 24px 40px 10px; }
+  .fpill { font-size: 15px; padding: 10px 22px; }
+
+  /* Cupones y locales en 2 columnas */
+  .cup-wrap, .loc-wrap { padding: 40px; }
+  #cuponesList, #localesList {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+  }
+  .cupon-card, .local-card { margin-bottom: 0; }
+
+  /* Tabbar */
+  .tabbar { max-width: 1280px; padding: 0 40px; }
+  .tab { font-size: 12.5px; gap: 6px; }
+  .tab .t-svg { width: 26px; height: 26px; }
+
+  /* Cart: drawer lateral derecho */
+  #cartSheet {
+    top: 0; bottom: 0; right: 0; left: auto;
+    width: 520px; max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 24px 0 0 24px;
+    transform: translateX(100%);
+  }
+  #cartSheet.open { transform: translateX(0); }
+
+  /* Botón flotante */
+  .float-btn { right: 40px; padding: 14px 26px; font-size: 15px; }
+
+  /* Checkout: formulario a la izquierda, resumen fijo a la derecha */
+  .ck-wrap { padding: 40px 40px 160px; max-width: 720px; }
+  .ck-resumen {
+    right: 40px; left: auto; transform: none;
+    bottom: 20px; max-width: 420px;
+    border-radius: 20px;
+  }
+
+  /* Confirmación */
+  .conf-wrap { padding: 60px 40px 40px; max-width: 720px; margin: 0 auto; }
+  .conf-titulo { font-size: 48px; }
+
+  /* Footer */
+  .footer-cr { padding: 48px 40px 100px; }
+  .cr-logo { font-size: 28px; }
+}
+
+
+/* FASE 5: devmode retail */
+.md-admin { display:none !important; }
+#adminPanel { position:fixed; inset:0; z-index:200; display:none; overflow:auto; background:var(--bg-2); }
+#adminPanel.open { display:block; }
+#adminPanel .admin-head { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); }
+#adminPanel .admin-body { padding:20px; }
+#adminPanel .psec { display:none; }
+#adminPanel .psec.active { display:block; }
+.psec h4 { font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); margin:20px 0 10px; font-weight:900; }
+.psec h4:first-child { margin-top:0; }
+.pnota { font-size:11px; color:var(--ink-2); font-weight:600; margin:3px 0 8px; line-height:1.45; text-align:left; }
+.plabel { font-size:11px; font-weight:800; color:#888; display:block; margin:10px 0 4px; text-align:left; }
+.psec .field { margin-bottom:4px; font-size:13px; padding:9px 12px; }
+.psec textarea.field { min-height:100px; resize:vertical; line-height:1.45; }
+.prow { display:flex; align-items:center; gap:8px; background:#FAFAFA; border-radius:12px; padding:8px 10px; margin-bottom:8px; font-size:13px; font-weight:700; }
+.prow.inactivo { opacity:.45; }
+.prow .mini { width:38px; height:38px; border-radius:9px; overflow:hidden; background:var(--bg-2); flex-shrink:0; }
+.prow .mini img { width:100%; height:100%; object-fit:cover; }
+.prow .ttl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; text-align:left; line-height:1.3; }
+.prow .ttl small { display:block; color:var(--accent); font-size:11.5px; }
+.pbtns { display:flex; gap:4px; flex-shrink:0; }
+.ibtn { border:none; background:#fff; border-radius:8px; width:27px; height:27px; cursor:pointer; font-size:12.5px; line-height:1; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+.prod-editor { background:#FFF; border:1.5px solid var(--line); border-radius:14px; padding:12px; margin:-4px 0 12px; text-align:left; }
+.panel-full { width:100%; margin-top:6px; }
+.switch-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 2px; font-size:13px; font-weight:800; text-align:left; }
+.varpills { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 4px; }
+.vpill { border:none; background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:4px 10px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:ui-monospace,monospace; }
+.msj-preview { background:#E8F5E9; border-radius:12px; padding:10px 12px; font-size:11.5px; line-height:1.5; white-space:pre-wrap; text-align:left; color:#1B3C22; margin:6px 0 14px; font-weight:600; }
+.mp-guia { background:var(--accent-soft); border-radius:14px; padding:13px 14px; font-size:12.5px; line-height:1.65; text-align:left; font-weight:600; margin-bottom:12px; }
+.mp-estado { font-size:13px; font-weight:800; margin:10px 0; text-align:left; }
+.token-row { display:flex; gap:6px; align-items:center; }
+.token-row .field { flex:1; margin-bottom:0; }
+.device-row { display:flex; align-items:center; justify-content:space-between; gap:8px; background:#FAFAFA; border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:12px; font-weight:700; text-align:left; }
+.btn-quitar { border:none; background:none; color:var(--accent); font-size:12px; font-weight:800; cursor:pointer; padding:4px 6px; }
+.cup-admin-card { background:#FAFAFA; border-radius:12px; padding:12px 14px; margin-bottom:10px; border:1px solid var(--line); }
+.cup-admin-card.inactivo { opacity:.55; }
+.cup-admin-top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.cup-admin-codigo { font-weight:900; font-size:15px; }
+.cup-admin-valor { font-weight:800; font-size:14px; color:var(--accent); }
+.cup-admin-sub { font-size:12px; color:var(--ink-2); font-weight:600; margin-top:3px; }
+.cup-admin-actions { display:flex; gap:8px; margin-top:10px; }
+.pill-mini { flex:1; padding:7px 10px; border-radius:999px; font-size:11.5px; font-weight:800; background:#EFEFEF; color:var(--ink); border:none; cursor:pointer; }
+.pill-mini-del { background:color-mix(in srgb,var(--accent) 10%,#fff); color:var(--accent); }
+.promo-admin-mini { width:100%; min-height:80px; padding:14px 16px; border-radius:14px; }
+.promo-admin-estado { font-size:11px; font-weight:700; color:var(--ok); margin:8px 2px 0; }
+.promo-admin-estado.inactivo { color:var(--ink-2); }
+.color-row { display:flex; align-items:center; gap:12px; padding:6px 2px; }
+.color-row input[type=color] { width:48px; height:34px; border:none; border-radius:10px; cursor:pointer; padding:0; background:none; }
+.zona-card { background:var(--bg-2); border:1.5px solid var(--line); border-radius:13px; padding:13px; margin-bottom:10px; }
+.zona-card-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.zona-del { background:none; border:none; font-size:17px; cursor:pointer; padding:4px; opacity:.6; flex-shrink:0; }
+.zona-row2 { display:flex; gap:8px; margin-top:8px; }
+.zona-row2>div { flex:1; }
+.fin-card { background:var(--bg-2); border:1.5px solid var(--line); border-radius:12px; padding:14px 12px; text-align:center; }
+.fin-val { font-size:22px; font-weight:900; color:var(--accent); }
+.fin-lab { font-size:11px; font-weight:700; color:var(--ink-2); margin-top:2px; text-transform:uppercase; letter-spacing:.4px; }
+.fin-per.active { background:var(--accent) !important; color:var(--on-accent) !important; border-color:var(--accent) !important; }
+.fin-reg { display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px; }
+.fin-top-item { display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid #f0f0f0; font-size:13px; }
+.inv-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f0f0f0; }
+.inv-nombre { flex:1; font-size:13px; font-weight:700; }
+.inv-stock { display:flex; align-items:center; gap:6px; }
+.inv-btn { width:28px; height:28px; border-radius:50%; border:1.5px solid var(--line); background:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:800; }
+.inv-num { width:38px; text-align:center; font-size:14px; font-weight:900; }
+.inv-badge { font-size:10px; font-weight:800; border-radius:6px; padding:2px 7px; }
+.inv-badge.ok { background:#E8F5E9; color:#1B5E20; }
+.inv-badge.low { background:#FFF8E1; color:#E65100; }
+.inv-badge.out { background:#FFF3F3; color:#9B1B30; }
+.inv-alerta { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#FFF8E1; border:1.5px solid #FFE082; border-radius:10px; margin-bottom:8px; font-size:13px; }
+.ped-card { background:var(--accent-soft); border-radius:14px; padding:13px 14px; margin-bottom:10px; border-left:4px solid var(--accent); cursor:pointer; }
+.ped-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; gap:6px; }
+.ped-id { font-weight:900; font-size:12px; color:var(--accent); }
+.ped-time { font-size:11px; color:var(--ink-2); font-weight:600; }
+.ped-badge { font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+.ped-badge.nuevo { background:#FFF3E0; color:#E65100; }
+.ped-badge.preparacion, .ped-badge.preparando { background:#E3F2FD; color:#1565C0; }
+.ped-badge.camino { background:#F3E5F5; color:#6A1B9A; }
+.ped-badge.listo, .ped-badge.entregado { background:#E8F5E9; color:#2E7D32; }
+.ped-badge.cancelado { background:#FFEBEE; color:#C62828; }
+#pedidoDetalle { display:none; position:fixed; inset:0; z-index:9000; background:#fff; overflow-y:auto; }
+#pedidoDetalle.open { display:block; }
+.det-header { background:var(--accent); color:#fff; padding:14px 16px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:2; }
+.det-back { font-size:24px; background:none; border:none; color:#fff; cursor:pointer; line-height:1; padding:2px 6px; }
+.det-titulo { font-weight:900; font-size:17px; }
+.det-body { padding:16px; padding-bottom:40px; }
+.det-sec { background:var(--accent-soft); border-radius:14px; padding:14px; margin-bottom:12px; }
+.det-sec h5 { font-size:11px; font-weight:900; color:var(--ink-2); letter-spacing:1px; text-transform:uppercase; margin:0 0 8px; }
+.det-row { display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(0,0,0,.06); font-size:13px; }
+.det-lbl { color:var(--ink-2); font-weight:600; }
+.det-val { font-weight:800; text-align:right; max-width:62%; word-break:break-word; }
+.det-total { font-size:18px; font-weight:900; color:var(--accent); text-align:right; padding-top:8px; }
+.est-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.est-btn { padding:10px 6px; border-radius:10px; border:2px solid var(--line); background:#fff; font-weight:800; font-size:12px; cursor:pointer; text-align:center; }
+.est-btn.active { border-color:var(--accent); background:var(--accent); color:var(--on-accent); }
+.mapa-btn { display:flex; align-items:center; justify-content:center; gap:8px; background:#E8F0FE; border-radius:10px; padding:11px 14px; color:#1A73E8; font-weight:800; font-size:13px; margin-top:8px; text-decoration:none; }
+.ct-sec { display:none; }
+.ct-sec.active { display:block; }
+
 </style>
 </head>
-<body class="demo">
+<body>
 
 <!-- Íconos (sprite). Uso: <svg class="i"><use href="#i-bag"/></svg> -->
 <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
@@ -2228,7 +2753,7 @@ body.demo:has(:is(#page-producto,#page-checkout):is(.active,:target,:has(:target
   <a class="md-item" href="https://wa.me/56912345678" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-whatsapp"/></svg>Ayuda por WhatsApp</a>
   <p class="md-info" data-demo><strong>Atención online</strong>Lunes a sábado de 10:00 a 20:00</p>
   <div class="md-sep"></div>
-  <button class="md-item md-admin" type="button"><svg class="i i-sm" aria-hidden="true"><use href="#i-lock"/></svg>Acceso administrador</button>
+  <!-- admin oculto -->
 </nav>
 
 <button id="btnFloat" type="button"><svg class="i" aria-hidden="true"><use href="#i-grid"/></svg>Ver catálogo</button>
@@ -2303,200 +2828,219 @@ body.demo:has(:is(#page-producto,#page-checkout):is(.active,:target,:has(:target
   </div>
 </div>
 
-<div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+<div class="overlay" id="loginModal">
   <div class="modal-card">
-    <div class="modal-head">
-      <div>
-        <h2 id="loginTitle" class="modal-title">Acceso administrador</h2>
-        <p class="modal-sub">Ingresa con la cuenta de la tienda.</p>
-      </div>
-      <button class="icon-btn modal-x" type="button" aria-label="Cerrar"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
+    <h3>⚙ Acceso desarrollador</h3>
+    <p>Inicia sesión con tu cuenta de administrador.</p>
+    <div class="stack">
+      <input class="field" id="loginEmail" type="email" placeholder="Email" autocomplete="username">
+      <input class="field" id="loginPass" type="text" placeholder="Contraseña"
+             autocomplete="off" data-lpignore="true" data-form-type="other"
+             style="-webkit-text-security:disc;text-security:disc">
+      <button class="pill pill-solid" id="loginBtn">Entrar</button>
     </div>
-    <div class="ffield">
-      <label for="loginEmail">Correo</label>
-      <input id="loginEmail" type="email" autocomplete="username" placeholder="tu@tienda.cl">
-    </div>
-    <div class="ffield">
-      <label for="loginPass">Contraseña</label>
-      <input id="loginPass" type="password" autocomplete="current-password">
-    </div>
-    <p id="loginErr" class="form-err" role="alert"></p>
-    <button id="loginBtn" class="btn btn-primary btn-lg btn-block" type="button">Ingresar</button>
+    <p class="err" id="loginErr">Credenciales incorrectas</p>
+    <p id="loginDemoNote" style="display:none;font-size:11.5px;color:var(--muted);margin:12px 0 0;font-weight:600">
+      Modo demo sin Firebase: cualquier email y contraseña sirven.
+    </p>
   </div>
 </div>
 
-<div id="contratoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="contratoTitle">
-  <div class="modal-card wide">
-    <div class="modal-head">
-      <div>
-        <h2 id="contratoTitle" class="modal-title">Contrato de servicio</h2>
-        <p class="modal-sub">Léelo antes de activar tu tienda.</p>
-      </div>
-      <button class="icon-btn modal-x" type="button" aria-label="Cerrar"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
+
+
+<div class="overlay" id="contratoModal">
+  <div class="modal-card" style="max-width:480px">
+    <h3>📋 Términos del servicio</h3>
+    <div id="contratoTexto" style="max-height:280px;overflow-y:auto;text-align:left;font-size:13.5px;line-height:1.6;color:var(--texto);border:1px solid var(--borde);border-radius:12px;padding:14px;margin:14px 0;background:var(--crema)">
+      <p><b>⚠️ TEXTO DE EJEMPLO — reemplazar por el contrato real.</b></p>
+      <p>Esta plataforma (en adelante, "el proveedor") entrega a el/la usuario/a (en adelante, "el cliente") acceso a un sitio de comercio electrónico y, si corresponde, un nombre de dominio asociado, bajo la modalidad de arriendo/servicio.</p>
+      <p>El cliente declara conocer y aceptar que:</p>
+      <p>1. Es el único responsable del contenido que publique, los productos que ofrezca, y el cumplimiento de la normativa vigente aplicable a su actividad comercial.</p>
+      <p>2. El proveedor actúa únicamente como intermediario técnico, sin responsabilidad sobre las transacciones, productos o servicios ofrecidos por el cliente.</p>
+      <p>3. El proveedor se reserva el derecho de suspender el servicio ante incumplimiento de estos términos o de la normativa vigente.</p>
+      <p>[... resto del contrato real, provisto por el abogado ...]</p>
     </div>
-    <div class="legal" tabindex="0" data-demo>
-      <h3>1. Qué incluye el servicio</h3>
-      <p>DerLabs entrega a la tienda una plataforma de venta online con catálogo, carrito, pagos, gestión de pedidos y panel de administración, alojada y mantenida por DerLabs.</p>
-      <h3>2. Pagos y comisiones</h3>
-      <p>Los pagos con tarjeta se procesan en la cuenta de Mercado Pago de la tienda. DerLabs no retiene dinero de las ventas. El plan mensual se cobra por adelantado.</p>
-      <h3>3. Datos de los clientes</h3>
-      <p>Los datos de los compradores pertenecen a la tienda. DerLabs los usa solo para operar el servicio y no los comparte con terceros.</p>
-      <h3>4. Término</h3>
-      <p>Puedes terminar el servicio cuando quieras con 30 días de aviso. Te entregamos una copia de tu catálogo y tus pedidos.</p>
+    <label style="display:flex;align-items:flex-start;gap:8px;text-align:left;font-size:13px;font-weight:700;cursor:pointer">
+      <input type="checkbox" id="contratoCheck" style="margin-top:3px">
+      <span>Leí y acepto los términos del servicio descritos arriba.</span>
+    </label>
+    <button class="pill pill-solid" id="contratoBtn" style="width:100%;margin-top:14px" disabled>Aceptar y continuar</button>
+    <p class="err" id="contratoErr"></p>
+  </div>
+</div>
+
+
+
+<div class="overlay" id="pinModal">
+  <div class="modal-card">
+    <h3>🔒 Verificación de propietario</h3>
+    <p id="pinMotivo">Esta acción requiere la cuenta de propietario.</p>
+    <div class="stack">
+      <input class="field" id="pinEmail" type="email" placeholder="Email de propietario" autocomplete="username">
+      <input class="field" id="pinPass" type="text" placeholder="Contraseña"
+             autocomplete="off" data-lpignore="true" data-form-type="other"
+             style="-webkit-text-security:disc;text-security:disc">
+      <button class="pill pill-solid" id="pinBtn">Verificar</button>
+      <button class="pill pill-outline" id="pinCancelBtn">Cancelar</button>
     </div>
-    <label class="check check-row"><input type="checkbox">Leí y acepto el contrato de servicio</label>
+    <p class="err" id="pinErr">Credenciales incorrectas o esta cuenta no tiene permiso de propietario</p>
+  </div>
+</div>
+
+
+
+<div class="overlay" id="imgModal">
+  <div class="modal-card">
+    <h3>Editar imagen</h3>
+    <div class="img-opts">
+      <button class="pill pill-outline pill-sm opt sel" data-opt="file">📁 Subir archivo</button>
+      <button class="pill pill-outline pill-sm opt" data-opt="url">🔗 URL</button>
+    </div>
+    <div id="imgFileZone">
+      <input class="field" type="file" id="imgFile" accept="image/*">
+    </div>
+    <div id="imgUrlZone" hidden>
+      <input class="field" type="text" id="imgUrl" placeholder="https://…">
+    </div>
+    <div id="imgPreviewWrap"><img id="imgPreview" alt="Vista previa"></div>
     <div class="modal-actions">
-      <button class="btn btn-primary btn-lg btn-block" type="button">Aceptar y continuar</button>
+      <button class="pill pill-outline-muted pill-sm" id="imgCancel">Cancelar</button>
+      <button class="pill pill-solid pill-sm" id="imgConfirm">Confirmar</button>
     </div>
+    <p id="imgDemoNote" style="font-size:11px;color:var(--muted);margin:10px 0 0;display:none;font-weight:600">
+      💡 En modo demo la imagen se guarda solo en esta sesión.
+    </p>
   </div>
 </div>
 
-<div id="pinModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
-  <div class="modal-card">
-    <div class="modal-head">
-      <div>
-        <h2 id="pinTitle" class="modal-title">PIN de administrador</h2>
-        <p class="modal-sub">Ingresa el PIN de 4 dígitos para editar la tienda.</p>
+
+
+<div id="dirModal">
+  <div class="dir-modal-box">
+    <h3 id="dirModalTitulo" style="margin:0 0 18px;font-size:18px;font-weight:900">Nueva dirección</h3>
+    <input type="hidden" id="dirEditId">
+    <p style="margin:0 0 8px;font-size:13px;font-weight:800">Etiqueta</p>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="lset-btn active" data-lb="Casa">🏠 Casa</button>
+      <button class="lset-btn" data-lb="Trabajo">💼 Trabajo</button>
+      <button class="lset-btn" data-lb="Otro">📌 Otro</button>
+    </div>
+    <!-- Trampa: absorbe el autocompletado del browser antes de llegar a dirInput -->
+    <input type="text" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;left:-9999px" tabindex="-1" aria-hidden="true" autocomplete="street-address">
+    <div class="ffield" style="margin-bottom:12px">
+      <input type="text" id="dirInput" placeholder=" "
+             autocomplete="off"
+             data-lpignore="true"
+             data-form-type="other"
+             data-1p-ignore="true"
+             x-autocompletetype="off"
+             spellcheck="false"
+             enterkeyhint="search">
+      <label for="dirInput">Calle y número</label>
+    </div>
+    <div class="ffield" style="margin-bottom:12px">
+      <select id="dirComuna"></select>
+      <label for="dirComuna">Comuna</label>
+    </div>
+    <div id="dirMapa" class="mini-mapa"></div>
+    <div class="ffield" style="margin-bottom:12px">
+      <input type="tel" id="dirTelInput" placeholder=" "
+             autocomplete="tel"
+             data-lpignore="true"
+             data-form-type="other"
+             spellcheck="false"
+             inputmode="tel">
+      <label for="dirTelInput">Teléfono de contacto</label>
+    </div>
+    <div class="ffield" style="margin-bottom:14px">
+      <input type="text" id="dirRefInput" placeholder=" "
+             autocomplete="off"
+             data-lpignore="true"
+             data-form-type="other"
+             spellcheck="false">
+      <label for="dirRefInput">Referencias (opcional)</label>
+    </div>
+    <div id="dirFavRow" style="display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid #eee;border-bottom:1px solid #eee;margin-bottom:18px;cursor:pointer">
+      <input type="checkbox" id="dirFavCheck" style="width:18px;height:18px;accent-color:var(--rojo)">
+      <label for="dirFavCheck" style="font-weight:700;font-size:14px;cursor:pointer">Marcar como favorita</label>
+    </div>
+    <button class="pill pill-solid" style="width:100%;margin-bottom:10px" id="dirModalGuardar">Guardar dirección</button>
+    <button class="pill pill-outline" style="width:100%" id="dirModalCancel">Cancelar</button>
+  </div>
+</div>
+
+
+
+<div class="overlay" id="prodSelModal">
+  <div class="modal-card" style="max-height:78vh;display:flex;flex-direction:column">
+    <h3 style="margin-bottom:4px">Elegir producto destacado</h3>
+    <p style="margin:0 0 12px;font-size:12.5px;color:var(--muted);font-weight:600">La foto, el nombre y el precio se toman del producto.</p>
+    <div id="prodSelLista" style="overflow-y:auto;flex:1;margin:0 -6px;padding:0 6px"></div>
+    <button class="pill pill-outline-muted pill-sm" id="prodSelCancel" style="margin-top:12px">Cancelar</button>
+  </div>
+</div>
+
+
+
+<div class="overlay" id="cliPedModal">
+  <div class="modal-card" style="text-align:left;max-height:82vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <h3 style="margin:0" id="cliPedId">#TB00000</h3>
+      <button class="cart-close" id="cliPedClose" aria-label="Cerrar" style="position:static">✕</button>
+    </div>
+    <p style="margin:0 0 10px;font-size:12px;color:var(--muted);font-weight:600" id="cliPedFecha"></p>
+    <div style="margin-bottom:12px" id="cliPedBadge"></div>
+    <div class="card" style="box-shadow:none;border:1px solid var(--borde);padding:12px 14px;margin-bottom:14px" id="cliPedResumen"></div>
+    <h4 style="margin:0 0 10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:900">Seguimiento</h4>
+    <div id="cliPedTimeline"></div>
+  </div>
+</div>
+
+
+
+<div id="pedidoDetalle" role="dialog" aria-label="Detalle del pedido">
+  <div class="det-header">
+    <button class="det-back" id="btnCerrarDet" aria-label="Volver">←</button>
+    <div style="flex:1">
+      <div class="det-titulo" id="detId">Pedido</div>
+      <div style="font-size:11.5px;opacity:.85" id="detFecha"></div>
+    </div>
+    <span id="detBadge" class="ped-badge nuevo"></span>
+  </div>
+  <div class="det-body">
+    <div class="det-sec">
+      <h5>Cliente</h5>
+      <div class="det-row"><span class="det-lbl">Nombre</span><span class="det-val" id="detNombre"></span></div>
+      <div class="det-row"><span class="det-lbl">Teléfono</span><span class="det-val" id="detTel"></span></div>
+      <div class="det-row"><span class="det-lbl">Entrega</span><span class="det-val" id="detTipo"></span></div>
+      <div id="detDirWrap" style="display:none">
+        <div class="det-row"><span class="det-lbl">Dirección</span><span class="det-val" id="detDir"></span></div>
+        <a id="detMapa" class="mapa-btn" href="#" target="_blank" rel="noopener">🗺️ Ver en Google Maps</a>
       </div>
-      <button class="icon-btn modal-x" type="button" aria-label="Cerrar"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
-    <div class="pin-boxes">
-      <input type="password" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Dígito 1">
-      <input type="password" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Dígito 2">
-      <input type="password" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Dígito 3">
-      <input type="password" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Dígito 4">
+    <div class="det-sec">
+      <h5>Productos</h5>
+      <div id="detItems"></div>
+      <div class="det-total" id="detTotal"></div>
     </div>
-    <div class="modal-actions">
-      <button class="btn btn-primary btn-lg btn-block" type="button">Entrar al modo edición</button>
-    </div>
-  </div>
-</div>
-
-<div id="imgModal" class="modal" role="dialog" aria-modal="true" aria-label="Foto del producto">
-  <div class="modal-card">
-    <button class="icon-btn modal-x" type="button" aria-label="Cerrar"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
-    <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1400&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="1400" height="1400">
-  </div>
-</div>
-
-<div id="dirModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="dirTitle">
-  <div class="modal-card">
-    <div class="modal-head">
-      <div>
-        <h2 id="dirTitle" class="modal-title">Nueva dirección</h2>
-        <p class="modal-sub">La guardamos en tu cuenta para tus próximas compras.</p>
+    <div class="det-sec">
+      <h5>Estado del pedido</h5>
+      <div class="est-grid">
+        <button class="est-btn" data-est="nuevo">📋 Recibido</button>
+        <button class="est-btn" data-est="preparacion">👨‍🍳 Preparando</button>
+        <button class="est-btn" data-est="camino">🛵 En camino</button>
+        <button class="est-btn" data-est="listo">✅ Entregado</button>
       </div>
-      <button class="icon-btn modal-x" type="button" aria-label="Cerrar"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
+      <button class="est-btn" data-est="cancelado" style="width:100%;margin-top:8px;color:#C62828;border-color:#C62828">❌ Cancelar pedido</button>
     </div>
-    <p class="flabel">Nombre</p>
-    <div class="name-chips">
-      <button class="pill pill-solid sm" type="button">Casa</button>
-      <button class="pill sm" type="button">Oficina</button>
-      <button class="pill sm" type="button">Otra</button>
-    </div>
-    <label class="ffield"><span class="flabel">Calle y número</span><input type="text" autocomplete="street-address" placeholder="Av. Providencia 1234"></label>
-    <div class="frow">
-      <label class="ffield"><span class="flabel">Comuna</span>
-        <select autocomplete="address-level2">
-          <option value="">Selecciona</option>
-          <option>Providencia</option>
-          <option>Las Condes</option>
-          <option>Ñuñoa</option>
-          <option>Santiago Centro</option>
-          <option>Vitacura</option>
-          <option>Maipú</option>
-        </select>
-      </label>
-      <label class="ffield"><span class="flabel">Depto o casa <span class="opt">(opcional)</span></span><input type="text" autocomplete="address-line2" placeholder="Depto 502"></label>
-    </div>
-    <label class="check"><input type="checkbox" checked>Usar como dirección predeterminada</label>
-    <div class="modal-actions">
-      <button class="btn btn-primary btn-lg btn-block" type="button">Guardar dirección</button>
+    <div class="det-sec">
+      <h5>Contactar</h5>
+      <button class="pill pill-solid pill-sm" style="width:100%" id="btnWspDet">💬 WhatsApp al cliente</button>
     </div>
   </div>
 </div>
 
-<div id="prodSelModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="prodSelTitle">
-  <div class="modal-card">
-    <div class="modal-head">
-      <div>
-        <h2 id="prodSelTitle" class="modal-title">Elegir productos</h2>
-        <p class="modal-sub">Marca los productos que entran en esta promoción.</p>
-      </div>
-      <button class="icon-btn modal-x" type="button" aria-label="Cerrar"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
-    </div>
-    <label class="search-field"><svg class="i i-sm" aria-hidden="true"><use href="#i-search"/></svg><span class="sr-only">Buscar producto</span><input class="input" type="search" placeholder="Buscar por nombre o marca"></label>
-    <div class="sel-list">
-      <label class="sel-row"><input type="checkbox" checked><span class="thumb xs"><img src="https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></span><span class="mp-txt"><strong>AirPods Pro (2.ª generación)</strong><span>Apple, $199.990</span></span></label>
-      <label class="sel-row"><input type="checkbox" checked><span class="thumb xs"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></span><span class="mp-txt"><strong>WH-1000XM5</strong><span>Sony, $349.990</span></span></label>
-      <label class="sel-row"><input type="checkbox" checked><span class="thumb xs"><img src="https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></span><span class="mp-txt"><strong>Flip 6</strong><span>JBL, $99.990</span></span></label>
-      <label class="sel-row"><input type="checkbox"><span class="thumb xs"><img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></span><span class="mp-txt"><strong>Galaxy Watch7 44 mm</strong><span>Samsung, $279.990</span></span></label>
-      <label class="sel-row"><input type="checkbox"><span class="thumb xs"><img src="https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></span><span class="mp-txt"><strong>MX Master 3S</strong><span>Logitech, $89.990</span></span></label>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-primary btn-lg btn-block" type="button">Listo, 3 productos</button>
-    </div>
-  </div>
-</div>
 
-<div id="cliPedModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="cliPedTitle">
-  <div class="modal-card wide">
-    <div class="modal-head">
-      <div>
-        <h2 id="cliPedTitle" class="modal-title">Pedido #1042</h2>
-        <p class="modal-sub">Comprado hoy a las 14:32</p>
-      </div>
-      <button class="icon-btn modal-x" type="button" aria-label="Cerrar"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
-    </div>
-    <ol class="tl det-tl" aria-label="Estado del pedido">
-      <li class="done">Confirmado</li>
-      <li class="done">Preparado</li>
-      <li class="active">En camino</li>
-      <li>Entregado</li>
-    </ol>
-    <div class="det-block">
-      <h3>Productos</h3>
-      <div class="cr-row"><span>1 × AirPods Pro (2.ª generación)</span><b>$199.990</b></div>
-      <div class="cr-row"><span>2 × Cargador USB-C 67W</span><b>$49.980</b></div>
-      <div class="cr-row"><span>Descuento NEXO10</span><b>−$24.997</b></div>
-      <div class="cr-row"><span>Despacho</span><b>$3.990</b></div>
-      <div class="cr-row cr-total"><span>Total</span><b>$228.963</b></div>
-    </div>
-    <div class="det-block"><h3>Entrega</h3><p>Av. Providencia 1234, depto 502, Providencia. Llega hoy entre 16:00 y 20:00.</p></div>
-    <div class="det-block"><h3>Pago</h3><p>Mercado Pago, Visa terminada en 4821. Aprobado.</p></div>
-    <div class="modal-actions row">
-      <a class="btn btn-outline" href="https://wa.me/56912345678" target="_blank" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-whatsapp"/></svg>WhatsApp</a>
-      <button class="btn btn-dark" type="button">Volver a comprar</button>
-    </div>
-  </div>
-</div>
-
-<div id="pedidoDetalle" class="modal" role="dialog" aria-modal="true" aria-labelledby="pedDetTitle">
-  <div class="modal-card wide">
-    <div class="modal-head">
-      <div>
-        <h2 id="pedDetTitle" class="modal-title">Pedido #1045 <span class="status st-new">Nuevo</span></h2>
-        <p class="modal-sub">Hoy a las 14:32, pagado con Mercado Pago</p>
-      </div>
-      <button class="icon-btn modal-x" type="button" aria-label="Cerrar"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
-    </div>
-    <div class="det-block"><h3>Cliente</h3><p><strong>Camila Rojas</strong><br>+56 9 8765 4321<br>camila.rojas@correo.cl</p></div>
-    <div class="det-block"><h3>Despacho a domicilio</h3><p>Av. Providencia 1234, depto 502, Providencia<br>Conserjería 24 horas</p></div>
-    <div class="det-block">
-      <h3>Productos</h3>
-      <div class="cr-row"><span>1 × AirPods Pro (2.ª generación)</span><b>$199.990</b></div>
-      <div class="cr-row"><span>2 × Cargador USB-C 67W</span><b>$49.980</b></div>
-      <div class="cr-row"><span>Cupón NEXO10</span><b>−$24.997</b></div>
-      <div class="cr-row"><span>Despacho</span><b>$3.990</b></div>
-      <div class="cr-row cr-total"><span>Total</span><b>$228.963</b></div>
-    </div>
-    <div class="det-block"><h3>Nota del cliente</h3><p>Es un regalo, no incluir la boleta en la caja.</p></div>
-    <div class="modal-actions row">
-      <button class="btn btn-outline" type="button"><svg class="i" aria-hidden="true"><use href="#i-print"/></svg>Imprimir</button>
-      <button class="btn btn-primary" type="button">Aceptar pedido</button>
-    </div>
-  </div>
-</div>
 
 <!-- =============================================================
      MODO EDICIÓN (devmode)
@@ -2516,393 +3060,383 @@ body.demo:has(:is(#page-producto,#page-checkout):is(.active,:target,:has(:target
      Pestañas: .ptab[data-pt] + secciones .psec#pt-XXX (visible la que tenga .active).
      Tienda, Envío, Pagos, Correos y Configuración son UI de ejemplo (data-demo).
      ============================================================= -->
-<div id="adminPanel" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
-  <div class="admin-head">
-    <div class="admin-top">
-      <div>
-        <h2 id="adminTitle" class="admin-title">Panel de la tienda</h2>
-        <p class="admin-store">Nexo Store</p>
-      </div>
-      <button id="panelClose" class="icon-btn" type="button" aria-label="Cerrar panel"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
-    </div>
-    <div class="ptabs" role="tablist" aria-label="Secciones del panel">
-      <button class="ptab active" type="button" role="tab" data-pt="pedidos">Pedidos</button>
-      <button class="ptab" type="button" role="tab" data-pt="tienda">Tienda</button>
-      <button class="ptab" type="button" role="tab" data-pt="productos">Productos</button>
-      <button class="ptab" type="button" role="tab" data-pt="promos">Promociones</button>
-      <button class="ptab" type="button" role="tab" data-pt="cupones">Cupones</button>
-      <button class="ptab" type="button" role="tab" data-pt="zonas">Zonas</button>
-      <button class="ptab" type="button" role="tab" data-pt="finanzas">Finanzas</button>
-      <button class="ptab" type="button" role="tab" data-pt="inventario">Inventario</button>
-      <button class="ptab" type="button" role="tab" data-pt="envio">Envío</button>
-      <button class="ptab" type="button" role="tab" data-pt="pagos">Pagos</button>
-      <button class="ptab" type="button" role="tab" data-pt="emails">Correos</button>
-      <button class="ptab" type="button" role="tab" data-pt="notif">Notificaciones</button>
-      <button class="ptab" type="button" role="tab" data-pt="config">Configuración</button>
-    </div>
+<aside id="adminPanel">
+  <div class="panel-head">
+    <span>⚙ Panel</span>
+    <span style="flex:1"></span>
+    <button class="panel-min" id="panelMin" aria-label="Ver cambios" title="Ver los cambios en la tienda">👁 Ver cambios</button>
+    <button class="panel-close" id="panelClose" aria-label="Cerrar panel">✕</button>
+  </div>
+  <div id="pendingBar" class="pending-bar" style="display:none">
+    <span id="pendingCount">0 cambios sin guardar</span>
+    <button class="pill pill-outline pill-sm" id="btnDiscard">Descartar</button>
+    <button class="pill pill-solid pill-sm" id="btnSave">Guardar</button>
   </div>
 
-  <div class="admin-body">
+  <div class="ptabs">
+    <button class="ptab" data-pt="pedidos">🛍 Pedidos</button>
+    <button class="ptab active" data-pt="tienda">Tienda</button>
+    <button class="ptab" data-pt="productos">Productos</button>
+    <button class="ptab" data-pt="promos">📢 Promos</button>
+    <button class="ptab" data-pt="cupones">🎟 Cupones</button>
+    <button class="ptab" data-pt="zonas">📍 Zonas</button>
+    <button class="ptab" data-pt="finanzas">💰 Finanzas</button>
+    <button class="ptab" data-pt="inventario">📦 Inventario</button>
+    <button class="ptab" data-pt="envio">Checkout &amp; WhatsApp</button>
+    <button class="ptab" data-pt="pagos">Pagos</button>
+    <button class="ptab" data-pt="emails">📧 Emails</button>
+    <button class="ptab" data-pt="notif">Notificaciones</button>
+    <button class="ptab" data-pt="config">Config</button>
+  </div>
 
-    <!-- PEDIDOS -->
-    <section id="pt-pedidos" class="psec active" role="tabpanel" aria-labelledby="ptPedidosT">
-      <div class="psec-head"><h2 id="ptPedidosT" class="psec-title">Pedidos <span id="pedCont">1 nuevo</span></h2></div>
-      <div class="chips" data-demo>
-        <button class="pill pill-solid sm" type="button">Todos <span class="count">4</span></button>
-        <button class="pill sm" type="button">Nuevos <span class="count">1</span></button>
-        <button class="pill sm" type="button">Preparando <span class="count">1</span></button>
-        <button class="pill sm" type="button">En camino <span class="count">1</span></button>
-        <button class="pill sm" type="button">Entregados <span class="count">1</span></button>
-      </div>
-      <div id="pedLista">
-        <article class="ped is-new">
-          <div class="ped-top"><span class="ped-num">#1045</span><span class="status st-new">Nuevo</span><span class="ped-time">Hace 4 min</span></div>
-          <p class="ped-cli">Camila Rojas<span>+56 9 8765 4321</span></p>
-          <p class="ped-items">1 × AirPods Pro (2.ª generación)<br>2 × Cargador USB-C 67W</p>
-          <div class="ped-bottom"><div class="ped-meta"><span class="tag">Despacho a Providencia</span><span class="tag">Mercado Pago</span></div><span class="ped-total">$228.963</span></div>
-          <div class="ped-actions"><button class="btn btn-soft btn-sm" type="button">Ver detalle</button><button class="btn btn-primary btn-sm" type="button">Aceptar pedido</button></div>
-        </article>
-        <article class="ped">
-          <div class="ped-top"><span class="ped-num">#1044</span><span class="status st-prep">Preparando</span><span class="ped-time">Hace 38 min</span></div>
-          <p class="ped-cli">Matías González<span>+56 9 7654 3210</span></p>
-          <p class="ped-items">1 × MacBook Air 13” con chip M3</p>
-          <div class="ped-bottom"><div class="ped-meta"><span class="tag">Retiro en Las Condes</span><span class="tag">Mercado Pago</span></div><span class="ped-total">$1.099.990</span></div>
-          <div class="ped-actions"><button class="btn btn-soft btn-sm" type="button">Ver detalle</button><button class="btn btn-dark btn-sm" type="button">Listo para retiro</button></div>
-        </article>
-        <article class="ped">
-          <div class="ped-top"><span class="ped-num">#1043</span><span class="status st-ship">En camino</span><span class="ped-time">Hace 2 h</span></div>
-          <p class="ped-cli">Fernanda Soto<span>+56 9 6543 2109</span></p>
-          <p class="ped-items">1 × JBL Flip 6</p>
-          <div class="ped-bottom"><div class="ped-meta"><span class="tag">Despacho a Ñuñoa</span><span class="tag">Efectivo</span></div><span class="ped-total">$103.980</span></div>
-          <div class="ped-actions"><button class="btn btn-soft btn-sm" type="button">Ver detalle</button><button class="btn btn-dark btn-sm" type="button">Marcar entregado</button></div>
-        </article>
-        <article class="ped">
-          <div class="ped-top"><span class="ped-num">#1041</span><span class="status st-done">Entregado</span><span class="ped-time">Ayer</span></div>
-          <p class="ped-cli">Ignacio Pérez<span>+56 9 5432 1098</span></p>
-          <p class="ped-items">1 × Galaxy Watch7 44 mm</p>
-          <div class="ped-bottom"><div class="ped-meta"><span class="tag">Despacho a Maipú</span><span class="tag">Mercado Pago</span></div><span class="ped-total">$285.980</span></div>
-          <div class="ped-actions"><button class="btn btn-soft btn-sm" type="button">Ver detalle</button></div>
-        </article>
-      </div>
-    </section>
+  <div class="panel-body">
 
-    <!-- TIENDA (UI de ejemplo) -->
-    <section id="pt-tienda" class="psec" role="tabpanel" aria-labelledby="ptTiendaT">
-      <div class="psec-head"><h2 id="ptTiendaT" class="psec-title">Tienda</h2></div>
-      <div class="acard" data-demo>
-        <h3 class="acard-title">Marca</h3>
-        <div class="logo-row">
-          <div class="logo-prev">Nexo</div>
-          <div class="arow-main"><p class="arow-title">Logo</p><p class="arow-sub">PNG o SVG con fondo transparente.</p></div>
-          <button class="btn btn-soft btn-sm" type="button">Cambiar</button>
-        </div>
-        <div class="set-grid">
-          <label class="ffield"><span class="flabel">Nombre de la tienda</span><input type="text" value="Nexo Store"></label>
-          <label class="ffield"><span class="flabel">Rubro</span>
-            <select><option>Tecnología</option><option>Ropa y calzado</option><option>Accesorios</option><option>Hogar</option></select>
-          </label>
-        </div>
-        <p class="flabel">Color de la marca</p>
-        <div class="swatches">
-          <button class="swatch active" type="button" style="--sw:#0066FF" aria-label="Azul" aria-pressed="true"></button>
-          <button class="swatch" type="button" style="--sw:#00A88A" aria-label="Verde agua" aria-pressed="false"></button>
-          <button class="swatch" type="button" style="--sw:#1D1D1F" aria-label="Negro" aria-pressed="false"></button>
-          <button class="swatch" type="button" style="--sw:#5E5CE6" aria-label="Índigo" aria-pressed="false"></button>
-        </div>
-      </div>
-      <div class="acard" data-demo>
-        <h3 class="acard-title">Portada</h3>
-        <label class="ffield"><span class="flabel">Etiqueta</span><input type="text" value="Semana del audio"></label>
-        <label class="ffield"><span class="flabel">Título</span><input type="text" value="Hasta 23% en audífonos y parlantes"></label>
-        <label class="ffield"><span class="flabel">Bajada</span><textarea rows="2">Sony, JBL y Apple con garantía oficial, despacho en 24 horas y hasta 12 cuotas sin interés.</textarea></label>
-        <div class="logo-row">
-          <div class="thumb"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=160&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="160" height="160"></div>
-          <div class="arow-main"><p class="arow-title">Imagen de portada</p><p class="arow-sub">Horizontal, idealmente 1600 × 1200 px.</p></div>
-          <button class="btn btn-soft btn-sm" type="button">Cambiar</button>
-        </div>
-      </div>
-      <div class="acard" data-demo>
-        <div class="set-row">
-          <div class="arow-main"><p class="arow-title">Tienda abierta</p><p class="arow-sub">Si la cierras, los clientes ven un aviso y pueden comprar igual.</p></div>
-          <label class="switch"><input type="checkbox" checked aria-label="Tienda abierta"><span></span></label>
-        </div>
-        <div class="set-row">
-          <div class="arow-main"><p class="arow-title">Horario de atención</p><p class="arow-sub">Lunes a sábado de 10:00 a 20:00</p></div>
-          <button class="btn btn-soft btn-sm" type="button">Editar</button>
-        </div>
-      </div>
-      <div class="save-bar"><button class="btn btn-primary" type="button">Guardar cambios</button></div>
-    </section>
+    <!-- TAB TIENDA -->
+    <div class="psec" id="pt-pedidos">
+      <h4 style="display:flex;justify-content:space-between;align-items:center;margin-top:0">Pedidos recientes <span id="pedCont" style="font-size:11px;font-weight:600;color:var(--muted)"></span></h4>
+      <div id="pedLista"><p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Cargando…</p></div>
+    </div>
 
-    <!-- PRODUCTOS -->
-    <section id="pt-productos" class="psec" role="tabpanel" aria-labelledby="ptProductosT">
-      <div class="psec-head">
-        <h2 id="ptProductosT" class="psec-title">Productos</h2>
-        <button id="btnNuevoProd" class="btn btn-primary btn-sm" type="button"><svg class="i i-sm" aria-hidden="true"><use href="#i-plus"/></svg>Nuevo producto</button>
+    <div class="psec active" id="pt-tienda">
+      <h4>Datos del negocio</h4>
+      <label class="plabel" for="pNombre">Nombre del negocio</label>
+      <input class="field" id="pNombre" type="text">
+      <label class="plabel" for="pTagline">Tagline</label>
+      <input class="field" id="pTagline" type="text">
+      <button class="pill pill-outline pill-sm panel-full" id="btnLogo" style="margin-top:8px">🖼 Cambiar logo</button>
+      <p class="pnota">Recomendado: PNG transparente, ~240×88 px. Si no subís logo, se muestra el nombre como texto.</p>
+      <label class="plabel" for="pRubro">Rubro</label>
+      <select class="field" id="pRubro"></select>
+      <p class="pnota" id="pRubroNota">Cambiar el rubro actualiza el color de marca a la paleta sugerida para ese rubro. Si ya personalizaste el color, se conserva tu elección — no se pisa sola.</p>
+      <h4>Estado</h4>
+      <div class="switch-row">
+        <span>Tienda abierta</span>
+        <label class="switch"><input type="checkbox" id="pAbierto"><span class="slider"></span></label>
       </div>
-      <div class="admin-cols">
-        <div class="acard">
-          <div id="panelProds">
-            <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">iPhone 16 Pro 256 GB</p><p class="arow-sub">Apple, 7 en stock</p></div><span class="arow-num">$1.149.990</span><label class="switch"><input type="checkbox" checked aria-label="iPhone 16 Pro visible en la tienda"><span></span></label></div>
-            <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">AirPods Pro (2.ª generación)</p><p class="arow-sub">Apple, 3 en stock</p></div><span class="arow-num">$199.990</span><label class="switch"><input type="checkbox" checked aria-label="AirPods Pro visible en la tienda"><span></span></label></div>
-            <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">WH-1000XM5</p><p class="arow-sub">Sony, 2 en stock</p></div><span class="arow-num">$349.990</span><label class="switch"><input type="checkbox" checked aria-label="WH-1000XM5 visible en la tienda"><span></span></label></div>
-            <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">Flip 6</p><p class="arow-sub">JBL, 14 en stock</p></div><span class="arow-num">$99.990</span><label class="switch"><input type="checkbox" checked aria-label="Flip 6 visible en la tienda"><span></span></label></div>
-            <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">MacBook Air 13” M3</p><p class="arow-sub">Apple, 4 en stock</p></div><span class="arow-num">$1.099.990</span><label class="switch"><input type="checkbox" checked aria-label="MacBook Air visible en la tienda"><span></span></label></div>
-            <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1486401899868-0e435ed85128?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">PlayStation 5 Slim Digital</p><p class="arow-sub">Sony, sin stock</p></div><span class="arow-num">$499.990</span><label class="switch"><input type="checkbox" aria-label="PlayStation 5 visible en la tienda"><span></span></label></div>
-            <div class="arow"><div class="thumb xs"></div><div class="arow-main"><p class="arow-title">Cargador USB-C 67W</p><p class="arow-sub">Xiaomi, 38 en stock</p></div><span class="arow-num">$24.990</span><label class="switch"><input type="checkbox" checked aria-label="Cargador visible en la tienda"><span></span></label></div>
-          </div>
-        </div>
-        <div class="acard">
-          <div class="acard-head">
-            <h3 class="acard-title">Categorías</h3>
-            <button id="btnNuevaCategoriaAdmin" class="btn btn-soft btn-sm" type="button"><svg class="i i-sm" aria-hidden="true"><use href="#i-plus"/></svg>Nueva categoría</button>
-          </div>
-          <div id="catListaAdmin">
-            <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><div class="arow-main"><p class="arow-title">Smartphones</p><p class="arow-sub">1 producto</p></div><button class="icon-btn sm" type="button" aria-label="Editar Smartphones"><svg class="i i-sm" aria-hidden="true"><use href="#i-edit"/></svg></button></div>
-            <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><div class="arow-main"><p class="arow-title">Audio</p><p class="arow-sub">3 productos</p></div><button class="icon-btn sm" type="button" aria-label="Editar Audio"><svg class="i i-sm" aria-hidden="true"><use href="#i-edit"/></svg></button></div>
-            <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><div class="arow-main"><p class="arow-title">Computación</p><p class="arow-sub">2 productos</p></div><button class="icon-btn sm" type="button" aria-label="Editar Computación"><svg class="i i-sm" aria-hidden="true"><use href="#i-edit"/></svg></button></div>
-            <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><div class="arow-main"><p class="arow-title">Accesorios</p><p class="arow-sub">3 productos</p></div><button class="icon-btn sm" type="button" aria-label="Editar Accesorios"><svg class="i i-sm" aria-hidden="true"><use href="#i-edit"/></svg></button></div>
-            <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><div class="arow-main"><p class="arow-title">Gaming</p><p class="arow-sub">1 producto</p></div><button class="icon-btn sm" type="button" aria-label="Editar Gaming"><svg class="i i-sm" aria-hidden="true"><use href="#i-edit"/></svg></button></div>
-            <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><div class="arow-main"><p class="arow-title">Hogar</p><p class="arow-sub">Sin productos</p></div><button class="icon-btn sm" type="button" aria-label="Editar Hogar"><svg class="i i-sm" aria-hidden="true"><use href="#i-edit"/></svg></button></div>
+      <p class="pnota">Si la cierras, la web muestra un aviso y no permite agregar productos ni confirmar pedidos.</p>
+    </div>
+
+    <!-- TAB PRODUCTOS -->
+    <div class="psec" id="pt-productos">
+      <!-- Gestión de categorías -->
+      <div id="panelCatsGestion" style="margin-bottom:20px">
+        <h4 style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+          <span>📂 Categorías</span>
+        </h4>
+        <div id="catListaAdmin"></div>
+        <button class="pill pill-outline pill-sm panel-full" id="btnNuevaCatAdmin" style="margin-top:8px">＋ Nueva categoría</button>
+      </div>
+
+      <!-- Productos -->
+      <button class="pill pill-outline pill-sm panel-full" id="btnNuevoProd">＋ Nuevo producto</button>
+      <div id="panelProds" style="margin-top:12px"></div>
+    </div>
+
+    <!-- TAB PROMOS (banners promocionales del inicio) -->
+    <div class="psec" id="pt-promos">
+      <h4 style="margin-top:0">📢 Banners promocionales</h4>
+      <p class="pnota">Carrusel de promociones en la página de inicio, entre las categorías y "Más pedidos". Los banners vencidos se ocultan automáticamente — no hace falta borrarlos a mano.</p>
+
+      <label class="plabel" for="bnTitulo">Título</label>
+      <input class="field" id="bnTitulo" type="text" placeholder="2x1 en combos">
+      <label class="plabel" for="bnSubtitulo">Subtítulo</label>
+      <input class="field" id="bnSubtitulo" type="text" placeholder="Solo hoy, válido en delivery">
+      <label class="plabel" for="bnEmoji">Emoji</label>
+      <input class="field" id="bnEmoji" type="text" placeholder="🎉" maxlength="4">
+      <label class="plabel" for="bnColor">Color de fondo</label>
+      <div class="color-row">
+        <input type="color" id="bnColor" value="#9B1B30">
+        <input class="field" id="bnColorHex" type="text" placeholder="9B1B30" maxlength="7" style="flex:1">
+      </div>
+      <label class="plabel" for="bnVence">Vence (opcional)</label>
+      <input class="field" id="bnVence" type="date">
+
+      <p class="plabel" style="margin-top:14px">Vista previa</p>
+      <div id="bnPreviewWrap" class="promo-preview-wrap">
+        <div class="promo-card" id="bnPreviewCard" style="background:#9B1B30">
+          <span class="promo-emoji" id="bnPreviewEmoji">🎉</span>
+          <div class="promo-txt">
+            <p class="promo-titulo" id="bnPreviewTit">Título del banner</p>
+            <p class="promo-sub" id="bnPreviewSub">Subtítulo del banner</p>
           </div>
         </div>
       </div>
-    </section>
+      <p class="pnota">Así se ve exactamente en la tienda — mismo tamaño, mismo lugar: el carrusel entre categorías y "Más pedidos" de la página de inicio.</p>
 
-    <!-- PROMOCIONES -->
-    <section id="pt-promos" class="psec" role="tabpanel" aria-labelledby="ptPromosT">
-      <div class="psec-head">
-        <h2 id="ptPromosT" class="psec-title">Promociones</h2>
-        <button id="btnNuevoBanner" class="btn btn-primary btn-sm" type="button"><svg class="i i-sm" aria-hidden="true"><use href="#i-plus"/></svg>Nuevo banner</button>
-      </div>
-      <div class="acard">
-        <div id="promoAdminList">
-          <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><span class="promo-mini"></span><div class="arow-main"><p class="arow-title">Hasta 12 cuotas sin interés</p><p class="arow-sub">Lleva al catálogo</p></div><label class="switch"><input type="checkbox" checked aria-label="Banner activo"><span></span></label></div>
-          <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><span class="promo-mini accent"></span><div class="arow-main"><p class="arow-title">10% extra en tu primera compra</p><p class="arow-sub">Lleva a cupones</p></div><label class="switch"><input type="checkbox" checked aria-label="Banner activo"><span></span></label></div>
-          <div class="arow"><svg class="i drag" aria-hidden="true"><use href="#i-drag"/></svg><span class="promo-mini gray"></span><div class="arow-main"><p class="arow-title">Retira gratis en tienda</p><p class="arow-sub">Lleva a tiendas</p></div><label class="switch"><input type="checkbox" checked aria-label="Banner activo"><span></span></label></div>
-        </div>
-      </div>
-    </section>
+      <button class="pill pill-solid pill-sm panel-full" id="btnNuevoBanner" style="margin-top:14px">＋ Agregar banner</button>
+      <h4>Banners existentes</h4>
+      <div id="promoAdminList" style="margin-top:12px"></div>
+    </div>
 
-    <!-- CUPONES -->
-    <section id="pt-cupones" class="psec" role="tabpanel" aria-labelledby="ptCuponesT">
-      <div class="psec-head">
-        <h2 id="ptCuponesT" class="psec-title">Cupones</h2>
-        <button id="btnCrearCupon" class="btn btn-primary btn-sm" type="button"><svg class="i i-sm" aria-hidden="true"><use href="#i-plus"/></svg>Crear cupón</button>
+    <!-- TAB CUPONES -->
+    <div class="psec" id="pt-cupones">
+      <h4 style="margin-top:0">🎟 Crear cupón</h4>
+      <label class="plabel" for="cpCodigo">Código</label>
+      <input class="field" id="cpCodigo" type="text" placeholder="NUEVO30" autocapitalize="characters" spellcheck="false">
+      <label class="plabel" for="cpTipo">Tipo de descuento</label>
+      <select class="field" id="cpTipo">
+        <option value="porcentaje">Porcentaje %</option>
+        <option value="monto">Monto fijo $</option>
+      </select>
+      <label class="plabel" for="cpValor">Valor del descuento</label>
+      <input class="field" id="cpValor" type="number" inputmode="numeric" placeholder="30">
+      <label class="plabel" for="cpLimiteTotal">Límite total de usos (vacío = ilimitado)</label>
+      <input class="field" id="cpLimiteTotal" type="number" inputmode="numeric" placeholder="Ilimitado">
+      <label class="plabel" for="cpLimiteUsuario">Límite por usuario</label>
+      <input class="field" id="cpLimiteUsuario" type="number" inputmode="numeric" value="1">
+      <label class="plabel" for="cpVence">Fecha de expiración (opcional)</label>
+      <input class="field" id="cpVence" type="date">
+      <label class="plabel" for="cpDescripcion">Descripción (visible al cliente)</label>
+      <input class="field" id="cpDescripcion" type="text" placeholder="30% en tu primera compra">
+      <div class="switch-row">
+        <span>Solo para usuarios registrados</span>
+        <label class="switch"><input type="checkbox" id="cpSoloReg"><span class="slider"></span></label>
       </div>
-      <div class="acard">
-        <div id="cupAdminList">
-          <div class="arow"><div class="arow-main"><p class="arow-title code">NEXO10</p><p class="arow-sub">10% sobre $50.000. 32 usos, vence el 31 de octubre.</p></div><label class="switch"><input type="checkbox" checked aria-label="NEXO10 activo"><span></span></label></div>
-          <div class="arow"><div class="arow-main"><p class="arow-title code">AUDIO15</p><p class="arow-sub">15% en audio. 11 usos, vence el 30 de septiembre.</p></div><label class="switch"><input type="checkbox" checked aria-label="AUDIO15 activo"><span></span></label></div>
-          <div class="arow"><div class="arow-main"><p class="arow-title code">ENVIOGRATIS</p><p class="arow-sub">Despacho gratis sobre $30.000. 58 usos, vence el 15 de octubre.</p></div><label class="switch"><input type="checkbox" checked aria-label="ENVIOGRATIS activo"><span></span></label></div>
-          <div class="arow"><div class="arow-main"><p class="arow-title code">CUMPLE5</p><p class="arow-sub">$5.000 sin mínimo. 4 usos, sin vencimiento.</p></div><label class="switch"><input type="checkbox" aria-label="CUMPLE5 activo"><span></span></label></div>
-        </div>
+      <div class="switch-row">
+        <span>Condición: primera compra</span>
+        <label class="switch"><input type="checkbox" id="cpPrimera"><span class="slider"></span></label>
       </div>
-    </section>
+      <p class="pnota">"Primera compra" exige cuenta y que el historial del cliente esté vacío. Activa también "solo registrados" automáticamente.</p>
+      <button class="pill pill-solid pill-sm panel-full" id="btnCrearCupon">＋ Crear cupón</button>
+      <h4>Cupones existentes</h4>
+      <div id="cupAdminList"></div>
+    </div>
 
-    <!-- ZONAS -->
-    <section id="pt-zonas" class="psec" role="tabpanel" aria-labelledby="ptZonasT">
-      <div class="psec-head">
-        <h2 id="ptZonasT" class="psec-title">Zonas de despacho</h2>
-        <button id="btnNuevaZona" class="btn btn-primary btn-sm" type="button"><svg class="i i-sm" aria-hidden="true"><use href="#i-plus"/></svg>Agregar zona</button>
+    <!-- TAB FINANZAS -->
+    <div class="psec" id="pt-finanzas">
+      <h4 style="margin-top:0">💰 Ganancias del período</h4>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="pill pill-outline pill-sm fin-per active" data-per="hoy">Hoy</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="semana">7 días</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="mes">Este mes</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="90">90 días</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="cal">📅 Día</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="total">Todo</button>
       </div>
-      <div class="acard">
-        <div id="zonasList">
-          <div class="arow"><div class="arow-main"><p class="arow-title">Providencia</p><p class="arow-sub">Llega en 24 horas</p></div><span class="arow-num">$3.990</span><label class="switch"><input type="checkbox" checked aria-label="Providencia activa"><span></span></label></div>
-          <div class="arow"><div class="arow-main"><p class="arow-title">Las Condes</p><p class="arow-sub">Llega en 24 horas</p></div><span class="arow-num">$3.990</span><label class="switch"><input type="checkbox" checked aria-label="Las Condes activa"><span></span></label></div>
-          <div class="arow"><div class="arow-main"><p class="arow-title">Ñuñoa</p><p class="arow-sub">Llega en 24 horas</p></div><span class="arow-num">$3.990</span><label class="switch"><input type="checkbox" checked aria-label="Ñuñoa activa"><span></span></label></div>
-          <div class="arow"><div class="arow-main"><p class="arow-title">Santiago Centro</p><p class="arow-sub">Llega en 24 horas</p></div><span class="arow-num">$4.990</span><label class="switch"><input type="checkbox" checked aria-label="Santiago Centro activa"><span></span></label></div>
-          <div class="arow"><div class="arow-main"><p class="arow-title">Maipú</p><p class="arow-sub">Llega en 48 horas</p></div><span class="arow-num">$5.990</span><label class="switch"><input type="checkbox" checked aria-label="Maipú activa"><span></span></label></div>
-        </div>
-        <div id="zonasEmptyNote" class="empty">
-          <svg class="i" aria-hidden="true"><use href="#i-pin"/></svg>
-          <strong>Aún no tienes zonas de despacho</strong>
-          <p>Agrega las comunas donde despachas y el costo de cada una.</p>
-        </div>
+      <div id="finCalWrap" style="display:none;margin-bottom:12px">
+        <input type="date" id="finCalFecha" class="field" style="font-size:14px">
       </div>
-    </section>
+      <div id="finResumen" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div class="fin-card"><div class="fin-val" id="finVentas">$0</div><div class="fin-lab">Ventas</div></div>
+        <div class="fin-card"><div class="fin-val" id="finPedidos">0</div><div class="fin-lab">Pedidos</div></div>
+        <div class="fin-card"><div class="fin-val" id="finTicket">$0</div><div class="fin-lab">Ticket prom.</div></div>
+        <div class="fin-card"><div class="fin-val" id="finDelivery">$0</div><div class="fin-lab">Delivery cobrado</div></div>
+      </div>
+      <h4>Ventas por día</h4>
+      <canvas id="finChart" style="width:100%;max-height:200px;margin-bottom:16px"></canvas>
+      <h4>Top productos</h4>
+      <div id="finTopProds"></div>
+      <h4>Registro diario manual</h4>
+      <p class="pnota">Agrega ingresos o egresos manuales (gastos, propinas, etc.)</p>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <select class="field" id="finTipoReg" style="flex:1">
+          <option value="ingreso">Ingreso</option>
+          <option value="egreso">Egreso</option>
+        </select>
+        <input class="field" id="finMonto" type="number" inputmode="numeric" placeholder="Monto $" style="flex:1">
+      </div>
+      <input class="field" id="finDesc" placeholder="Descripción (ej: gasto gas)" style="margin-bottom:8px">
+      <button class="pill pill-solid pill-sm panel-full" id="btnFinGuardar">＋ Registrar</button>
+      <div id="finRegistros" style="margin-top:14px"></div>
+    </div>
 
-    <!-- FINANZAS -->
-    <section id="pt-finanzas" class="psec" role="tabpanel" aria-labelledby="ptFinanzasT">
-      <div class="psec-head"><h2 id="ptFinanzasT" class="psec-title">Finanzas</h2></div>
-      <div class="chips" data-demo>
-        <button class="pill sm" type="button">Hoy</button>
-        <button class="pill pill-solid sm" type="button">7 días</button>
-        <button class="pill sm" type="button">30 días</button>
-        <button class="pill sm" type="button">Este año</button>
+    <!-- TAB INVENTARIO -->
+    <div class="psec" id="pt-inventario">
+      <h4 style="margin-top:0">📦 Inventario de productos</h4>
+      <p class="pnota">Controla el stock de cada producto. Al llegar a 0 se marca sin stock automáticamente.</p>
+      <div id="invLista" style="margin-bottom:12px"></div>
+      <h4>Alertas de stock</h4>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <label class="plabel" style="margin:0;white-space:nowrap">Avisar cuando queden</label>
+        <input class="field" id="invAlertMin" type="number" inputmode="numeric" placeholder="5" style="width:70px">
+        <label class="plabel" style="margin:0">unidades</label>
       </div>
-      <div id="finResumen">
-        <div class="kpi"><p class="kpi-label">Ventas</p><span id="finVentas" class="kpi-val">$4.829.700</span><span class="kpi-delta">+12% que la semana pasada</span></div>
-        <div class="kpi"><p class="kpi-label">Pedidos</p><span id="finPedidos" class="kpi-val">38</span><span class="kpi-delta">+5 que la semana pasada</span></div>
-        <div class="kpi"><p class="kpi-label">Ticket promedio</p><span id="finTicket" class="kpi-val">$127.097</span><span class="kpi-delta">+6%</span></div>
-        <div class="kpi"><p class="kpi-label">Despachos cobrados</p><span id="finDelivery" class="kpi-val">$151.620</span><span class="kpi-delta down">−3%</span></div>
-      </div>
-      <div class="acard">
-        <div class="acard-head"><h3 class="acard-title">Ventas por día</h3><span class="arow-sub">Últimos 7 días</span></div>
-        <div id="finChart" role="img" aria-label="Ventas por día de la última semana; el sábado fue el día más alto con $1.021.500">
-          <div class="bar" title="$598.400"><i style="--h:58.6%"></i><span>Lun</span></div>
-          <div class="bar" title="$702.300"><i style="--h:68.8%"></i><span>Mar</span></div>
-          <div class="bar" title="$540.100"><i style="--h:52.9%"></i><span>Mié</span></div>
-          <div class="bar" title="$781.200"><i style="--h:76.5%"></i><span>Jue</span></div>
-          <div class="bar" title="$905.600"><i style="--h:88.7%"></i><span>Vie</span></div>
-          <div class="bar hl" title="$1.021.500"><i style="--h:100%"></i><span>Sáb</span></div>
-          <div class="bar" title="$280.600"><i style="--h:27.5%"></i><span>Dom</span></div>
-        </div>
-      </div>
-      <div class="admin-cols">
-        <div class="acard">
-          <h3 class="acard-title">Más vendidos</h3>
-          <div id="finTopProds">
-            <div class="arow"><span class="rank-n">1</span><div class="arow-main"><p class="arow-title">iPhone 16 Pro 256 GB</p><p class="arow-sub">2 unidades</p></div><span class="arow-num">$2.299.980</span></div>
-            <div class="arow"><span class="rank-n">2</span><div class="arow-main"><p class="arow-title">MacBook Air 13” M3</p><p class="arow-sub">1 unidad</p></div><span class="arow-num">$1.099.990</span></div>
-            <div class="arow"><span class="rank-n">3</span><div class="arow-main"><p class="arow-title">AirPods Pro (2.ª generación)</p><p class="arow-sub">3 unidades</p></div><span class="arow-num">$599.970</span></div>
-            <div class="arow"><span class="rank-n">4</span><div class="arow-main"><p class="arow-title">JBL Flip 6</p><p class="arow-sub">4 unidades</p></div><span class="arow-num">$399.960</span></div>
-          </div>
-        </div>
-        <div class="acard">
-          <h3 class="acard-title">Movimientos</h3>
-          <div id="finRegistros">
-            <div class="arow"><div class="arow-main"><p class="arow-title">Pedido #1045</p><p class="arow-sub">Mercado Pago, hoy 14:32</p></div><div class="order-side"><span class="arow-num">$228.963</span><span class="status st-done">Aprobado</span></div></div>
-            <div class="arow"><div class="arow-main"><p class="arow-title">Pedido #1044</p><p class="arow-sub">Mercado Pago, hoy 13:58</p></div><div class="order-side"><span class="arow-num">$1.099.990</span><span class="status st-done">Aprobado</span></div></div>
-            <div class="arow"><div class="arow-main"><p class="arow-title">Pedido #1043</p><p class="arow-sub">Efectivo, hoy 12:10</p></div><div class="order-side"><span class="arow-num">$103.980</span><span class="status st-prep">Por cobrar</span></div></div>
-            <div class="arow"><div class="arow-main"><p class="arow-title">Pedido #1039</p><p class="arow-sub">Mercado Pago, ayer 11:02</p></div><div class="order-side"><span class="arow-num">$54.990</span><span class="status st-cancel">Reembolsado</span></div></div>
-          </div>
-        </div>
-      </div>
-    </section>
+      <button class="pill pill-outline pill-sm panel-full" id="btnInvGuardar">Guardar alertas</button>
+      <div id="invAlertas" style="margin-top:12px"></div>
+    </div>
 
-    <!-- INVENTARIO -->
-    <section id="pt-inventario" class="psec" role="tabpanel" aria-labelledby="ptInventarioT">
-      <div class="psec-head"><h2 id="ptInventarioT" class="psec-title">Inventario</h2></div>
-      <div class="acard">
-        <h3 class="acard-title">Alertas de stock</h3>
-        <div id="invAlertas">
-          <p class="alert-row"><svg class="i i-sm" aria-hidden="true"><use href="#i-alert"/></svg>PlayStation 5 Slim Digital: sin stock</p>
-          <p class="alert-row"><svg class="i i-sm" aria-hidden="true"><use href="#i-alert"/></svg>Sony WH-1000XM5: quedan 2 unidades</p>
-          <p class="alert-row warn"><svg class="i i-sm" aria-hidden="true"><use href="#i-alert"/></svg>AirPods Pro (2.ª generación): quedan 3 unidades</p>
-        </div>
-        <div class="set-row">
-          <div class="arow-main"><p class="arow-title">Avisarme cuando queden</p><p class="arow-sub">Unidades o menos de un producto</p></div>
-          <input id="invAlertMin" class="input stock-input" type="number" min="0" value="5" aria-label="Mínimo de unidades para avisar">
-        </div>
-      </div>
-      <div class="acard">
-        <h3 class="acard-title">Stock por producto</h3>
-        <div id="invLista">
-          <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">iPhone 16 Pro 256 GB</p><p class="arow-sub">SKU APL-IP16P-256</p></div><input class="input stock-input" type="number" min="0" value="7" aria-label="Stock de iPhone 16 Pro"></div>
-          <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">AirPods Pro (2.ª generación)</p><p class="arow-sub">SKU APL-APP2-USBC</p></div><input class="input stock-input" type="number" min="0" value="3" aria-label="Stock de AirPods Pro"></div>
-          <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">Sony WH-1000XM5</p><p class="arow-sub">SKU SNY-XM5-BLK</p></div><input class="input stock-input" type="number" min="0" value="2" aria-label="Stock de WH-1000XM5"></div>
-          <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">JBL Flip 6</p><p class="arow-sub">SKU JBL-FLIP6-BLU</p></div><input class="input stock-input" type="number" min="0" value="14" aria-label="Stock de Flip 6"></div>
-          <div class="arow"><div class="thumb xs"><img src="https://images.unsplash.com/photo-1486401899868-0e435ed85128?w=120&amp;q=80&amp;auto=format&amp;fit=crop" alt="" loading="lazy" width="120" height="120"></div><div class="arow-main"><p class="arow-title">PlayStation 5 Slim Digital</p><p class="arow-sub">SKU SNY-PS5S-DIG</p></div><input class="input stock-input" type="number" min="0" value="0" aria-label="Stock de PlayStation 5"></div>
-          <div class="arow"><div class="thumb xs"></div><div class="arow-main"><p class="arow-title">Cargador USB-C 67W</p><p class="arow-sub">SKU XMI-CHG-67W</p></div><input class="input stock-input" type="number" min="0" value="38" aria-label="Stock de cargador 67W"></div>
-        </div>
-      </div>
-      <div class="save-bar"><button id="btnInvGuardar" class="btn btn-primary" type="button">Guardar inventario</button></div>
-    </section>
+    <!-- TAB CHECKOUT & WHATSAPP -->
+    <!-- TAB ZONAS DE DESPACHO -->
+    <div class="psec" id="pt-zonas">
+      <h4 style="margin-top:0">📍 Zonas de despacho</h4>
+      <p class="pnota" style="margin-bottom:14px">
+        Define sectores con precio propio. Al escribir su dirección, el cliente ve el costo automáticamente gracias a Google Maps. Si no configuras zonas se usa el costo único del tab Checkout.
+      </p>
+      <div id="zonasList"></div>
+      <p id="zonasEmptyNote">Sin zonas todavía. Agrega la primera con el botón de abajo.</p>
+      <button class="pill pill-solid pill-sm panel-full" id="btnNuevaZona">＋ Nueva zona</button>
+    </div>
 
-    <!-- ENVÍO (UI de ejemplo) -->
-    <section id="pt-envio" class="psec" role="tabpanel" aria-labelledby="ptEnvioT">
-      <div class="psec-head"><h2 id="ptEnvioT" class="psec-title">Envío</h2></div>
-      <div class="acard" data-demo>
-        <div class="set-grid">
-          <label class="ffield"><span class="flabel">Despacho gratis desde</span><input type="text" inputmode="numeric" value="$300.000"></label>
-          <label class="ffield"><span class="flabel">Tiempo de preparación</span>
-            <select><option>Mismo día</option><option selected>24 horas</option><option>48 horas</option></select>
-          </label>
-        </div>
-        <div class="set-row">
-          <div class="arow-main"><p class="arow-title">Retiro en tienda</p><p class="arow-sub">El cliente elige la tienda al pagar.</p></div>
-          <label class="switch"><input type="checkbox" checked aria-label="Retiro en tienda"><span></span></label>
-        </div>
-        <div class="set-row">
-          <div class="arow-main"><p class="arow-title">Despacho el mismo día</p><p class="arow-sub">Para compras antes de las 13:00 en Santiago.</p></div>
-          <label class="switch"><input type="checkbox" aria-label="Despacho el mismo día"><span></span></label>
-        </div>
-        <div class="set-row">
-          <div class="arow-main"><p class="arow-title">Envíos a regiones</p><p class="arow-sub">Por courier, el cliente paga al recibir.</p></div>
-          <label class="switch"><input type="checkbox" checked aria-label="Envíos a regiones"><span></span></label>
-        </div>
+    <div class="psec" id="pt-envio">
+      <h4>Configuración delivery</h4>
+      <label class="plabel" for="pWhats">WhatsApp del negocio</label>
+      <input class="field" id="pWhats" type="text" placeholder="569XXXXXXXX">
+      <p class="pnota">Formato: 569XXXXXXXX — sin + ni espacios.</p>
+      <button class="pill pill-outline pill-sm panel-full" id="btnProbarWa">Probar conexión</button>
+      <label class="plabel" for="pEmailNotif">Email de notificaciones</label>
+      <input class="field" id="pEmailNotif" type="email" placeholder="pedidos@tutienda.cl">
+      <p class="pnota">Recibirás un correo con cada pedido nuevo (requiere configurar el tab 📧 Emails).</p>
+      <button class="pill pill-outline pill-sm panel-full" id="btnGuardarEmail">Guardar email</button>
+      <label class="plabel" for="pDelCosto">Costo delivery $</label>
+      <input class="field" id="pDelCosto" type="number" inputmode="numeric">
+      <label class="plabel" for="pDelMin">Monto mínimo delivery gratis $</label>
+      <input class="field" id="pDelMin" type="number" inputmode="numeric">
+      <label class="plabel" for="pTiempo">Tiempo estimado</label>
+      <input class="field" id="pTiempo" type="text" placeholder="30-45 min">
+      <div class="switch-row">
+        <span>Delivery activado</span>
+        <label class="switch"><input type="checkbox" id="pDeliveryOn"><span class="slider"></span></label>
       </div>
-      <div class="save-bar"><button class="btn btn-primary" type="button">Guardar cambios</button></div>
-    </section>
+      <div class="switch-row">
+        <span>Retiro en local activado</span>
+        <label class="switch"><input type="checkbox" id="pRetiroOn"><span class="slider"></span></label>
+      </div>
 
-    <!-- PAGOS (UI de ejemplo) -->
-    <section id="pt-pagos" class="psec" role="tabpanel" aria-labelledby="ptPagosT">
-      <div class="psec-head"><h2 id="ptPagosT" class="psec-title">Pagos</h2></div>
-      <div class="acard" data-demo>
-        <div class="set-row">
-          <span class="dev-ico"><svg class="i" aria-hidden="true"><use href="#i-card"/></svg></span>
-          <div class="arow-main"><p class="arow-title">Mercado Pago <span class="status st-done">Conectado</span></p><p class="arow-sub">ventas@nexostore.cl. El dinero llega a tu cuenta de Mercado Pago.</p></div>
-          <button class="btn btn-soft btn-sm" type="button">Desconectar</button>
-        </div>
-        <div class="set-row">
-          <span class="dev-ico"><svg class="i" aria-hidden="true"><use href="#i-cash"/></svg></span>
-          <div class="arow-main"><p class="arow-title">Efectivo al recibir</p><p class="arow-sub">Solo despachos en Santiago y retiro en tienda.</p></div>
-          <label class="switch"><input type="checkbox" checked aria-label="Efectivo al recibir"><span></span></label>
-        </div>
-        <div class="set-row">
-          <span class="dev-ico"><svg class="i" aria-hidden="true"><use href="#i-shield"/></svg></span>
-          <div class="arow-main"><p class="arow-title">Transferencia bancaria</p><p class="arow-sub">Mostramos tus datos bancarios al confirmar la compra.</p></div>
-          <label class="switch"><input type="checkbox" aria-label="Transferencia bancaria"><span></span></label>
-        </div>
-      </div>
-    </section>
+      <h4>Mensajes automáticos</h4>
+      <p class="pnota">Toca una variable para insertarla donde esté el cursor. La vista previa usa datos de ejemplo.</p>
 
-    <!-- CORREOS (UI de ejemplo) -->
-    <section id="pt-emails" class="psec" role="tabpanel" aria-labelledby="ptEmailsT">
-      <div class="psec-head"><h2 id="ptEmailsT" class="psec-title">Correos</h2></div>
-      <div class="acard" data-demo>
-        <div class="set-grid">
-          <label class="ffield"><span class="flabel">Nombre del remitente</span><input type="text" value="Nexo Store"></label>
-          <label class="ffield"><span class="flabel">Responder a</span><input type="email" value="hola@nexostore.cl"></label>
-        </div>
-      </div>
-      <div class="acard" data-demo>
-        <h3 class="acard-title">Correos automáticos</h3>
-        <div class="set-row"><div class="arow-main"><p class="arow-title">Compra confirmada</p><p class="arow-sub">Con el detalle y la boleta.</p></div><label class="switch"><input type="checkbox" checked aria-label="Compra confirmada"><span></span></label></div>
-        <div class="set-row"><div class="arow-main"><p class="arow-title">Pedido en camino</p><p class="arow-sub">Con el link de seguimiento.</p></div><label class="switch"><input type="checkbox" checked aria-label="Pedido en camino"><span></span></label></div>
-        <div class="set-row"><div class="arow-main"><p class="arow-title">Listo para retiro</p><p class="arow-sub">Con la dirección y el horario de la tienda.</p></div><label class="switch"><input type="checkbox" checked aria-label="Listo para retiro"><span></span></label></div>
-        <div class="set-row"><div class="arow-main"><p class="arow-title">Carrito abandonado</p><p class="arow-sub">Un recordatorio 3 horas después.</p></div><label class="switch"><input type="checkbox" aria-label="Carrito abandonado"><span></span></label></div>
-      </div>
-      <div class="save-bar"><button class="btn btn-primary" type="button">Guardar cambios</button></div>
-    </section>
+      <label class="plabel" for="msjConf">Confirmación de pedido</label>
+      <textarea class="field msj" id="msjConf" data-mkey="confirmacion"></textarea>
+      <div class="varpills" data-for="msjConf"></div>
+      <div class="msj-preview" id="prevConf"></div>
 
-    <!-- NOTIFICACIONES -->
-    <section id="pt-notif" class="psec" role="tabpanel" aria-labelledby="ptNotifT">
-      <div class="psec-head"><h2 id="ptNotifT" class="psec-title">Notificaciones</h2></div>
-      <div class="acard">
-        <h3 class="acard-title">Este dispositivo</h3>
-        <p id="notifEstado">Este dispositivo no recibe avisos de pedidos nuevos.</p>
-        <button id="btnActivarNotif" class="btn btn-primary" type="button"><svg class="i i-sm" aria-hidden="true"><use href="#i-bell"/></svg>Activar notificaciones</button>
-      </div>
-      <div class="acard">
-        <h3 class="acard-title">Dispositivos que reciben avisos</h3>
-        <div id="devicesList">
-          <div class="arow"><span class="dev-ico"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg></span><div class="arow-main"><p class="arow-title">iPhone de Diego</p><p class="arow-sub">Safari, activo hace 2 minutos</p></div><button class="icon-btn sm" type="button" aria-label="Quitar iPhone de Diego"><svg class="i i-sm" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
-          <div class="arow"><span class="dev-ico"><svg class="i" aria-hidden="true"><use href="#i-laptop"/></svg></span><div class="arow-main"><p class="arow-title">MacBook de la tienda</p><p class="arow-sub">Chrome, activo hace 1 hora</p></div><button class="icon-btn sm" type="button" aria-label="Quitar MacBook de la tienda"><svg class="i i-sm" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
-        </div>
-      </div>
-    </section>
+      <label class="plabel" for="msjPrep">"En preparación"</label>
+      <textarea class="field msj" id="msjPrep" data-mkey="preparacion"></textarea>
+      <div class="varpills" data-for="msjPrep"></div>
+      <div class="msj-preview" id="prevPrep"></div>
 
-    <!-- CONFIGURACIÓN (UI de ejemplo) -->
-    <section id="pt-config" class="psec" role="tabpanel" aria-labelledby="ptConfigT">
-      <div class="psec-head"><h2 id="ptConfigT" class="psec-title">Configuración</h2></div>
-      <div class="acard" data-demo>
-        <div class="set-grid">
-          <label class="ffield"><span class="flabel">Dominio</span><input type="text" value="nexostore.cl"></label>
-          <label class="ffield"><span class="flabel">WhatsApp de la tienda</span><input type="tel" value="+56 9 1234 5678"></label>
-        </div>
-        <div class="set-row"><div class="arow-main"><p class="arow-title">PIN de administrador</p><p class="arow-sub">Se pide para entrar al modo edición.</p></div><button class="btn btn-soft btn-sm" type="button">Cambiar PIN</button></div>
-        <div class="set-row"><div class="arow-main"><p class="arow-title">Ver la tienda como cliente</p><p class="arow-sub">Oculta el modo edición hasta que vuelvas.</p></div><button class="btn btn-soft btn-sm" type="button">Vista de cliente</button></div>
-        <div class="set-row"><div class="arow-main"><p class="arow-title">Contrato de servicio</p><p class="arow-sub">Plan DerLabs Retail, aceptado el 3 de marzo de 2026.</p></div><button class="btn btn-soft btn-sm" type="button">Ver contrato</button></div>
+      <label class="plabel" for="msjCamino">"En camino"</label>
+      <textarea class="field msj" id="msjCamino" data-mkey="camino"></textarea>
+      <div class="varpills" data-for="msjCamino"></div>
+      <div class="msj-preview" id="prevCamino"></div>
+
+      <label class="plabel" for="msjListo">"Listo para retirar"</label>
+      <textarea class="field msj" id="msjListo" data-mkey="listo"></textarea>
+      <div class="varpills" data-for="msjListo"></div>
+      <div class="msj-preview" id="prevListo"></div>
+
+      <button class="pill pill-outline-muted pill-sm panel-full" id="btnRestaurarMsjs">Restaurar mensajes por defecto</button>
+
+      <h4>Pantalla post-compra</h4>
+      <label class="plabel" for="pConfTitulo">Título confirmación</label>
+      <input class="field" id="pConfTitulo" type="text">
+      <label class="plabel" for="pConfSub">Subtítulo</label>
+      <input class="field" id="pConfSub" type="text">
+      <label class="plabel" for="pTl1">Paso 1 timeline</label>
+      <input class="field" id="pTl1" type="text">
+      <label class="plabel" for="pTl2">Paso 2 timeline</label>
+      <input class="field" id="pTl2" type="text">
+      <label class="plabel" for="pTl3">Paso 3 timeline</label>
+      <input class="field" id="pTl3" type="text">
+      <label class="plabel" for="pTl4">Paso 4 timeline</label>
+      <input class="field" id="pTl4" type="text">
+      <div class="switch-row">
+        <span>Mostrar card GPS Próximamente</span>
+        <label class="switch"><input type="checkbox" id="pMostrarGPS"><span class="slider"></span></label>
       </div>
-      <div class="acard" data-demo>
-        <div class="set-row"><div class="arow-main"><p class="arow-title">Cerrar sesión</p><p class="arow-sub">Sales del panel en este dispositivo.</p></div><button class="btn btn-danger btn-sm" type="button">Cerrar sesión</button></div>
+    </div>
+
+    <!-- TAB PAGOS -->
+    <div class="psec" id="pt-pagos">
+      <h4>💳 Configurar MercadoPago</h4>
+      <div class="mp-guia">
+        Paso 1: Ve a mercadopago.cl<br>
+        Paso 2: Inicia sesión con tu cuenta<br>
+        Paso 3: Ve a "Tu negocio" → "Credenciales"<br>
+        Paso 4: Copia tu Access Token de producción
       </div>
-    </section>
+      <label class="plabel" for="mpToken">Access Token</label>
+      <div class="token-row">
+        <input class="field" id="mpToken" type="text"
+               autocomplete="off" data-lpignore="true" data-form-type="other"
+               style="-webkit-text-security:disc;text-security:disc">
+        <button class="ibtn" id="btnEyeToken" title="Mostrar / ocultar">👁</button>
+      </div>
+      <button class="pill pill-solid pill-sm panel-full" id="btnGuardarMP">Guardar y probar conexión</button>
+      <div class="mp-estado" id="mpEstado">⚠️ No configurado</div>
+      <h4>⚙️ Backend (Netlify Functions)</h4>
+      <label class="plabel" for="pFunctionsUrl">FUNCTIONS_URL <span style="font-weight:400;opacity:.7">(opcional)</span></label>
+      <input class="field" id="pFunctionsUrl" type="url" placeholder="/.netlify/functions" spellcheck="false">
+      <p class="pnota">Las funciones ya están incluidas en este mismo sitio, en <code>/.netlify/functions</code> — no necesitas configurar nada acá salvo que uses otro hosting.</p>
+      <button class="pill pill-outline pill-sm panel-full" id="btnVerificarFn">Verificar conexión</button>
+      <div class="mp-estado" id="fnEstado"></div>
+      <p class="pnota">El token se usa solo desde las Netlify Functions del backend — nunca se expone a los clientes. El código de las funciones está en <code>netlify/functions/</code>.</p>
+
+      <h4>⚠️ Intentos de pago sin confirmar</h4>
+      <p class="pnota">
+        Cada vez que alguien inicia un pago con MercadoPago, se guarda un
+        registro acá antes de que se cree el pedido. Si todo funciona
+        bien, este registro se marca "confirmado" apenas el pedido se
+        crea, y no necesitas hacer nada. Si algo falla del lado del
+        webhook (poco común, pero puede pasar), el registro queda en
+        "iniciado" o "error" aunque el cliente sí haya pagado — revisa
+        acá si un cliente dice haber pagado pero no ves su pedido.
+      </p>
+      <button class="pill pill-outline pill-sm panel-full" id="btnRevisarIntentos">🔍 Revisar intentos de las últimas 24h</button>
+      <div id="intentosPagoList" style="margin-top:12px"></div>
+    </div>
+
+    <!-- TAB EMAILS (Resend) -->
+    <div class="psec" id="pt-emails">
+      <h4 style="margin-top:0">📧 Emails transaccionales</h4>
+      <div class="mp-guia">
+        Paso 1: Crea una cuenta gratis en resend.com<br>
+        Paso 2: Verifica tu dominio (o usa onboarding@resend.dev para pruebas)<br>
+        Paso 3: Copia tu API key y pégala abajo
+      </div>
+      <label class="plabel" for="pResendKey">Resend API Key</label>
+      <div class="token-row">
+        <input class="field" id="pResendKey" type="text"
+               autocomplete="off" data-lpignore="true" data-form-type="other"
+               style="-webkit-text-security:disc;text-security:disc">
+        <button class="ibtn" id="btnEyeResend" title="Mostrar / ocultar">👁</button>
+      </div>
+      <label class="plabel" for="pEmailEmisor">Email emisor</label>
+      <input class="field" id="pEmailEmisor" type="email" placeholder="pedidos@tutienda.cl">
+      <label class="plabel" for="pEmailVendedor">Email del vendedor (recibe cada pedido)</label>
+      <input class="field" id="pEmailVendedor" type="email" placeholder="tucorreo@gmail.com">
+      <button class="pill pill-solid pill-sm panel-full" id="btnGuardarEmails">Guardar configuración</button>
+      <button class="pill pill-outline pill-sm panel-full" id="btnEmailPrueba">✉️ Enviar email de prueba</button>
+      <div class="mp-estado" id="emailEstado"></div>
+      <p class="pnota">Mientras falte la API key, los emails no se envían (falla silenciosa). Los pedidos se crean igual en Firestore.</p>
+    </div>
+
+    <!-- TAB NOTIFICACIONES -->
+    <div class="psec" id="pt-notif">
+      <h4>Alertas de pedidos</h4>
+      <button class="pill pill-solid pill-sm panel-full" id="btnActivarNotif">🔔 Activar notificaciones en este celular</button>
+      <div class="mp-estado" id="notifEstado"></div>
+      <h4>Dispositivos activos</h4>
+      <div id="devicesList"></div>
+      <p class="pnota">Máximo 5 dispositivos simultáneos. Cada uno recibirá una alerta cuando entre un pedido pagado.</p>
+    </div>
+
+    <!-- TAB CONFIG -->
+    <div class="psec" id="pt-config">
+      <h4>Apariencia</h4>
+      <div class="color-row">
+        <input type="color" id="pColor" value="#9B1B30">
+        <span style="font-size:13px;font-weight:800">Color primario</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;margin-bottom:2px">
+        <span style="font-size:12px;font-weight:800;color:var(--muted)">#</span>
+        <input type="text" id="pColorHex" maxlength="6" placeholder="9B1B30"
+               style="flex:1;font-family:monospace;font-size:14px;font-weight:800;
+                      letter-spacing:1px;text-transform:uppercase;padding:8px 10px;
+                      border:1.5px solid var(--borde);border-radius:10px;outline:none;
+                      background:#fff;color:var(--texto)">
+        <button id="btnAplicarColor" class="pill pill-solid pill-sm" style="flex-shrink:0;margin:0">Aplicar</button>
+      </div>
+      <p class="pnota" style="margin-top:4px">Ingresa el código hex directamente (ej: 9B1B30) o usa el selector.</p>
+      <h4>Herramientas</h4>
+      <button class="pill pill-outline pill-sm panel-full" id="btnPreview">👁 Vista previa cliente</button>
+      <p class="pnota">Oculta la barra dev y los bordes de edición para ver la web como la ve un cliente.</p>
+    </div>
 
   </div>
-</div>
+</aside>
+
+
 
 <!-- =============================================================
      SOLO DEMO: navegador de vista previa (se oculta al quitar class="demo")
@@ -2936,7 +3470,7 @@ body.demo:has(:is(#page-producto,#page-checkout):is(.active,:target,:has(:target
     <a href="#previewChip">Vista de cliente</a>
     <p>Modales</p>
     <a href="#cookiesModal">Cookies</a>
-    <a href="#loginModal">Acceso administrador</a>
+    <a href="#loginModal"></a>
     <a href="#pinModal">PIN</a>
     <a href="#contratoModal">Contrato</a>
     <a href="#imgModal">Foto del producto</a>
@@ -2971,5 +3505,16 @@ body.demo:has(:is(#page-producto,#page-checkout):is(.active,:target,:has(:target
 <!-- Motor de tienda -->
 <script src="/app.js"></script>
 
+
+<button id="panelChip" class="panel-chip" aria-label="Volver al panel">⚙ Volver al panel</button>
 </body>
-</html>
+</html><div id="devBar">
+  <span class="db-badge">⚙ DEV</span>
+  <span class="db-actions">
+    <button id="btnPanel" class="pill pill-outline-white pill-sm">Panel ▸</button>
+    <button id="btnSalirDev" class="pill pill-outline-white pill-sm">Salir</button>
+  </span>
+</div>
+<button id="previewChip">👁 Vista previa — volver a edición</button>
+
+

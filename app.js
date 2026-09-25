@@ -3334,20 +3334,31 @@ function iniciarEdicion(el){
 }
 
 function initDev(){
-  /* 7 taps en el logo en menos de 3 segundos */
+  /* 7 taps en menos de 3 segundos sobre el título principal de la página
+     (o sobre el logo del navbar) → abre el login de devmode.
+     Cambio respecto a la versión anterior: en retail el logo es un
+     <a href="#"> que recarga, así que el trigger principal es ahora
+     el título grande (h1 de la página actual). El logo sigue funcionando
+     como trigger secundario por compatibilidad. */
   let taps = [];
-  on("logoTop", "click", () => {
+  function _checkTaps(){
     const now = Date.now();
     taps = taps.filter(t => now - t < 3000);
     taps.push(now);
     if (taps.length >= 7){
       taps = [];
       if (document.body.classList.contains("dev-on")) return;
-      /* Solo email/password puede abrir devmode sin modal */
       if (!DEMO && authUser && authUser.providerData && authUser.providerData[0] && authUser.providerData[0].providerId === "password"){ activarDevmode(); return; }
       abrirLogin();
     }
-  });
+  }
+  document.addEventListener("click", (e) => {
+    /* Título principal visible: h1.page-title, #heroTitulo, .hero-title, .sec-title */
+    const titulo = e.target.closest("h1.page-title, #heroTitulo, .hero-title, .sec-title");
+    if (titulo){ _checkTaps(); return; }
+    /* Logo del navbar (por compatibilidad) */
+    if (e.target.closest("#logoTop")) _checkTaps();
+  }, true);
 
   on("loginBtn", "click", intentarLogin);
   on("loginPass", "keydown", e => { if (e.key === "Enter") intentarLogin(); });
