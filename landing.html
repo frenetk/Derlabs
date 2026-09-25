@@ -478,6 +478,46 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
 @media (min-width: 900px) {
   .img-feature-wrap { max-width: 900px; margin: 44px auto 12px; }
 }
+
+.problema-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:40px}
+.problema-card{background:var(--fondo-card);border-radius:var(--radius-md);padding:24px 20px;border:1px solid var(--borde);text-align:center}
+.problema-ico{font-size:28px;margin-bottom:10px;line-height:1}
+.problema-tit{font-size:26px;font-weight:900;color:var(--morado-dark);letter-spacing:-.5px;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif}
+.problema-txt{font-size:13.5px;line-height:1.45;color:var(--texto2)}
+#caminos{padding:80px 0}
+.caminos-grid{display:grid;grid-template-columns:1fr;gap:24px;margin-top:40px}
+@media (min-width:900px){.caminos-grid{grid-template-columns:1fr 1fr;gap:28px;align-items:start}}
+.camino-card{background:var(--fondo-card);border-radius:var(--radius-lg);padding:32px 28px;border:1px solid var(--borde);display:flex;flex-direction:column;gap:20px}
+.camino-card--primary{border-top:4px solid var(--morado);box-shadow:0 12px 36px -12px rgba(108,92,231,.18)}
+.camino-card--secondary{border-top:4px solid var(--verde)}
+.camino-eyebrow{font-size:11.5px;font-weight:800;letter-spacing:.14em;color:var(--morado-dark);margin:0;text-transform:uppercase}
+.camino-eyebrow--verde{color:var(--verde)}
+.camino-tit{font-size:22px;font-weight:800;line-height:1.25;color:var(--texto);margin:0;letter-spacing:-.3px}
+.camino-gancho{font-size:15px;line-height:1.55;color:var(--texto);padding:14px 16px;border-radius:12px;background:var(--verde-suave);border-left:3px solid var(--verde);margin:0}
+.camino-bloque{margin:0}
+.camino-subtit{font-size:13.5px;font-weight:900;color:var(--morado-dark);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px}
+.camino-card--secondary .camino-subtit{color:var(--verde)}
+.camino-bloque p{font-size:14.5px;line-height:1.6;color:var(--texto2);margin:0 0 10px}
+.camino-bloque p:last-child{margin-bottom:0}
+.camino-bloque p b{color:var(--texto);font-weight:800}
+.camino-lista{list-style:none;padding:0;margin:10px 0 0}
+.camino-lista li{padding:8px 0 8px 24px;position:relative;font-size:14px;line-height:1.5;color:var(--texto2);border-bottom:1px solid var(--borde)}
+.camino-lista li:last-child{border-bottom:none}
+.camino-lista li::before{content:"✓";position:absolute;left:0;top:8px;color:var(--verde);font-weight:900}
+.camino-lista--datos li{padding-left:0;font-weight:700;color:var(--texto)}
+.camino-lista--datos li::before{content:none}
+.camino-cierre{padding:16px;border-radius:12px;background:var(--morado-suave);border-left:3px solid var(--morado)}
+.camino-cierre p{font-size:13.5px;line-height:1.55;color:var(--morado-dark);font-weight:700;margin:0}
+.camino-cta{align-self:flex-start;margin-top:8px}
+#quienes-somos{padding:60px 0 20px}
+.quienes-box{max-width:820px;margin:0 auto;text-align:center;background:var(--fondo-card);border-radius:var(--radius-lg);padding:44px 36px;border:1px solid var(--borde);box-shadow:0 12px 36px -12px rgba(20,18,31,.06)}
+.quienes-box .section-sub{margin-left:auto;margin-right:auto}
+#cierre-marca{padding:40px 0 80px}
+.cierre-box{max-width:720px;margin:0 auto;text-align:center;background:linear-gradient(135deg,rgba(108,92,231,.06),rgba(108,92,231,.01));border:1px solid rgba(108,92,231,.15);border-radius:var(--radius-lg);padding:56px 40px}
+.cierre-tit{font-size:clamp(24px,3.5vw,32px);font-weight:900;line-height:1.2;margin-bottom:20px;letter-spacing:-.5px}
+.cierre-txt{font-size:16px;line-height:1.6;color:var(--texto2);margin-bottom:14px}
+.cierre-txt--fuerte{font-size:17px;font-weight:800;color:var(--texto);margin:24px 0 28px}
+@media (max-width:720px){.quienes-box{padding:32px 22px}.cierre-box{padding:36px 24px}.camino-card{padding:24px 20px}}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -550,8 +590,8 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
 <section class="hero">
   <div class="wrap">
     <span class="badge"><span class="punto"></span>PARA TIENDAS Y DELIVERY</span>
-    <h1><span id="heroTituloPre">Tu tienda online,<br>lista para </span><span class="acento" id="heroAcento">vender hoy</span></h1>
-    <p class="sub" id="heroBajada">Catálogo, pagos, pedidos y reparto en un solo sistema. Con Google Maps integrado para calcular zonas, direcciones y tiempos de entrega.</p>
+    <h1><span id="heroTituloPre">Tu negocio, tus reglas, </span><span class="acento" id="heroAcento">tus clientes.</span></h1>
+    <p class="sub" id="heroBajada">DerLabs es la plataforma de venta online con delivery integrado. Sin comisiones por venta. Deja de gastar y comienza a invertir mientras vendes online, gestionas tus pedidos, retienes a tus clientes y construyes tu propia marca desde el primer día.</p>
     <div class="hero-ctas">
       <a href="#contacto" class="btn-primario">Cotiza tu tienda →</a>
       <a href="#features" class="btn-secundario">Ver cómo funciona</a>
@@ -559,11 +599,99 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
   </div>
 </section>
 
+
+  <section id="problema">
+    <div class="wrap">
+      <span class="badge">¿CUÁNTO TE ESTÁ COSTANDO?</span>
+      <h2 class="section-tit" style="margin-top:16px">¿Cuánto te está costando <span class="acento">vender hoy</span>?</h2>
+      <p class="section-sub">Estos son datos del mercado chileno, no opiniones. Y aplican a cualquier negocio que venda con delivery.</p>
+      <div class="problema-grid">
+        <div class="problema-card"><div class="problema-ico">📉</div><p class="problema-tit">30%</p><p class="problema-txt">de comisión por pedido en apps de delivery. Cada venta que entra por ahí, un tercio se va.</p></div>
+        <div class="problema-card"><div class="problema-ico">📱</div><p class="problema-tit">Octubre 2026</p><p class="problema-txt">WhatsApp cobra por mensaje. Se acaba tu cuota gratis al mes, después pagas cada uno.</p></div>
+        <div class="problema-card"><div class="problema-ico">🛒</div><p class="problema-tit">500 productos</p><p class="problema-txt">es el tope de tu catálogo de WhatsApp. Y no maneja stock.</p></div>
+        <div class="problema-card"><div class="problema-ico">⏰</div><p class="problema-tit">2-3 horas al día</p><p class="problema-txt">pierdes respondiendo lo mismo, cerrando ventas manualmente.</p></div>
+        <div class="problema-card"><div class="problema-ico">📊</div><p class="problema-tit">25%</p><p class="problema-txt">de los pedidos por WhatsApp tienen errores o se pierden entre tus mensajes. Pérdida millonaria al año.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="caminos">
+    <div class="wrap">
+      <span class="badge">¿DÓNDE ESTÁS HOY?</span>
+      <h2 class="section-tit" style="margin-top:16px">Dos caminos, <span class="acento">un mismo destino</span>: tu independencia.</h2>
+      <p class="section-sub">Elige el que va contigo. Ambos llevan al mismo sistema: vender sin comisiones, con tus clientes y tus datos.</p>
+      <div class="caminos-grid">
+<div class="camino-card camino-card--primary">
+<p class="camino-eyebrow">SI HOY DEPENDES DE LAS APPS</p>
+<h3 class="camino-tit">El 30% que pagas a las apps puede convertirse en tu activo.</h3>
+<div class="camino-bloque">
+<p class="camino-subtit">1. Capa económica</p>
+<p>El 30% de comisión por pedido, costos de alta y suscripción, comisión por publicidad, financiamiento de promociones y descuentos, penalizaciones y costo por reclamos que hoy pagas a Uber Eats, PedidosYa o Rappi no es una inversión: es <b>gasto eterno sin retorno</b>.</p>
+<p>DerLabs entra como una línea paralela que, mes a mes, va absorbiendo ese gasto y transformándolo en activo propio. No reemplaza: <b>se suma</b>. A medida que tu canal propio crece, la comisión deja de doler tanto porque ya no estás poniendo tu dinero en un saco sin fondo.</p>
+</div>
+<div class="camino-bloque">
+<p class="camino-subtit">2. Capa de soberanía</p>
+<p>Cada pedido que entra por una app comercial es un cliente que la app conoce y tú no. Ellos tienen su nombre, su teléfono, su dirección, su historial, sus preferencias. Tú pagas comisión por cada venta, pero no retienes nada.</p>
+<p><b>DerLabs te da la infraestructura para retener lo que ya estás pagando:</b></p>
+<ul class="camino-lista">
+<li>Login con Google y sistema de puntos: cada cliente deja su huella</li>
+<li>Historial de pedidos: sabes qué compró, cuándo y cuánto gasta</li>
+<li>Preferencias de compra: todo queda en TU base de datos</li>
+<li>Direcciones guardadas: la próxima compra es en 2 toques</li>
+<li>Sectorización de costos de envío automática con Google Maps</li>
+<li>Integración de pedidos y envíos: migra a tu ritmo y sigue usando las flotas de las apps</li>
+</ul>
+</div>
+<div class="camino-bloque">
+<p class="camino-subtit">3. Capa de independencia progresiva</p>
+<p>El día que decidas cortar la comisión, ya tienes la infraestructura armada y los datos trabajando para ti. No empiezas tu independencia desde cero: empiezas desde todo lo que ya habías recuperado.</p>
+</div>
+<a href="#precios" class="btn-primario camino-cta">Quiero mi independencia</a>
+</div>
+
+<div class="camino-card camino-card--secondary">
+<p class="camino-eyebrow camino-eyebrow--verde">¿VENDES POR WHATSAPP?</p>
+<h3 class="camino-tit">Deja de vender por una app de mensajes. Ten tu tienda real.</h3>
+<p class="camino-gancho">WhatsApp es para conversar, no para vender. Tu tienda online con delivery propio, sin comisiones por venta, lista hoy en minutos.</p>
+<div class="camino-bloque">
+<p class="camino-subtit">Los datos que cambian la narrativa</p>
+<ul class="camino-lista camino-lista--datos">
+<li>Desde octubre 2026, Meta cobra por cada mensaje. La "gratis" se termina.</li>
+<li>Entre 40% y 60% de clientes vía WhatsApp se van si no respondes a tiempo.</li>
+<li>Tu catálogo tiene un límite acotado de productos y no maneja stock.</li>
+</ul>
+</div>
+<div class="camino-bloque">
+<p class="camino-subtit">La solución</p>
+<p><b>DerLabs es la plataforma para vender online con delivery integrado.</b> No es un canal de mensajes. Es una tienda diseñada para vender.</p>
+<ul class="camino-lista">
+<li>Delivery propio, sin comisiones por venta</li>
+<li>Pago anual fijo (3.05 UF/año + IVA), sin porcentaje por cada venta</li>
+<li>Gestor de pedidos independiente con notificaciones push en tu celular</li>
+<li>Soporte 24/7 real</li>
+<li>Actualizaciones y optimizaciones constantes a DerLabs Delivery</li>
+</ul>
+</div>
+<div class="camino-bloque">
+<p class="camino-subtit">El beneficio</p>
+<p>Deja de ser esclavo de responder mensajes y cerrar ventas manualmente. <b>Tu tienda vende sola mientras duermes.</b> Solo te preocupas de la publicidad, armar pedidos y gestionar la entrega. Tú decides tus tiempos.</p>
+<p>El pedido llega. Lo gestionas con un botón: <b>En preparación / En camino / Entregado</b>.</p>
+</div>
+<div class="camino-cierre">
+<p>Mientras lees esto, alguien te está escribiendo por WhatsApp y no le estás respondiendo. Ese cliente ya está buscando en otro lado.</p>
+</div>
+<a href="#precios" class="btn-secundario camino-cta">Empieza tu independencia hoy</a>
+</div>
+
+      </div>
+    </div>
+  </section>
+
 <section id="features">
   <div class="wrap">
-    <span class="badge">CÓMO FUNCIONA</span>
-    <h2 class="section-tit" style="margin-top:16px">Todo lo que necesita <span class="acento">tu negocio</span></h2>
-    <p class="section-sub">Una plataforma pensada para tiendas y delivery, no una página genérica adaptada.</p>
+    <span class="badge">EL MOTOR</span>
+    <h2 class="section-tit" style="margin-top:16px">La plataforma que <span class="acento">lo hace posible</span></h2>
+    <p class="section-sub">Cada plan incluye acceso completo al motor DerLabs. Sirve para cualquier negocio que venda con delivery: contamos con dos diseños autoeditables con la estructura de diseño a la vanguardia mundial para comida, retail, tecnología, ropa o cualquier producto.</p>
     <div class="features-grid">
       <div class="feature-card">
         <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/> <line x1="3" y1="6" x2="21" y2="6"/> <path d="M16 10a4 4 0 0 1-8 0"/> </svg></span></div>
@@ -614,23 +742,23 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
     <div class="wrap">
       <span class="badge">GESTOR DE PEDIDOS</span>
       <h2 class="section-tit" style="margin-top:16px">Cada pedido, <span class="acento">en su lugar</span></h2>
-      <p class="section-sub">Recibe, prepara, despacha y entrega desde una sola pantalla. Ve el estado de cada pedido en tiempo real, con mapa de la dirección y contacto directo con el cliente.</p>
+      <p class="section-sub">Cada venta figura al instante en el gestor, además te llega como notificación push a tu teléfono si no tienes el gestor abierto en una pantalla independiente. Tocas y entras directo al pedido: cambias el estado, ves el mapa de la dirección y tienes botones directos para contactar instantáneamente a tu cliente sin salir de la pantalla. Deja de perder pedidos. <b>Tu tienda trabaja incluso cuando no estás mirando.</b></p>
       <div class="img-feature-wrap"><img src="/img-gestor.png" alt="Gestor de pedidos DerLabs" class="img-feature"></div>
     </div>
   </section>
 
   <section id="precios">
   <div class="wrap">
-    <span class="badge">DOS FORMAS DE EMPEZAR</span>
+    <span class="badge">ELIGE CÓMO EMPEZAR</span>
     <h2 class="section-tit" style="margin-top:16px">Elige la que <span class="acento">se ajuste a tu negocio</span></h2>
-    <p class="section-sub">Dos formas de trabajar con DerLabs. La mensualidad te da acceso a la plataforma lista para vender hoy. El desarrollo personalizado te entrega una tienda diseñada 100% a tu medida, con todas las mismas funciones y más.</p>
+    <p class="section-sub">Dos formas de tener tu tienda online con delivery. Sin comisiones por venta. Sin costos ocultos.</p>
     <div class="precios-grid">
       <div class="plan-card">
         <div class="plan-header">
-          <span class="badge">MENSUALIDAD</span>
+          <span class="badge">PAGO ANUAL</span>
         </div>
-        <div class="plan-precio"><span id="precioMensual">0.5 UF</span><span class="moneda"> /mes + IVA</span></div>
-        <p class="plan-nota">Acceso completo a la plataforma DerLabs para vender desde el primer día. Personaliza colores, header y productos. Incluye todos los features de delivery, Google y fidelización. No incluye dominio propio.</p>
+        <div class="plan-precio"><span id="precioAnual">3.05 UF</span><span class="moneda"> /año + IVA</span></div>
+        <p class="plan-nota">Acceso completo a la plataforma DerLabs durante un año. Configuras tu tienda en minutos y empiezas a recibir pedidos el mismo día. Renovación anual opcional: sin contratos forzados.</p>
         <ul class="plan-lista">
           <li><span class="check">✓</span> Delivery propio integrado, sin depender de apps de delivery externas</li>
           <li><span class="check">✓</span> Tienda activa desde el primer día</li>
@@ -651,10 +779,10 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
       </div>
       <div class="plan-card destacado">
         <div class="plan-header">
-          <span class="badge verde">DESARROLLO A MEDIDA</span>
+          <span class="badge verde">DESARROLLA TU TIENDA 100% A TU MANERA</span>
         </div>
-        <div class="plan-precio"><span id="precioUnico">10 UF</span><span class="moneda"> pago único + IVA</span></div>
-        <p class="plan-nota">Tu marca, tu diseño, tu tienda. Incluye todo lo del plan mensual más dominio .CL o .com. La mantención mensual de 0.5 UF + IVA cubre hosting, plataforma y soporte 24/7.</p>
+        <div class="plan-precio"><span id="precioUnico">Desde 4 UF</span><span class="moneda"> pago único + IVA</span></div>
+        <p class="plan-nota">Diseño e identidad visual 100% a medida, con un año de mantención incluido. Después del primer año, la mantención anual es de 2 UF + IVA e incluye hosting, soporte 24/7, actualizaciones y almacenamiento.</p>
         <ul class="plan-lista">
           <li><span class="check">✓</span> Todo lo del plan mensual</li>
           <li><span class="check">✓</span> Diseño 100% personalizado para tu negocio</li>
@@ -720,7 +848,28 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
       <a href="https://wa.me/56930025299" class="btn-primario" target="_blank" rel="noopener">Empezar ahora →</a>
     </div>
   </div>
-</section>
+</section>  <section id="quienes-somos">
+    <div class="wrap">
+      <div class="quienes-box">
+        <span class="badge">QUIÉNES SOMOS</span>
+        <h2 class="section-tit" style="margin-top:16px">DerLabs — <span class="acento">2 años construyendo</span> soluciones web en Chile.</h2>
+        <p class="section-sub" style="margin-bottom:0">Desde 2024 ayudamos a restaurantes, locales y emprendedores a vender online con delivery integrado. Sin comisiones por venta. Sin depender de las apps. Con soporte real, todas las semanas.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="cierre-marca">
+    <div class="wrap">
+      <div class="cierre-box">
+        <h2 class="cierre-tit">Tienes el producto. Tienes los clientes.<br><span class="acento">¿Por qué Rappi se queda con tu marca?</span></h2>
+        <p class="cierre-txt">Cada pedido que entra por la app es un cliente que la app conoce y tú no. Cada comisión es margen que no vuelve. McDonald's entendió esto hace años: por eso tiene su propia app, su propia marca, sus propios clientes. Y si mañana decide dejar de usar Rappi, su negocio sigue funcionando.</p>
+        <p class="cierre-txt cierre-txt--fuerte">DerLabs te da esa misma herramienta, a precio de emprendedor.</p>
+        <a href="#precios" class="btn-primario">Empieza a construir tu marca</a>
+      </div>
+    </div>
+  </section>
+
+
 
 <footer class="pie">
   <div class="pie-inner">
