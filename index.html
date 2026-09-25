@@ -1619,7 +1619,75 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 }
 .cat-edit-inline input:focus{border-color:var(--rojo);}
 
+/* Feedback al tocar (móvil y desktop): se enciende mientras el dedo está apoyado */
+.btn-add-circ:active,
+.prod-cta:active,
+.prod-add:active,
+.pill-solid:active,
+.pill-outline:active,
+.pill:active,
+.mlink:active,
+.float-btn:active,
+.tab:active{
+  background:var(--rojo-h);
+  color:var(--rojo-texto);
+  transition:none;
+}
+.btn-add-circ:active,
+.prod-cta:active,
+.prod-add:active,
+.pill:active,
+.pill-solid:active,
+.pill-outline:active{
+  transform:scale(.97);
+}
 /* :hover solo en dispositivos con mouse (evita que quede pegado tras un tap en móvil) */
+/* Feedback visual al TOCAR (móvil + desktop) — se enciende mientras
+   el dedo está apoyado, se apaga al soltar. Usa :active, que SÍ
+   dispara en touch (a diferencia de :hover). touch-action:manipulation
+   saca el retraso de 300ms para que se sienta instantáneo. */
+.pill-solid:active,
+.pill-outline:active,
+.prod-cta:active,
+.btn-add-circ:active,
+.float-btn:active,
+.panel-min:active,
+.mlink:active{
+  background:var(--rojo-h);
+  color:var(--rojo-texto);
+  transition:none;
+}
+.pill-outline:active{
+  background:var(--rojo);
+  color:var(--rojo-texto);
+}
+.btn-add-circ:active,
+.prod-cta:active,
+.pill:active,
+.float-btn:active,
+.panel-min:active{
+  transform:scale(.96);
+}
+.tab:active,
+.ctab:active,
+.hfpill:active,
+.fpill:active{
+  background:#E8E8E8;
+  color:var(--rojo);
+}
+.pill-solid,
+.pill-outline,
+.prod-cta,
+.btn-add-circ,
+.float-btn,
+.panel-min,
+.mlink,
+.pill{
+  touch-action:manipulation;
+  -webkit-user-select:none;
+  user-select:none;
+}
+
 @media (hover:hover){
   .pill-solid:hover{background:var(--rojo-h)}
   .pill-outline:hover{background:var(--rojo);color:var(--rojo-texto)}
