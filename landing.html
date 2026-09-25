@@ -67,15 +67,30 @@ img{max-width:100%;display:block}
 button{font-family:inherit;cursor:pointer;border:none}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 
-/* ── Badge tipo píldora con punto ── */
+/* ── Chip de marca — "cajita" sí, píldora de Claude no.
+   Diseño propio que funciona en los 2 contextos del landing (fondo
+   lila del body Y dentro de tarjetas blancas):
+   - Fondo tenue del color de marca (se ve como cajita en cualquier lado).
+   - Borde fino del mismo color (da estructura, no depende del fondo).
+   - Radio 10px (Claude usa 999px — la forma de esquina ya es distinta).
+   - Sin puntito, sin sombra dura, sin degradados.
+   Mismo componente para morado y verde, solo cambia el color. */
 .badge{
-  display:inline-flex;align-items:center;gap:8px;
-  background:var(--morado-suave);color:var(--morado-dark);
-  font-weight:800;font-size:13px;letter-spacing:.4px;text-transform:uppercase;
-  padding:10px 18px;border-radius:999px;
+  display:inline-flex;align-items:center;
+  background:rgba(108,92,231,.06);
+  color:var(--morado-dark);
+  border:1px solid rgba(108,92,231,.22);
+  font-weight:800;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  padding:8px 14px;border-radius:10px;
+  margin-bottom:14px;
+  line-height:1.2;
 }
-.badge .punto{width:7px;height:7px;border-radius:50%;background:var(--morado)}
-.badge.verde{background:var(--verde-suave);color:var(--verde)}
+.badge .punto{display:none}
+.badge.verde{
+  background:rgba(22,163,74,.06);
+  color:var(--verde);
+  border-color:rgba(22,163,74,.22);
+}
 
 /* ── Header ── */
 header.nav{
