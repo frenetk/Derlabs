@@ -2359,12 +2359,19 @@ function initCheckout(){
   const btnQ = qs("#btnQuitarCupon");
   if (btnQ) btnQ.addEventListener("click", quitarCupon);
 
-  /* Forma de pago */
-  document.querySelectorAll(".pago-opt").forEach(function(opt){
+  /* Forma de pago — el motor usa .pago-opt con data-pago (index de
+     comida), pero el retail usa <label class="pay-opt"><input type="radio"
+     name="pago"> — se soportan los dos selectores para que la forma de
+     pago funcione en cualquier plantilla. */
+  function _esPagoOpt(el){ return el.classList.contains("pago-opt") || el.classList.contains("pay-opt"); }
+  document.querySelectorAll(".pago-opt, .pay-opt").forEach(function(opt){
     opt.addEventListener("click", function(){
-      document.querySelectorAll(".pago-opt").forEach(function(o){ o.classList.remove("sel"); });
+      /* Limpiar el estado .sel en ambos tipos de selector */
+      document.querySelectorAll(".pago-opt, .pay-opt").forEach(function(o){ o.classList.remove("sel"); });
       opt.classList.add("sel");
-      metodoPago = opt.dataset.pago;
+      /* Extraer el valor: data-pago en index, o el value del radio en retail */
+      var radio = opt.querySelector("input[type=radio][name=pago]");
+      metodoPago = opt.dataset.pago || (radio ? (radio.value === "mp" ? "mercadopago" : radio.value) : "mercadopago");
       var noteEf = qs("#pagoEfectivoNote");
       var noteMP = qs("#pagoMPNote");
       var btnConf = qs("#btnConfirmar");
@@ -5920,9 +5927,22 @@ function ocultarSplash(){
 }
 
 async function boot(){
-  initNav(); initMenu(); initCarrito(); initCheckout();
-  initCupones(); initWhatsApp(); initDev(); initImgModal(); initPanel(); initDetProducto();
-  initProdSel(); initCliPedModal();
+  /* Cada init en su propio try/catch: si uno falla (elemento que existe
+     en el index pero no en el retail, por ejemplo), los demás siguen —
+     antes, un solo error acá dejaba la página colgada en el splash para
+     siempre, porque boot() es async y la excepción no capturada cortaba
+     el resto de la función. */
+  const _inits = [
+    ["initNav", initNav], ["initMenu", initMenu], ["initCarrito", initCarrito],
+    ["initCheckout", initCheckout], ["initCupones", initCupones],
+    ["initWhatsApp", initWhatsApp], ["initDev", initDev],
+    ["initImgModal", initImgModal], ["initPanel", initPanel],
+    ["initDetProducto", initDetProducto], ["initProdSel", initProdSel],
+    ["initCliPedModal", initCliPedModal]
+  ];
+  for (const pair of _inits){
+    try { pair[1](); } catch(e){ console.error("[boot] " + pair[0] + " falló:", e); }
+  }
   /* Restaurar sesión devmode — SOLO en DEMO se reactiva directo (no hay
      Firebase Auth real que verificar). Fuera de DEMO, activarDevmode()
      ya NO se llama desde acá: se limpia el flag guardado de
@@ -6077,6 +6097,18 @@ async function boot(){
   registrarSW();
   /* splash se oculta cuando cargarFirebase() termina */
 }
+
+/* Watchdog del splash — si en 10s nadie lo ocultó (algún error en el
+   arranque, Firestore que no responde), lo ocultamos a la fuerza para
+   que la página quede usable. Log para debugging. */
+setTimeout(function(){
+  var s = document.getElementById("splashScreen");
+  if (s && !s.classList.contains("oculto")){
+    console.warn("[splash] watchdog 10s — forzando ocultar splash");
+    s.classList.add("oculto");
+  }
+}, 10000);
+
 boot();
 /* Refuerzo periódico — cubre cualquier emoji que se haya insertado por
    fuera de renderAll() (toasts, listas que se regeneran solas, timeline
