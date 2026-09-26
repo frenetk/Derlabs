@@ -613,7 +613,7 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
         <div class="problema-card"><div class="problema-ico">⏰</div><p class="problema-tit">2-3 horas al día</p><p class="problema-txt">pierdes respondiendo lo mismo, cerrando ventas manualmente.</p></div>
         <div class="problema-card"><div class="problema-ico">📊</div><p class="problema-tit">25%</p><p class="problema-txt">de los pedidos por WhatsApp tienen errores o se pierden entre tus mensajes. Pérdida millonaria al año.</p></div>
         <div class="problema-card"><div class="problema-ico">🛍️</div><p class="problema-tit problema-tit--largo">USD 25/mes</p><p class="problema-txt">Plan básico de Shopify + 2% de comisión por venta. Las apps para funciones básicas suman USD 100+ al mes.</p></div>
-        <div class="problema-card"><div class="problema-ico">🏬</div><p class="problema-tit problema-tit--largo">2% por venta</p><p class="problema-txt">El plan gratuito de Jumpseller cobra 2% de cada transacción. Los planes pagos parten en $19.900/mes.</p></div>
+        <div class="problema-card"><div class="problema-ico">🏬</div><p class="problema-tit problema-tit--largo">2% por venta</p><p class="problema-txt">El plan gratuito de Jumpseller cobra 2% de cada transacción. Los planes pagos parten en $19.900/mes y aun así el sitio más básico viene sin features ni optimización para delivery.</p></div>
         <div class="problema-card"><div class="problema-ico">⏳</div><p class="problema-tit problema-tit--largo">Hasta 17%</p><p class="problema-txt">Comisión de MercadoLibre Chile por categoría + cargo fijo + envío gratis obligatorio + costo de cuotas. Y sin reputación, retienen tu dinero 22 días.</p></div>
       </div>
     </div>
@@ -746,7 +746,7 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
     <div class="wrap">
       <span class="badge">GESTOR DE PEDIDOS</span>
       <h2 class="section-tit" style="margin-top:16px">Cada pedido, <span class="acento">en su lugar</span></h2>
-      <p class="section-sub">Cada venta figura al instante en el gestor, además te llega como notificación push a tu teléfono si no tienes el gestor abierto en una pantalla independiente. Tocas y entras directo al pedido: cambias el estado, ves el mapa de la dirección y tienes botones directos para contactar instantáneamente a tu cliente sin salir de la pantalla. Deja de perder pedidos. <b>Tu tienda trabaja incluso cuando no estás mirando.</b></p>
+      <p class="section-sub">Cada venta te llega al instante: en el gestor o como notificación push al teléfono. Tocas el pedido y haces todo desde una sola pantalla: cambio de estado, mapa de la dirección y contacto directo con tu cliente.</p>
       <div class="img-feature-wrap"><img src="/img-gestor.png" alt="Gestor de pedidos DerLabs" class="img-feature"></div>
     </div>
   </section>
@@ -1012,18 +1012,27 @@ async function cargarContenidoPublico(){
     if (d.fraseFooter != null) qs("#fraseFooter").textContent = d.fraseFooter;
   } catch(e){ console.warn("No se pudo cargar el contenido del landing:", e); }
 }
-async function cargarResenasPublico(){
-  try {
-    const snap = await colResenas.orderBy("orden").get();
-    const grid = qs("#resenasGrid");
-    if (snap.empty) return; // se queda con el mensaje "todavía no hay reseñas" que ya está en el HTML
-    grid.innerHTML = snap.docs.map(doc => {
-      const r = doc.data();
-      const iniciales = (r.nombre || "").split(" ").map(p => p[0]).join("").slice(0,2).toUpperCase();
-      return `
+const RESENAS_DEFAULT = [
+  { nombre: "Camilo Fuentes", negocio: "Cocina urbana", estrellas: 5,
+    texto: "Al comienzo tuve mis dudas, pero en un par de días me di cuenta de lo fácil que se vuelve todo. Tener todo en uno me da bastante tiempo extra que se traduce en ganancia." },
+  { nombre: "Natalia Rubilar", negocio: "Moda y accesorios", estrellas: 5,
+    texto: "Llevo varios años vendiendo por WhatsApp y marketplace. Desde que entré a la plataforma lo primero que noté es cómo bajó mi carga mental. Eso me ayudó a preocuparme más de mis proveedores y comencé a llegar a público que antes no llegaba. Ahora reparto en todo Santiago, no solo en mi comuna." },
+  { nombre: "Matías Rodríguez", negocio: "Tecnología y accesorios", estrellas: 5,
+    texto: "Dejo mi reseña principalmente porque la atención que recibí me hizo enamorarme de la plataforma. Un sábado por la noche se me ocurrió escribir a soporte para agregar un chatbot a mi tienda y me sorprendió la rapidez con la que recibí atención e integración de lo que pedí. Realmente el soporte es 24/7. Recomendadísimos." },
+  { nombre: "Felipe Catalán", negocio: "Restaurant", estrellas: 5,
+    texto: "Llevo 5 meses con DerLabs y ya logré sacar a mi restaurant de PedidosYa para dejar de pagar la tremenda comisión por venta. Ahora solo uso el gestor de pedidos y mis repartidores propios. Solo a veces uso PedidosYa Envíos cuando estoy corto de repartidores. La integración fue sencilla: solo tuve que meter el token en el panel de administrador. Los recomiendo." },
+  { nombre: "Macarena Sánchez", negocio: "Ropa", estrellas: 5,
+    texto: "Vendía ropa por marketplace y por Instagram. Ahora tengo mi propio sitio que parece una web de casa comercial tipo Falabella o MercadoLibre. El aspecto profesional que da el sitio me encanta. Fue un crecimiento increíble: ahora solo pago publicidad a mi web y las ventas caen solas." }
+];
+
+function renderResenas(lista){
+  return lista.map(r => {
+    const iniciales = (r.nombre || "").split(" ").map(p => p[0]).join("").slice(0,2).toUpperCase();
+    const estrellas = "★".repeat(Math.max(1, Math.min(5, r.estrellas || 5)));
+    return `
         <div class="reseña-card">
-          <div class="reseña-estrellas">${"★".repeat(Math.max(1,Math.min(5,r.estrellas||5)))}</div>
-          <p class="reseña-texto">"${esc(r.texto)}"</p>
+          <div class="reseña-estrellas">${estrellas}</div>
+          <p class="reseña-texto">${esc(r.texto)}</p>
           <div class="reseña-autor">
             <div class="reseña-avatar">${esc(iniciales)}</div>
             <div>
@@ -1032,8 +1041,19 @@ async function cargarResenasPublico(){
             </div>
           </div>
         </div>`;
-    }).join("");
-  } catch(e){ console.warn("No se pudieron cargar las reseñas:", e); }
+  }).join("");
+}
+
+async function cargarResenasPublico(){
+  const grid = qs("#resenasGrid");
+  try {
+    const snap = await colResenas.orderBy("orden").get();
+    const resenas = snap.empty ? RESENAS_DEFAULT : snap.docs.map(doc => doc.data());
+    grid.innerHTML = renderResenas(resenas);
+  } catch(e){
+    console.warn("Reseñas por defecto (no hay Firestore):", e);
+    grid.innerHTML = renderResenas(RESENAS_DEFAULT);
+  }
 }
 cargarContenidoPublico();
 cargarResenasPublico();
