@@ -236,7 +236,7 @@ async function enviarPush(dispositivo, payloadStr, jwtCache, env){
   return "error:" + r.status + ":" + txt.slice(0, 100);
 }
 
-export async function notificar(request, env){
+export async function notificar(request, env, bodyYaParseado){
   if (request.method === "GET"){
     return new Response(JSON.stringify({ ok:true, msg:"Función activa. Usa POST para disparar el push." }),
       { headers: { "Content-Type": "application/json" } });
@@ -249,8 +249,10 @@ export async function notificar(request, env){
       { status: 500, headers: { "Content-Type": "application/json" } });
   }
 
-  let body = {};
-  try { body = JSON.parse(await request.text() || "{}"); } catch(e){ body = {}; }
+  let body = bodyYaParseado || {};
+  if (!bodyYaParseado){
+    try { body = JSON.parse(await request.text() || "{}"); } catch(e){ body = {}; }
+  }
   const storeId  = body.storeId  || DEFAULT_STORE;
   const cliente  = body.cliente  || {};
   const total    = body.total    || 0;

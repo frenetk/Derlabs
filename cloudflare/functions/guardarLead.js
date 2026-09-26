@@ -65,12 +65,9 @@ export async function guardarLead(request, env){
       total: 0,
       items: []
     };
-    const req = new Request("https://internal/notificar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(notifBody)
-    });
-    await notificar(req, env);
+    /* Llamada directa con el body ya armado — evitamos el Request
+       sintetico que rompia el .text() en Workers. */
+    await notificar({ method: "POST" }, env, notifBody);
   } catch(e){
     console.error("guardarLead push:", e.message);
   }
