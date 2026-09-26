@@ -256,11 +256,14 @@ export async function notificar(request, env){
   const total    = body.total    || 0;
   const items    = body.items    || [];
 
-  const resumen = items.map(function(i){ return i.cantidad + "x " + i.nombre; }).join(", ");
-  const payloadStr = JSON.stringify({
-    title: "🛍️ ¡Nuevo pedido! $" + Number(total).toLocaleString("es-CL"),
-    body:  ((cliente.nombre) || "Cliente") + (resumen ? " — " + resumen : ""),
-    url:   "/pedidos.html"
+    /* Titulo y texto custom (lead, alertas) o fallback al pedido */
+    const tituloCustom = body.titulo || null;
+    const textoCustom  = body.texto  || null;
+    const payloadStr = JSON.stringify({
+      title: tituloCustom || ("🛍️ ¡Nuevo pedido! $" + Number(total).toLocaleString("es-CL")),
+      body:  textoCustom  || (((cliente.nombre) || "Cliente") + (resumen ? " — " + resumen : "")),
+      url:   body.url || "/pedidos.html"
+    });
   });
 
   let dispositivos;

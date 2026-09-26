@@ -27,6 +27,7 @@ import { notificar } from "./functions/notificar.js";
 import { ultimoPedido } from "./functions/ultimoPedido.js";
 import { limpiarPendientes } from "./functions/limpiarPendientes.js";
 import { getDb } from "./functions/_firebase.js";
+import { guardarLead } from "./functions/guardarLead.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -45,7 +46,8 @@ const FUNCIONES = {
   crearSuscripcionPlataforma,
   webhookSuscripcion,
   notificar,
-  ultimoPedido
+  ultimoPedido,
+  guardarLead
 };
 
 

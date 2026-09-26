@@ -519,6 +519,31 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
 .cierre-txt--fuerte{font-size:17px;font-weight:800;color:var(--texto);margin:24px 0 28px}
 @media (max-width:720px){.quienes-box{padding:32px 22px}.cierre-box{padding:36px 24px}.camino-card{padding:24px 20px}}
 .problema-tit--largo{font-size:18px;line-height:1.2}
+
+/* Formulario de captación del landing */
+.lead-form{display:grid;gap:14px;margin-top:26px;text-align:left;max-width:560px;margin-left:auto;margin-right:auto}
+.lead-row{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:600px){.lead-row{grid-template-columns:1fr 1fr}}
+.lead-field{display:flex;flex-direction:column;gap:6px}
+.lead-label{font-size:13px;font-weight:700;color:rgba(255,255,255,.8);letter-spacing:.02em}
+.lead-field input,.lead-field select,.lead-field textarea{
+  width:100%;padding:14px 16px;border-radius:12px;border:0;
+  background:rgba(255,255,255,.12);color:#fff;font-size:15px;font-family:inherit;
+  transition:background-color .15s,box-shadow .15s;outline:none;
+}
+.lead-field input::placeholder,.lead-field textarea::placeholder{color:rgba(255,255,255,.45)}
+.lead-field select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;background-size:16px;padding-right:44px;-webkit-appearance:none;appearance:none}
+.lead-field select option{color:#1A1826;background:#fff}
+.lead-field input:focus,.lead-field select:focus,.lead-field textarea:focus{background:rgba(255,255,255,.18);box-shadow:0 0 0 3px rgba(255,255,255,.28)}
+.lead-field textarea{resize:vertical;min-height:76px}
+.lead-submit{width:100%;margin-top:6px;justify-content:center}
+.lead-submit.is-loading{opacity:.6;pointer-events:none}
+.lead-estado{margin-top:6px;font-size:14px;font-weight:600;min-height:20px;text-align:center;color:rgba(255,255,255,.9)}
+.lead-estado.err{color:#FFC7C7}
+.lead-estado.ok{color:#B8F0C8}
+.lead-priv{margin-top:8px;font-size:12px;color:rgba(255,255,255,.55);text-align:center}
+.lead-alt{margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.15);font-size:14px;color:rgba(255,255,255,.7);text-align:center}
+.lead-alt a{color:#fff;font-weight:800;text-decoration:underline;text-underline-offset:3px}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -845,14 +870,49 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
 </section>
 
 <section id="contacto">
-  <div class="wrap">
-    <div class="cta-final">
-      <h2>Tu tienda puede estar vendiendo <span class="acento">esta semana</span></h2>
-      <p>Sin inversiones grandes, sin conocimientos técnicos, sin perder tiempo. Escríbenos y en pocos días estás vendiendo.</p>
-      <a href="https://wa.me/56930025299" class="btn-primario" target="_blank" rel="noopener">Empezar ahora →</a>
+    <div class="wrap">
+      <div class="cta-final">
+        <h2>Tu tienda puede estar vendiendo <span class="acento">esta semana</span></h2>
+        <p>Sin inversiones grandes, sin conocimientos técnicos, sin perder tiempo. Dejanos tus datos y te contactamos en menos de 24 horas.</p>
+        <form id="leadForm" class="lead-form" autocomplete="on">
+          <div class="lead-row">
+            <label class="lead-field">
+              <span class="lead-label">Tu nombre</span>
+              <input type="text" name="nombre" required maxlength="100" placeholder="Ej: Camila Rojas" autocomplete="name">
+            </label>
+            <label class="lead-field">
+              <span class="lead-label">WhatsApp</span>
+              <input type="tel" name="whatsapp" required maxlength="30" placeholder="+56 9 1234 5678" autocomplete="tel" inputmode="tel">
+            </label>
+          </div>
+          <label class="lead-field">
+            <span class="lead-label">¿Qué tipo de negocio tienes?</span>
+            <select name="rubro" required>
+              <option value="">Elige una opción</option>
+              <option value="comida">Comida / Restaurant</option>
+              <option value="retail">Retail / Tienda</option>
+              <option value="tecnologia">Tecnología / Electrónica</option>
+              <option value="ropa">Ropa / Accesorios</option>
+              <option value="otro">Otro</option>
+            </select>
+          </label>
+          <label class="lead-field">
+            <span class="lead-label">Cuéntame un poco más <span style="font-weight:500;opacity:.6">(opcional)</span></span>
+            <textarea name="mensaje" rows="3" maxlength="500" placeholder="¿Vendes por WhatsApp? ¿Usas PedidosYa o Uber Eats? ¿Cuántos pedidos haces al día?"></textarea>
+          </label>
+          <button type="submit" class="btn-primario lead-submit" id="leadSubmit">
+            <span class="lead-submit-txt">Quiero agendar mi demo →</span>
+          </button>
+          <p class="lead-estado" id="leadEstado" role="status"></p>
+          <p class="lead-priv"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>Tus datos quedan en Chile. No los compartimos con terceros.</p>
+        </form>
+        <div class="lead-alt">
+          <span>¿Prefieres escribir directo?</span>
+          <a href="https://wa.me/56930025299" target="_blank" rel="noopener">WhatsApp directo →</a>
+        </div>
+      </div>
     </div>
-  </div>
-</section>  <section id="quienes-somos">
+  </section>  <section id="quienes-somos">
     <div class="wrap">
       <div class="quienes-box">
         <span class="badge">QUIÉNES SOMOS</span>
@@ -1269,5 +1329,61 @@ document.querySelectorAll("[data-faq]").forEach(btn => {
   });
 });
 </script>
+
+<script>
+(function(){
+  const form = document.getElementById("leadForm");
+  if (!form) return;
+  const btn = document.getElementById("leadSubmit");
+  const btnTxt = btn.querySelector(".lead-submit-txt");
+  const estado = document.getElementById("leadEstado");
+
+  form.addEventListener("submit", async function(e){
+    e.preventDefault();
+    estado.textContent = "";
+    estado.className = "lead-estado";
+
+    const fd = new FormData(form);
+    const datos = {
+      nombre:   String(fd.get("nombre")   || "").trim(),
+      whatsapp: String(fd.get("whatsapp") || "").trim(),
+      rubro:    String(fd.get("rubro")    || "").trim(),
+      mensaje:  String(fd.get("mensaje")  || "").trim()
+    };
+
+    if (!datos.nombre || !datos.whatsapp || !datos.rubro){
+      estado.textContent = "Completa nombre, WhatsApp y tipo de negocio.";
+      estado.className = "lead-estado err";
+      return;
+    }
+
+    btn.classList.add("is-loading");
+    btnTxt.textContent = "Enviando…";
+
+    try {
+      const res = await fetch("/api/guardarLead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(datos)
+      });
+      const j = await res.json().catch(function(){ return {}; });
+      if (!res.ok || !j.ok){
+        throw new Error(j.error || ("HTTP " + res.status));
+      }
+      estado.textContent = "✅ Listo. Te contactamos en menos de 24 horas.";
+      estado.className = "lead-estado ok";
+      form.reset();
+    } catch(err){
+      console.error("lead:", err);
+      estado.textContent = "Hubo un error al enviar. Intenta de nuevo o escríbenos por WhatsApp.";
+      estado.className = "lead-estado err";
+    } finally {
+      btn.classList.remove("is-loading");
+      btnTxt.textContent = "Quiero agendar mi demo →";
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
