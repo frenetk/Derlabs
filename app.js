@@ -28,6 +28,29 @@ const GOOGLE_MAPS_KEY = "AIzaSyAc5TwfbIVzuRfuOelbRRXdPXHq8hHD00w";
 
 const DEMO = FIREBASE_CONFIG.apiKey === "PEGAR_AQUÍ";
 
+/* ════════════════════════════════════════════════════════════════
+   PLANTILLAS — un mismo motor para varios diseños
+   Una plantilla (ej. index-retail.html) puede definir, ANTES de
+   cargar este archivo, window.DERLABS_SKIN = { ... } con:
+     plantilla        "retail" → lee dominios/{host}.storeId_retail si
+                      existe y separa carrito y último pedido en
+                      localStorage (no se mezclan con otra plantilla)
+     demoData         { config, productos, cupones, locales } propios
+     demoImages       imágenes demo propias
+     mensajes         textos por defecto de WhatsApp
+     textosTimeline   textos del seguimiento en la confirmación
+     textos           textos sueltos (ver _txt)
+     slotsOfertas / slotsDestacados / desfaseDestacados
+     funciones        arman el HTML de tarjetas, carrito, cuenta, etc.
+                      (ver cada _sk("...") más abajo)
+   index.html (hamburguesas) no define nada: todo queda igual.
+   ════════════════════════════════════════════════════════════════ */
+const SKIN = (typeof window !== "undefined" && window.DERLABS_SKIN) || {};
+function _sk(nombre){ return typeof SKIN[nombre] === "function" ? SKIN[nombre] : null; }
+function _txt(clave, porDefecto){
+  return (SKIN.textos && SKIN.textos[clave] != null) ? SKIN.textos[clave] : porDefecto;
+}
+
 /* DEMO DATA */
 /* ════════════════════════════════════════════════════════════════
    DEMO DATA
@@ -147,6 +170,28 @@ const DEMO_DATA = {
   dispositivos: []
 };
 
+/* Plantilla: datos demo propios (catálogo, cupones, locales y textos por
+   defecto). Se aplica antes de crear "state", así todo el motor los usa. */
+(function aplicarDemoDePlantilla(){
+  if (SKIN.demoImages) Object.assign(DEMO_IMAGES, SKIN.demoImages);
+  if (SKIN.mensajes){
+    Object.assign(MENSAJES_DEFAULT, SKIN.mensajes);
+    DEMO_DATA.config.msjConfirmacion = MENSAJES_DEFAULT.confirmacion;
+    DEMO_DATA.config.msjPreparacion  = MENSAJES_DEFAULT.preparacion;
+    DEMO_DATA.config.msjCamino       = MENSAJES_DEFAULT.camino;
+    DEMO_DATA.config.msjListo        = MENSAJES_DEFAULT.listo;
+  }
+  const sd = typeof SKIN.demoData === "function" ? SKIN.demoData(DEMO_IMAGES) : SKIN.demoData;
+  if (sd){
+    if (sd.config) DEMO_DATA.config = Object.assign({}, DEMO_DATA.config, sd.config);
+    /* semillaConfig: solo para la tienda demo que se siembra (banners,
+       categorías, productos destacados). No se usa como valor por
+       defecto de tiendas reales que no tengan esos campos. */
+    if (sd.semillaConfig) DEMO_DATA.semillaConfig = sd.semillaConfig;
+    ["productos","cupones","locales"].forEach(function(k){ if (Array.isArray(sd[k])) DEMO_DATA[k] = sd[k]; });
+  }
+})();
+
 const CATEGORIAS_GRID = [];
 let FILTROS = ["Todos"];
 const VARIABLES_MSJ = ["{nombre_cliente}","{numero_pedido}","{pedido}","{total}","{negocio}","{tiempo_estimado}"];
@@ -198,9 +243,15 @@ function esc(s){
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
-function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
-function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
-function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+/* Con plantilla, el carrito y el último pedido se guardan aparte
+   (ej. tb_carrito_retail): si dos plantillas conviven en el mismo
+   dominio, no se mezclan los productos de una tienda con la otra. */
+function _lsClave(k){
+  return (SKIN.plantilla && (k === "tb_carrito" || k === "tb_ultimo_pedido")) ? k + "_" + SKIN.plantilla : k;
+}
+function lsGet(k){ try { return localStorage.getItem(_lsClave(k)); } catch(e){ return null; } }
+function lsSet(k,v){ try { localStorage.setItem(_lsClave(k),v); } catch(e){} }
+function lsDel(k){ try { localStorage.removeItem(_lsClave(k)); } catch(e){} }
 function fmtPrecio(n){
   n = Math.round(Number(n) || 0);
   return "$" + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -222,6 +273,7 @@ function normEstado(e){
 }
 function badgeEstadoCliente(e){
   const n = normEstado(e);
+  if (_sk("badgeEstadoCliente")) return SKIN.badgeEstadoCliente(n);
   const map = { nuevo:"🔴 Nuevo", preparacion:"🟡 Preparando", camino:"🔵 En camino",
     listo:"🟢 Entregado", cancelado:"⚪ Cancelado" };
   return '<span class="cbadge ' + n + '">' + (map[n] || n) + '</span>';
@@ -637,13 +689,14 @@ function _haySesionDevmode(){ return lsGet("tb_dev_session") === "1" || document
 
 async function sembrarDatosDemo(){
   const batch = db.batch();
-  batch.set(col("config").doc("general"), DEMO_DATA.config);
+  const _cfgSemilla = Object.assign({}, DEMO_DATA.config, DEMO_DATA.semillaConfig || {});
+  batch.set(col("config").doc("general"), _cfgSemilla);
   batch.set(col("config").doc("privado"), DEMO_DATA.configPrivado);
   DEMO_DATA.productos.forEach(function(p){ batch.set(col("productos").doc(p.id), p); });
   DEMO_DATA.cupones.forEach(function(cu){ batch.set(col("cupones").doc(cu.id), cu); });
   DEMO_DATA.locales.forEach(function(l){ batch.set(col("locales").doc(l.id), l); });
   await batch.commit();
-  state.config        = Object.assign({}, DEMO_DATA.config);
+  state.config        = Object.assign({}, _cfgSemilla);
   state.configPrivado = Object.assign({}, DEMO_DATA.configPrivado);
   state.productos = normalizarOrden(DEMO_DATA.productos.map(function(p){ return Object.assign({}, p); }));
   state.cupones   = DEMO_DATA.cupones.map(function(cu){ return Object.assign({}, cu); });
@@ -746,10 +799,11 @@ function actualizarFaviconConConfig(){
      genérico del rubro como respaldo. */
   const logoReal = state.config && state.config.logoBase64;
   if (logoReal) { aplicarFaviconDesdeURL(logoReal); return; }
-  const rubroId = (state.config && (state.config.subrubro || state.config.rubro)) || "hamburguesas";
+  const rubroId = (state.config && (state.config.subrubro || state.config.rubro)) || SKIN.rubroPorDefecto || "hamburguesas";
   aplicarFavicon(rubroPorId(rubroId).ico);
 }
 
+let _cargaFirebaseLista = false;
 async function cargarFirebase(){
   /* Mostrar skeletons mientras carga Firestore */
   mostrarSkeletons();
@@ -779,6 +833,7 @@ async function cargarFirebase(){
     if (!state.productos.length){
       try { await sembrarDatosDemo(); } catch(se){ console.warn("Seed:", se); }
     }
+    _cargaFirebaseLista = true;
     renderAll();
     /* Ocultar splash cuando Firebase terminó de cargar el nombre real */
     ocultarSplash();
@@ -811,7 +866,7 @@ async function saveField(colName, docId, field, value){
     const oldValue = valorActual(colName, docId, field);
     applyLocal(colName, docId, field, value);
     _pushChange(colName, docId, field, value, oldValue);
-    renderAll();
+    setTimeout(renderAll, 0); /* diferido: deja que el foco llegue al siguiente campo antes de redibujar */
     return true;
   }
   if (DEMO){
@@ -974,6 +1029,7 @@ function renderAll(){
   renderCartSheet();
   renderCheckout();
   renderPanel();
+  if (_sk("despuesRender")){ try { SKIN.despuesRender(); } catch(e){ console.warn("Plantilla:", e); } }
   aplicarIconosGlobal(); // al final: cubre lo que todas las funciones de arriba acaban de generar
 }
 
@@ -1003,17 +1059,27 @@ function renderNombre(){
   document.title = n;
 }
 function renderFooter(){
-  qs("#crTexto").textContent = state.config.footerTexto || "Todos los derechos reservados.";
-  qs("#crAnno").textContent  = state.config.footerAno   || "2026";
+  const t = qs("#crTexto"), a = qs("#crAnno");
+  if (t) t.textContent = state.config.footerTexto || "Todos los derechos reservados.";
+  if (a) a.textContent = state.config.footerAno   || "2026";
 }
 function renderConfTextos(){
-  qs("#confTitulo").textContent = state.config.confTitulo || "¡Pago confirmado!";
-  qs("#confSub").textContent    = state.config.confSub    || "";
-  qs("#tl1").textContent = state.config.timeline1 || "Pedido recibido";
-  qs("#tl2").textContent = state.config.timeline2 || "En preparación";
-  qs("#tl3").textContent = state.config.timeline3 || "En camino";
-  qs("#tl4").textContent = state.config.timeline4 || "Entregado";
-  qs("#gpsCard").style.display = (state.config.mostrarGPS === false) ? "none" : "block";
+  const txt = (sel, v) => { const el = qs(sel); if (el) el.textContent = v; };
+  /* Mientras se verifica un pago de Mercado Pago, el título y la bajada los
+     maneja actualizarEncabezadoConfirmacion(): no pisarlos con "¡Pago
+     confirmado!" en cada render (antes pasaba al volver de Mercado Pago). */
+  const _ult = ultimoPedido();
+  const _verificando = !!(_ult && (_ult.estado === "esperando" || _ult.estado === "pendiente_pago"));
+  if (!_verificando){
+    txt("#confTitulo", state.config.confTitulo || "¡Pago confirmado!");
+    txt("#confSub",    state.config.confSub    || "");
+  }
+  txt("#tl1", state.config.timeline1 || "Pedido recibido");
+  txt("#tl2", state.config.timeline2 || "En preparación");
+  txt("#tl3", state.config.timeline3 || "En camino");
+  txt("#tl4", state.config.timeline4 || "Entregado");
+  const gps = qs("#gpsCard");
+  if (gps) gps.style.display = (state.config.mostrarGPS === false) ? "none" : "block";
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -1041,16 +1107,17 @@ function mostrarSkeletons(){
   const ml = qs("#menuList");
   const cg = qs("#catGrid");
   const pl = qs("#popularesList");
-  if(of) of.innerHTML = skeletonOfertas();
-  if(ml) ml.innerHTML = skeletonItems();
-  if(cg) cg.innerHTML = skeletonCats();
-  if(pl) pl.innerHTML = skeletonItems();
+  const sk = _sk("skeleton");
+  if(of) of.innerHTML = sk ? sk("ofertas")   : skeletonOfertas();
+  if(ml) ml.innerHTML = sk ? sk("menu")      : skeletonItems();
+  if(cg) cg.innerHTML = sk ? sk("cats")      : skeletonCats();
+  if(pl) pl.innerHTML = sk ? sk("populares") : skeletonItems();
 }
 
 function renderInicio(){
   const c = state.config;
   qs("#heroImg").src = c.heroImagen || DEMO_IMAGES.banner;
-  qs("#heroBadge").textContent  = c.heroBadge  || "🔥 Más pedido hoy";
+  qs("#heroBadge").textContent  = c.heroBadge  || _txt("heroBadge", "🔥 Más pedido hoy");
   qs("#heroTitulo").textContent = c.heroTitulo || "";
   qs("#heroSub").textContent    = c.heroSub    || "";
 
@@ -1060,21 +1127,23 @@ function renderInicio(){
   const p2 = qs("#puntosLinea2"); if (p2) p2.textContent = c.puntosLinea2 || "Canjéalos por descuentos exclusivos";
   const p3 = qs("#puntosLinea3"); if (p3) p3.textContent = c.puntosLinea3 || "Automático con cada compra";
 
-  /* Ofertas de hoy — 2 slots conectados a la base de datos (2F) */
-  const ofSlots = [
-    _productoDeSlot(c.oferta1, 0),
-    _productoDeSlot(c.oferta2, 1)
-  ];
+  /* Ofertas de hoy — 2 slots conectados a la base de datos (2F).
+     Una plantilla puede pedir más ranuras (SKIN.slotsOfertas). */
+  const nOf = Math.max(1, Number(SKIN.slotsOfertas) || 2);
+  const ofSlots = [];
+  for (let i = 0; i < nOf; i++) ofSlots.push(_productoDeSlot(c["oferta" + (i+1)], i));
   qs("#ofertasScroll").innerHTML = ofSlots.some(s => s.producto)
     ? ofSlots.map((s, i) => s.producto ? ofertaCardHTML(s.producto, "oferta" + (i+1), c["ofertaSub" + (i+1)] || "") : "").join("")
     : '<p class="vacio">Aún no hay productos. Agrégalos desde el panel admin.</p>';
 
   /* Categorías 2×2 */
   const catsReales = Array.from(new Set(productosActivos().map(p => p.categoria).filter(Boolean))).sort();
+  const hCat = _sk("catTile");
   qs("#catGrid").innerHTML = catsReales.length
     ? catsReales.map(cat => {
         const prods = productosActivos().filter(p => p.categoria === cat && p.imagen);
         const img = prods.length ? prods[0].imagen : "";
+        if (hCat) return hCat(cat, img);
         return `
       <button class="cat-tile" data-cat="${esc(cat)}">
         ${img ? `<img src="${esc(img)}" alt="${esc(cat)}" loading="lazy">` : ""}
@@ -1086,11 +1155,16 @@ function renderInicio(){
   /* 📢 Banners promocionales (2I) */
   renderPromos();
 
-  /* Más pedidos — 2 slots conectados a la base de datos (2F) */
-  const dsSlots = [
-    _productoDeSlot(c.productoDestacado1, 0),
-    _productoDeSlot(c.productoDestacado2, 1)
-  ];
+  /* Más pedidos — 2 slots conectados a la base de datos (2F).
+     SKIN.slotsDestacados / SKIN.desfaseDestacados: más ranuras, y que el
+     respaldo sin configurar no repita los mismos productos de "Ofertas". */
+  const nDs = Math.max(1, Number(SKIN.slotsDestacados) || 2);
+  const offDs = Number(SKIN.desfaseDestacados) || 0;
+  const nAct = productosActivos().length;
+  const dsSlots = [];
+  for (let i = 0; i < nDs; i++){
+    dsSlots.push(_productoDeSlot(c["productoDestacado" + (i+1)], (i + offDs < nAct) ? i + offDs : i));
+  }
   qs("#popularesList").innerHTML = dsSlots.some(s => s.producto)
     ? dsSlots.map((s, i) => s.producto
         ? itemDestacadoHTML(s.producto, "productoDestacado" + (i+1), c["destacadoSub" + (i+1)], s.configurado)
@@ -1113,6 +1187,7 @@ function _productoDeSlot(prodId, fallbackIdx){
 
 /* Card de "Ofertas de hoy" — foto/nombre/precio del producto; subtítulo libre editable */
 function ofertaCardHTML(p, slot, sub){
+  if (_sk("ofertaCard")) return SKIN.ofertaCard(p, slot, sub);
   const subField = slot === "oferta1" ? "ofertaSub1" : "ofertaSub2";
   return `
     <div class="oferta-card" data-ver="${esc(p.id)}" data-selprod="${esc(slot)}">
@@ -1130,6 +1205,7 @@ function ofertaCardHTML(p, slot, sub){
 
 /* Card de "Más pedidos" — mismo diseño que prod-item, edición vía selector de producto */
 function itemDestacadoHTML(p, slot, sub, configurado){
+  if (_sk("itemDestacado")) return SKIN.itemDestacado(p, slot, sub, configurado);
   const subField = slot === "productoDestacado1" ? "destacadoSub1" : "destacadoSub2";
   const subTexto = configurado ? (sub || "") : (sub || p.descripcion || "");
   const tieneStockControl = p.stock != null && p.stock !== "";
@@ -1166,9 +1242,11 @@ function renderPromos(){
   const hoy = new Date().toISOString().slice(0, 10);
   const activos = (Array.isArray(state.config.banners) ? state.config.banners : [])
     .filter(b => b && (b.titulo || b.subtitulo))
-    .filter(b => !b.vence || String(b.vence) >= hoy);
+    .filter(b => !b.vence || String(b.vence) >= hoy)
+    .filter(b => b.activo !== false);   /* "Desactivar" en el panel lo oculta de la tienda */
   if (!activos.length){ bloque.style.display = "none"; scroll.innerHTML = ""; return; }
   bloque.style.display = "block";
+  if (_sk("promoCard")){ scroll.innerHTML = activos.map((b, i) => SKIN.promoCard(b, i)).join(""); return; }
   scroll.innerHTML = activos.map(b => `
     <div class="promo-card" style="background:${esc(b.color || "#9B1B30")}">
       <span class="promo-emoji">${esc(b.emoji || "🎉")}</span>
@@ -1180,6 +1258,7 @@ function renderPromos(){
 }
 
 function itemProductoHTML(p){
+  if (_sk("itemProducto")) return SKIN.itemProducto(p);
   const tieneStockControl = p.stock != null && p.stock !== "";
   const stockNum   = tieneStockControl ? Number(p.stock) : Infinity;
   const agotado    = tieneStockControl && stockNum <= 0;
@@ -1219,6 +1298,7 @@ function renderVariantesEnDetalle(p){
   const cont = document.getElementById("prodDetVariantes");
   if (!cont) return;
   const grupos = (p.variantesActivas && Array.isArray(p.variantes)) ? p.variantes.filter(g => g.nombre && g.opciones && g.opciones.length) : [];
+  if (_sk("variantesDetalle")){ cont.innerHTML = SKIN.variantesDetalle(p, grupos, _prodDetSeleccion, _prodDetTextoPersonal); return; }
   let html = "";
   grupos.forEach(g => {
     html += `
@@ -1248,6 +1328,7 @@ function abrirDetProducto(prodId){
   document.getElementById("prodDetCant").textContent = "1";
   document.getElementById("prodDetTotal").textContent = fmtPrecio(p.precio);
   renderVariantesEnDetalle(p);
+  if (_sk("detalleProducto")) SKIN.detalleProducto(p);
   irPagina("producto");
 }
 
@@ -1275,6 +1356,14 @@ function initDetProducto(){
   document.getElementById("prodDetVariantes").addEventListener("input", function(e){
     if (e.target.id === "prodDetPersonalTexto"){ _prodDetTextoPersonal = e.target.value; }
   });
+  /* Variantes como botones (plantillas): [data-vargrupo][data-varopt] */
+  document.getElementById("prodDetVariantes").addEventListener("click", function(e){
+    const b = e.target.closest("[data-varopt]");
+    if (!b || b.disabled) return;
+    _prodDetSeleccion[b.dataset.vargrupo] = b.dataset.varopt;
+    const p = state.productos.find(function(x){ return x.id === _prodDetId; });
+    if (p) renderVariantesEnDetalle(p);
+  });
   document.getElementById("prodDetAgregar").addEventListener("click", function(){
     if (!_prodDetId) return;
     const p = state.productos.find(function(x){ return x.id === _prodDetId; });
@@ -1283,7 +1372,7 @@ function initDetProducto(){
         return g.nombre && g.opciones && g.opciones.length && !_prodDetSeleccion[g.nombre];
       });
       if (grupoSinElegir){
-        toast("Elegí " + grupoSinElegir.nombre.toLowerCase() + " antes de agregar");
+        toast(_sk("toastElegir") ? SKIN.toastElegir(grupoSinElegir.nombre) : "Elegí " + grupoSinElegir.nombre.toLowerCase() + " antes de agregar");
         return;
       }
     }
@@ -1291,7 +1380,7 @@ function initDetProducto(){
       agregarAlCarrito(_prodDetId, Object.assign({}, _prodDetSeleccion), _prodDetTextoPersonal.trim());
     }
     history.back();
-    toast("✅ Agregado al pedido");
+    toast(_txt("agregadoDetalle", "✅ Agregado al pedido"));
   });
   /* Delegado: clic en imagen o info del producto → abrir detalle.
      FIX 2E: si el toque nació en un botón ＋ Agregar (data-add), no navegar —
@@ -1319,6 +1408,7 @@ function renderMenu(){
     <button class="fpill ${f === filtroActual ? "active" : ""}" data-f="${esc(f)}">${esc(f)}</button>`).join("");
 
   const items = productosActivos().filter(p => filtroActual === "Todos" || p.categoria === filtroActual);
+  if (_sk("menuLista")){ qs("#menuList").innerHTML = SKIN.menuLista(items, filtroActual); return; }
   qs("#menuList").innerHTML = items.length
     ? items.map(p => itemProductoHTML(p)).join("")
     : '<p class="vacio">Pronto agregaremos productos en esta categoría.</p>';
@@ -1775,7 +1865,7 @@ function agregarAlCarrito(prodId, variantes, notaPersonal){
   renderBadge(true);
   renderCartSheet();
   renderCheckout();
-  toast("🍔 " + p.nombre + " agregado");
+  toast(_sk("toastAgregado") ? SKIN.toastAgregado(p) : "🍔 " + p.nombre + " agregado");
 }
 
 function cambiarCantidad(clave, delta){
@@ -1815,8 +1905,9 @@ function textoVariantesCarrito(i){
 }
 function renderCartSheet(){
   const n = totalItems();
-  qs("#cartCount").textContent = n + (n === 1 ? " ítem" : " ítems");
-  qs("#cartItems").innerHTML = carrito.length ? carrito.map(i => `
+  qs("#cartCount").textContent = _sk("cartCount") ? SKIN.cartCount(n) : n + (n === 1 ? " ítem" : " ítems");
+  const hci = _sk("cartItem");
+  qs("#cartItems").innerHTML = carrito.length ? carrito.map(i => hci ? hci(i) : `
     <div class="citem">
       <div class="citem-img"><img src="${esc(i.imagen)}" alt="${esc(i.nombre)}"></div>
       <div class="citem-info">
@@ -1830,7 +1921,7 @@ function renderCartSheet(){
       </div>
       <span class="citem-precio">${fmtPrecio(i.precio * i.cantidad)}</span>
     </div>`).join("")
-    : '<p class="vacio" style="padding:26px 4px">Tu carrito está vacío. Agrega algo rico del menú 🍔</p>';
+    : (_sk("cartVacio") ? SKIN.cartVacio() : '<p class="vacio" style="padding:26px 4px">Tu carrito está vacío. Agrega algo rico del menú 🍔</p>');
 
   const sub = subtotalCarrito();
   const del = costoDelivery("delivery");
@@ -1841,6 +1932,7 @@ function renderCartSheet(){
   qs("#cartFree").classList.toggle("show", gratis);
   qs("#btnCartContinuar").disabled = carrito.length === 0;
   qs("#btnCartContinuar").style.opacity = carrito.length ? "1" : ".5";
+  if (_sk("despuesCarrito")) SKIN.despuesCarrito({ n: n, subtotal: sub, delivery: del, gratis: gratis });
 }
 
 function abrirCarrito(){
@@ -1859,6 +1951,13 @@ function initCarrito(){
   on("cartOverlay", "click", cerrarCarrito);
   on("cartClose", "click", cerrarCarrito);
   on("cartItems", "click", e => {
+    /* Quitar la línea completa (botón papelera de las plantillas) */
+    const del = e.target.closest("[data-cdel]");
+    if (del){
+      const it = carrito.find(x => x.claveCarrito === del.dataset.cdel);
+      if (it) cambiarCantidad(it.claveCarrito, -it.cantidad);
+      return;
+    }
     const b = e.target.closest(".qty-btn");
     if (!b) return;
     cambiarCantidad(b.dataset.cid, b.dataset.ca === "inc" ? 1 : -1);
@@ -1875,6 +1974,7 @@ function initCarrito(){
    ════════════════════════════════════════════════════════════════ */
 let tipoEntrega = "delivery";
 let metodoPago  = "mercadopago"; /* "efectivo" | "mercadopago" */
+let _pagoElegido = false;         /* true cuando el cliente toca una forma de pago */
 
 function renderSelectorDirecciones(){
   /* Solo en delivery y con usuario logueado */
@@ -1914,7 +2014,8 @@ function renderSelectorDirecciones(){
       qs("#campoDireccion").style.display = "none";
       wrap.style.display = "block";
       wrap._usandoOtra = false;
-      wrap.innerHTML = '<div class="dir-selector-title">📍 Tus direcciones guardadas</div>' +
+      if (_sk("dirSelector")) wrap.innerHTML = SKIN.dirSelector(dirs);
+      else wrap.innerHTML = '<div class="dir-selector-title">📍 Tus direcciones guardadas</div>' +
         dirs.map(function(d){
           var ico = d.label && d.label.toLowerCase().includes("trabajo") ? "🏢" : (d.label && d.label.toLowerCase().includes("otro") ? "📌" : "🏠");
           return '<div class="dir-option" data-dirid="' + d.id + '" data-dir="' + esc(d.direccion) + '" data-comuna="' + esc(d.comuna || "") + '" data-lat="' + (d.lat != null ? d.lat : "") + '" data-lng="' + (d.lng != null ? d.lng : "") + '" data-telefono="' + esc(d.telefono || "") + '">' +
@@ -2188,9 +2289,9 @@ function renderCheckout(){
   if (seleccion) sel.value = seleccion;
   sel.classList.toggle("lleno", !!sel.value);
 
-  qs("#ckItems").innerHTML = carrito.length
+  qs("#ckItems").innerHTML = _sk("ckItems") ? SKIN.ckItems(carrito) : (carrito.length
     ? carrito.map(i => `${i.cantidad}× ${esc(i.nombre)} — ${fmtPrecio(i.precio * i.cantidad)}`).join("<br>")
-    : "Tu carrito está vacío.";
+    : "Tu carrito está vacío.");
 
   const sub  = subtotalCarrito();
   const desc = descuentoActual();
@@ -2244,7 +2345,16 @@ function renderCheckout(){
     const noteEf = qs("#pagoEfectivoNote"), noteMP = qs("#pagoMPNote"), btnConf = qs("#btnConfirmar");
     if (noteEf) noteEf.style.display = "block";
     if (noteMP) noteMP.style.display = "none";
-    if (btnConf) btnConf.textContent = "Confirmar pedido →";
+    if (btnConf) btnConf.textContent = _txt("btnEfectivo", "Confirmar pedido →");
+  }
+  if (mpDisponible && metodoPago === "efectivo" && !_pagoElegido){
+    metodoPago = "mercadopago";
+    if (optEf) optEf.classList.remove("sel");
+    if (optMP) optMP.classList.add("sel");
+    const noteEf = qs("#pagoEfectivoNote"), noteMP = qs("#pagoMPNote"), btnConf = qs("#btnConfirmar");
+    if (noteEf) noteEf.style.display = "none";
+    if (noteMP) noteMP.style.display = "block";
+    if (btnConf && !btnConf.disabled) btnConf.textContent = _txt("btnMP", "Ir a MercadoPago →");
   }
 
   actualizarZonaBadge();
@@ -2252,6 +2362,7 @@ function renderCheckout(){
 
 function marcarError(id){
   const f = qs("#" + id).closest(".ffield");
+  if (!f) return;
   f.classList.add("error","shake");
   setTimeout(()=> f.classList.remove("shake"), 450);
 }
@@ -2327,7 +2438,8 @@ function initCheckout(){
   }));
   qsa("#page-checkout input, #page-checkout textarea, #page-checkout select").forEach(el =>
     el.addEventListener("input", () => {
-      el.closest(".ffield").classList.remove("error");
+      const ff = el.closest(".ffield");
+      if (ff) ff.classList.remove("error");
       if (el.tagName === "SELECT") el.classList.toggle("lleno", !!el.value);
     }));
   on("btnConfirmar", "click", confirmarPedido);
@@ -2362,6 +2474,7 @@ function initCheckout(){
   /* Forma de pago */
   document.querySelectorAll(".pago-opt").forEach(function(opt){
     opt.addEventListener("click", function(){
+      _pagoElegido = true;
       document.querySelectorAll(".pago-opt").forEach(function(o){ o.classList.remove("sel"); });
       opt.classList.add("sel");
       metodoPago = opt.dataset.pago;
@@ -2371,11 +2484,11 @@ function initCheckout(){
       if (metodoPago === "efectivo"){
         if(noteEf) noteEf.style.display = "block";
         if(noteMP) noteMP.style.display = "none";
-        if(btnConf) btnConf.textContent = "Confirmar pedido →";
+        if(btnConf) btnConf.textContent = _txt("btnEfectivo", "Confirmar pedido →");
       } else {
         if(noteEf) noteEf.style.display = "none";
         if(noteMP) noteMP.style.display = "block";
-        if(btnConf) btnConf.textContent = "Ir a MercadoPago →";
+        if(btnConf) btnConf.textContent = _txt("btnMP", "Ir a MercadoPago →");
       }
     });
   });
@@ -2596,7 +2709,7 @@ async function confirmarPedido(){
          confirmó (producto agotado, cupón vencido justo ahora), acá
          llega el motivo real en vez de un error genérico de red. */
       toast(j.error || ("No se pudo iniciar el pago (HTTP " + res.status + ")"));
-      btn.disabled = false; btn.textContent = "Ir a MercadoPago →";
+      btn.disabled = false; btn.textContent = _txt("btnMP", "Ir a MercadoPago →");
       return;
     }
     if (j.pedidoId && j.pedidoId !== ped.id){ ped.id = j.pedidoId; guardarUltimoPedido(ped); }
@@ -2604,7 +2717,7 @@ async function confirmarPedido(){
   } catch(e){
     console.error("Error creando pago:", e);
     toast("No se pudo iniciar el pago. Intenta de nuevo.");
-    btn.disabled = false; btn.textContent = "Ir a MercadoPago →";
+    btn.disabled = false; btn.textContent = _txt("btnMP", "Ir a MercadoPago →");
   }
 }
 
@@ -2725,9 +2838,9 @@ function actualizarTimeline(estado){
     s.classList.remove("ok");
     if (i + 1 <= paso) s.classList.add("ok");
   });
-  const textos = { nuevo:"Pedido recibido ✅", preparacion:"Preparando tu pedido 👨‍🍳",
+  const textos = Object.assign({ nuevo:"Pedido recibido ✅", preparacion:"Preparando tu pedido 👨‍🍳",
     camino:"Tu pedido va en camino 🛵", listo:"¡Entregado! Buen provecho 🎉",
-    cancelado:"Pedido cancelado ❌" };
+    cancelado:"Pedido cancelado ❌" }, SKIN.textosTimeline || {});
   const sub = qs("#confSub");
   if (sub && textos[est]) sub.textContent = textos[est];
 }
@@ -2766,6 +2879,7 @@ function renderBannerPedidoActivo(){
   const ICO = { nuevo:"🧾", preparacion:"👨‍🍳", camino:"🛵" };
   const TIT = { nuevo:"Recibimos tu pedido", preparacion:"Estamos preparando tu pedido", camino:"Tu pedido está en camino" };
   w.style.display = "block";
+  if (_sk("bannerPedidoActivo")){ w.innerHTML = SKIN.bannerPedidoActivo(p, est); return; }
   w.innerHTML =
     '<div class="ped-activo e-' + esc(est) + '" id="btnPedActivo" role="button" tabindex="0">' +
       '<span class="pa-ico">' + (ICO[est] || "🧾") + '</span>' +
@@ -2790,7 +2904,8 @@ function pintarCliPedModal(p){
   const elF  = qs("#cliPedFecha");  if (elF)  elF.textContent  = p.fecha ? fmtFechaCorta(p.fecha) : "";
   const elB  = qs("#cliPedBadge");  if (elB)  elB.innerHTML    = badgeEstadoCliente(est);
   const res  = qs("#cliPedResumen");
-  if (res){
+  if (res && _sk("cliPedResumen")) res.innerHTML = SKIN.cliPedResumen(p);
+  else if (res){
     const lineas = (p.items || []).map(function(i){
       return '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px">' +
         '<span>' + i.cantidad + '× ' + esc(i.nombre) + '</span><span>' + fmtPrecio(i.precio * i.cantidad) + '</span></div>';
@@ -2809,7 +2924,8 @@ function pintarCliPedModal(p){
     res.innerHTML = lineas + filas;
   }
   const tl = qs("#cliPedTimeline");
-  if (tl){
+  if (tl && _sk("cliPedTimeline")) tl.innerHTML = SKIN.cliPedTimeline(p, est);
+  else if (tl){
     const tls = p.estadoTimeline || {};
     const pasos = [
       { k:"nuevo",       n:"Pedido recibido",  i:"✓" },
@@ -2894,7 +3010,7 @@ function renderConfirmacion(){
     ? `<div class="linea"><span>Retiro en</span><span>${esc(ped.cliente?.local || "local")}</span></div>`
     : `<div class="linea"><span>Delivery a</span><span style="text-align:right;max-width:60%">${esc(ped.cliente?.direccion || "")}</span></div>`;
   const labelTotal = (ped.estado === "esperando" || ped.estado === "pendiente_pago") ? "Total a pagar" : "Total pagado";
-  qs("#confResumen").innerHTML = lineas + entrega +
+  qs("#confResumen").innerHTML = _sk("confResumen") ? SKIN.confResumen(ped, labelTotal) : lineas + entrega +
     `<div class="linea total"><span>${labelTotal}</span><span>${fmtPrecio(ped.total)}</span></div>`;
   /* El título y el ícono grande no deben decir "confirmado" mientras el
      pago todavía no fue verificado por el webhook — eso era lo que
@@ -2911,11 +3027,11 @@ function actualizarEncabezadoConfirmacion(estado){
   if (!tit || !chk) return;
   if (estado === "esperando" || estado === "pendiente_pago"){
     tit.textContent = "Verificando tu pago…";
-    chk.textContent = "⏳";
+    if (_sk("confCheck")) chk.innerHTML = SKIN.confCheck(true); else chk.textContent = "⏳";
     chk.classList.add("pendiente");
   } else {
     tit.textContent = state.config.confTitulo || "¡Pago confirmado!";
-    chk.textContent = "✓";
+    if (_sk("confCheck")) chk.innerHTML = SKIN.confCheck(false); else chk.textContent = "✓";
     chk.classList.remove("pendiente");
   }
 }
@@ -2963,6 +3079,7 @@ function initWhatsApp(){
 function renderCupones(){
   const wrap = qs("#cuponesList");
   const items = state.cupones.slice().sort((a,b)=> String(a.vence||"").localeCompare(String(b.vence||"")));
+  if (_sk("cuponCard") && items.length){ wrap.innerHTML = items.map(c => SKIN.cuponCard(c)).join(""); return; }
   wrap.innerHTML = items.length ? items.map(c => `
     <div class="card cupon-card lift">
       <div class="cup-top">
@@ -2998,6 +3115,7 @@ function initCupones(){
    ════════════════════════════════════════════════════════════════ */
 function renderLocales(){
   const wrap = qs("#localesList");
+  if (_sk("localCard") && state.locales.length){ wrap.innerHTML = state.locales.map(l => SKIN.localCard(l)).join(""); return; }
   wrap.innerHTML = state.locales.length ? state.locales.map(l => `
     <div class="card local-card lift">
       <div class="local-img" data-ecol="locales" data-edoc="${esc(l.id)}" data-efield="imagen" data-etype="img">
@@ -3185,6 +3303,12 @@ function _cancelarVerificacionPin(){
 function activarDevmode(irAPedidos){
   document.body.classList.add("dev-on");
   lsSet("tb_dev_session","1");
+  /* Tienda nueva sin productos: un visitante anónimo no puede sembrar
+     el catálogo demo (las reglas lo impiden), pero el dueño sí — se
+     intenta apenas entra, sin obligarlo a recargar la página. */
+  if (!DEMO && db && _cargaFirebaseLista && !state.productos.length){
+    sembrarDatosDemo().then(renderAll).catch(function(e){ console.warn("Seed:", e); });
+  }
   /* Por si el login ocurrió DESPUÉS de que cargarFirebase() ya corrió sin
      sesión (visita nueva, primer login) — cargarConfigPrivada() no repite
      el trabajo si ya se había cargado antes (ver _privadoCargado). */
@@ -3558,7 +3682,7 @@ function datosPreview(){
   return {
     nombre:  "María González",
     id:      "TB84291",
-    items:   "2x Doble Test Clásica\n1x Papas Fritas",
+    items:   _txt("previewItems", "2x Doble Test Clásica\n1x Papas Fritas"),
     total:   fmtPrecio(16470),
     negocio: state.config.nombre || "TEST BURGERS",
     tiempo:  state.config.tiempoEntrega || "30-45 min"
@@ -3593,7 +3717,7 @@ function fillPanel(forzar){
        ícono. Por eso acá va solo el nombre, sin el emoji/ícono del
        rubro (a diferencia de los chips visuales de generar-tienda.html,
        que sí pueden mostrarlo porque no son <option>). */
-    selRubro.innerHTML = RUBROS.map(r => `<option value="${r.id}">${esc(r.nombre)}</option>`).join("");
+    selRubro.innerHTML = RUBROS_PLANOS.map(r => `<option value="${r.id}">${esc(r.nombre)}</option>`).join("");
     selRubro.dataset.poblado = "1";
   }
   setVal("pRubro", c.subrubro || c.rubro || "hamburguesas");
@@ -3622,6 +3746,13 @@ function fillPanel(forzar){
   setVal("pColor", c.colorPrimario || "#9B1B30");
   var _ph = qs("#pColorHex");
   if (_ph) _ph.value = (c.colorPrimario || "#9B1B30").replace("#","").toUpperCase();
+  /* Campos extra de una plantilla: <input data-cfg="campo" data-cfgtipo="num|bool|bool1"> */
+  qsa("[data-cfg]").forEach(function(el){
+    if (!forzar && document.activeElement === el) return;
+    const v = c[el.dataset.cfg], t = el.dataset.cfgtipo || "";
+    if (el.type === "checkbox") el.checked = t === "bool1" ? v !== false : !!v;
+    else el.value = v == null ? "" : v;
+  });
   actualizarPreviews();
   if (window._renderZonas) window._renderZonas();
   renderCupAdmin();
@@ -3831,6 +3962,7 @@ if (_btnRevisarIntentos) _btnRevisarIntentos.addEventListener("click", revisarIn
    cliente, no una aproximación.
 ══════════════════════════════════════════════════════════════ */
 function actualizarPreviewBanner(){
+  if (!qs("#bnTitulo") || !qs("#bnPreviewCard")) return;
   const tit = (qs("#bnTitulo").value || "").trim();
   const sub = (qs("#bnSubtitulo").value || "").trim();
   const emoji = (qs("#bnEmoji").value || "🎉").trim() || "🎉";
@@ -3946,6 +4078,7 @@ if (_btnNuevoBanner) _btnNuevoBanner.addEventListener("click", crearBanner);
 
 function renderMpEstado(){
   const t = (state.configPrivado || {}).mpToken;
+  if (!qs("#mpEstado")) return;
   qs("#mpEstado").textContent = (!t || t === "CONFIGURAR_TOKEN")
     ? "⚠️ No configurado"
     : "✅ Conectado correctamente";
@@ -4282,6 +4415,7 @@ function abrirNuevaCatAdmin(){
 
 function renderPanelProds(){
   const wrap = qs("#panelProds");
+  if (!wrap) return;
   const ae = document.activeElement;
   if (wrap.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
   const cats = FILTROS.slice(1);
@@ -4305,7 +4439,7 @@ function renderPanelProds(){
         <label class="plabel">Precio $</label>
         <input class="field pe" type="number" inputmode="numeric" data-pid="${esc(p.id)}" data-pf="precio" value="${Number(p.precio) || 0}">
         <label class="plabel">Descripción</label>
-        <textarea class="field pe" style="min-height:70px" data-pid="${esc(p.id)}" data-pf="descripcion">${esc(p.descripcion || "")}</textarea>
+        <textarea class="field pe" style="min-height:70px" data-pid="${esc(p.id)}" data-pf="descripcion">${esc(p.descripcion || "")}</textarea>${_sk("camposProducto") ? SKIN.camposProducto(p) : ""}
         <label class="plabel">Categoría</label>
         <select class="field pe" data-pid="${esc(p.id)}" data-pf="categoria">
           ${cats.map(f => `<option value="${esc(f)}" ${f === p.categoria ? "selected" : ""}>${esc(f)}</option>`).join("")}
@@ -4710,6 +4844,7 @@ function initPanel(){
   /* — Tab Tienda + Checkout & WhatsApp: campos → config — */
   const bindCfg = (id, field, tipo) => {
     const el = qs("#" + id);
+    if (!el) return;
     el.addEventListener("change", () => {
       let v = el.type === "checkbox" ? el.checked : el.value;
       if (tipo === "num") v = Number(el.value) || 0;
@@ -4758,6 +4893,15 @@ function initPanel(){
   bindCfg("pTl3", "timeline3", "trim");
   bindCfg("pTl4", "timeline4", "trim");
   bindCfg("pMostrarGPS", "mostrarGPS");
+  /* Campos extra de la plantilla (ver fillPanel) */
+  qsa("[data-cfg]").forEach(function(el){
+    el.addEventListener("change", function(){
+      const t = el.dataset.cfgtipo || "";
+      let v = el.type === "checkbox" ? el.checked : String(el.value).trim();
+      if (t === "num") v = Number(el.value) || 0;
+      saveConfig(el.dataset.cfg, v);
+    });
+  });
 
   const _btnLogo = qs("#btnLogo");
   if (_btnLogo) _btnLogo.addEventListener("click", function(){
@@ -4854,6 +4998,7 @@ function initPanel(){
   /* ── Mensajes automáticos: guardar + preview en vivo + pills de variables — */
   Object.keys(MKEY_FIELD).forEach(id => {
     const ta = qs("#" + id);
+    if (!ta) return;
     ta.addEventListener("input", actualizarPreviews);
     ta.addEventListener("change", () => saveConfig(MKEY_FIELD[id], ta.value));
   });
@@ -4886,11 +5031,13 @@ function initPanel(){
   /* — Tab Productos — */
   on("btnNuevoProd", "click", async () => {
     const max = state.productos.reduce((m, p) => Math.max(m, p.orden || 0), 0);
-    const id = await crearDoc("productos", {
+    const nuevo = {
       nombre: "Nuevo producto", precio: 0, descripcion: "",
       categoria: "Hamburguesas", imagen: DEMO_IMAGES.burger1,
       activo: true, orden: max + 1
-    });
+    };
+    if (_sk("productoNuevo")) Object.assign(nuevo, SKIN.productoNuevo(nuevo));
+    const id = await crearDoc("productos", nuevo);
     if (id){ openProdId = id; renderPanelProds(); }
   });
   /* ═══ Handlers de gestión de categorías ═══ */
@@ -4939,7 +5086,7 @@ function initPanel(){
     const el = e.target.closest(".pe");
     if (!el) return;
     let v = el.type === "checkbox" ? el.checked : el.value;
-    if (el.dataset.pf === "precio") v = Number(el.value) || 0;
+    if (el.dataset.pf === "precio" || el.dataset.pftipo === "num") v = Number(el.value) || 0;
     const camposQueRerenderizan = ["variantesActivas", "permitePersonalizacion", "activo"];
     if (el.dataset.pf === "categoria" && v === "__nueva__"){
       abrirInputNuevaCategoria(el);
@@ -5073,6 +5220,7 @@ function initPanel(){
   const pc = qs("#pColor");
   const pcHex = qs("#pColorHex");
 
+  if (pc && pcHex){
   function _setColor(hex){
     if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
     pc.value = hex;
@@ -5113,6 +5261,7 @@ function initPanel(){
   /* Sincronizar hex al abrir el panel */
   const _initHex = () => { if (pcHex && pc) pcHex.value = pc.value.replace("#","").toUpperCase(); };
   _initHex();
+  } /* fin: if (pc && pcHex) */
   on("btnPreview", "click", () => {
     document.body.classList.add("preview-cliente");
     qs("#adminPanel").classList.remove("open");
@@ -5556,7 +5705,8 @@ function escucharMisPedidos(uid){
       s.forEach(function(d){ arr.push(Object.assign({ id: d.id }, d.data())); });
       arr.sort(function(a, b){ return new Date(b.fecha) - new Date(a.fecha); });
       const ml = document.getElementById("misPedidosLista");
-      if (ml){
+      if (ml && _sk("misPedidos")) ml.innerHTML = SKIN.misPedidos(arr);
+      else if (ml){
         ml.innerHTML = arr.length ? arr.map(function(p){
           const est = p.estado || "nuevo";
           const its = (p.items || []).map(function(i){ return i.cantidad + "x " + i.nombre; }).join(", ");
@@ -5606,14 +5756,20 @@ function initCuentaSubTabs(){
 
 /* Historial */
 function renderHistorial(arr){
+  /* Filtros: los botones usan "proceso" / "entregados" / "cancelados";
+     los estados reales son nuevo · preparacion · camino · listo · cancelado
+     (normEstado traduce los sinónimos antiguos). */
   var filtrados = _histFiltro === "todos" ? arr
-    : _histFiltro === "proceso" ? arr.filter(function(p){return["nuevo","preparando","camino"].includes(p.estado||"nuevo");})
+    : _histFiltro === "proceso" ? arr.filter(function(p){return["nuevo","preparacion","camino"].includes(normEstado(p.estado));})
+    : _histFiltro === "entregados" ? arr.filter(function(p){return normEstado(p.estado)==="listo";})
+    : _histFiltro === "cancelados" ? arr.filter(function(p){return normEstado(p.estado)==="cancelado";})
     : arr.filter(function(p){return p.estado===_histFiltro;});
   var lista = document.getElementById("histLista");
   var vacio = document.getElementById("histVacio");
   if (!lista) return;
-  if (!filtrados.length){ lista.innerHTML=""; vacio.style.display="block"; return; }
-  vacio.style.display="none";
+  if (!filtrados.length){ lista.innerHTML=""; if (vacio) vacio.style.display="block"; return; }
+  if (vacio) vacio.style.display="none";
+  if (_sk("histCard")){ lista.innerHTML = filtrados.map(function(p){ return SKIN.histCard(p); }).join(""); return; }
   lista.innerHTML = filtrados.map(function(p){
     var est = p.estado||"nuevo";
     var items = (p.items||[]).map(function(i){return i.cantidad+"× "+esc(i.nombre);}).join(", ");
@@ -5701,8 +5857,9 @@ function renderDirecciones(arr){
   var lista=document.getElementById("dirLista");
   var vacio=document.getElementById("dirVacio");
   if (!lista) return;
-  if (!arr.length){ lista.innerHTML=""; vacio.style.display="block"; return; }
-  vacio.style.display="none";
+  if (!arr.length){ lista.innerHTML=""; if (vacio) vacio.style.display="block"; return; }
+  if (vacio) vacio.style.display="none";
+  if (_sk("dirCard")){ lista.innerHTML = arr.map(function(d){ return SKIN.dirCard(d); }).join(""); return; }
   var ICOS={"Casa":"🏠","Trabajo":"💼","Otro":"📌"};
   lista.innerHTML=arr.map(function(d){
     return '<div class="dir-card '+(d.favorita?"favorita":"")+'">'
@@ -5861,8 +6018,9 @@ function renderPagos(arr){
   var vacio=document.getElementById("pagosVacio");
   if(!hist)return;
   var pagados=arr.filter(function(p){return p.estado&&p.estado!=="cancelado";});
-  if(!pagados.length){hist.innerHTML="";vacio.style.display="block";return;}
-  vacio.style.display="none";
+  if(!pagados.length){hist.innerHTML="";if(vacio)vacio.style.display="block";return;}
+  if(vacio)vacio.style.display="none";
+  if (_sk("pagoRow")){ hist.innerHTML = pagados.map(function(p){ return SKIN.pagoRow(p); }).join(""); return; }
   hist.innerHTML=pagados.map(function(p){
     return '<div class="pago-hist-item">'
       +'<div><p style="margin:0;font-weight:800;font-size:13px">#'+esc(p.id)+'</p>'
@@ -5876,7 +6034,8 @@ function renderPagos(arr){
 function activarSeccionesExtra(uid){
   var tabs=document.getElementById("cuentaSubTabs");
   if(tabs) tabs.style.display="block";
-  document.getElementById("ct-historial").style.display="block";
+  var _hist = document.getElementById("ct-historial");
+  if (_hist) _hist.style.display="block";
   if(uid){
     escucharHistorial(uid);
     escucharDirecciones(uid);
@@ -5973,8 +6132,14 @@ async function boot(){
      dominio nuevo mal configurado o por un fallo de red puntual. */
   try {
     const domDoc = await db.collection("dominios").doc(location.hostname).get();
-    if (domDoc.exists && domDoc.data().storeId) {
-      STORE_ID = domDoc.data().storeId;
+    /* Con plantilla (ej. "retail"), el mismo dominio puede apuntar a otra
+       tienda con el campo storeId_retail; si no existe, se usa storeId. */
+    const _dom = domDoc.exists ? domDoc.data() : null;
+    const _sid = _dom && ((SKIN.plantilla && _dom["storeId_" + SKIN.plantilla]) || _dom.storeId);
+    if (_sid) {
+      STORE_ID = _sid;
+    } else if (SKIN.storeIdPorDefecto) {
+      STORE_ID = SKIN.storeIdPorDefecto;
     }
   } catch(e) {
     console.warn("No se pudo resolver STORE_ID por dominio, se usa el valor por defecto:", e);
@@ -5992,7 +6157,7 @@ async function boot(){
      storeId no lo revela), así que se usa el ícono neutro de "otro"
      como respaldo temporal. La Capa 2 (rubro real) se aplica en
      actualizarFaviconConConfig() dentro de cargarFirebase(). */
-  aplicarFavicon(rubroPorId("otro").ico);
+  aplicarFavicon(rubroPorId(SKIN.rubroPorDefecto || "otro").ico);
 
   /* App secundaria SOLO para verificar la cuenta de propietario en
      acciones sensibles (cupones, precios, caja) sin cerrar la sesión
