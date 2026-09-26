@@ -4418,7 +4418,7 @@ function renderPanelProds(){
   if (!wrap) return;
   const ae = document.activeElement;
   if (wrap.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
-  const cats = FILTROS.slice(1);
+  const cats = Array.from(new Set([...(Array.isArray(state.config.categorias) ? state.config.categorias : []), ...FILTROS.slice(1)])).sort((a, b) => a.localeCompare(b, "es"));
   wrap.innerHTML = porOrden(state.productos).map(p => {
     const fila = `
       <div class="prow ${p.activo === false ? "inactivo" : ""}">
