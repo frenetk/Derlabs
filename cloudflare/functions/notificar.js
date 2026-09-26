@@ -264,7 +264,6 @@ export async function notificar(request, env){
       body:  textoCustom  || (((cliente.nombre) || "Cliente") + (resumen ? " — " + resumen : "")),
       url:   body.url || "/pedidos.html"
     });
-  });
 
   let dispositivos;
   try { dispositivos = await listarDispositivos(storeId); }
