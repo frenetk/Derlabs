@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Delivery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<style>
+/* Gestor de delivery del REPARTIDOR — tienda.cl/delivery
+   Entra con el usuario y clave que le creó el dueño en pedidos.html.
+   Ve solo sus pedidos asignados (vía /api/delivery), marca "Salí" y
+   "Entregado", y comparte su GPS mientras tiene un pedido en camino. */
+:root{
+  color-scheme:dark;
+  --marca:#1565C0;--verde:#2E7D32;--naranja:#F57C00;--rojo:#E53935;--wa:#25D366;
+  --bg:#0E0E0E;--bg2:#181818;--bg3:#232323;--card:#1C1C1C;--borde:rgba(255,255,255,.08);
+  --txt:#F5F5F5;--txt2:#A8A8A8;--txt3:#666;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);font-family:'Nunito',sans-serif;min-height:100%}
+button{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer}
+input{font-family:inherit}
+a{color:inherit;text-decoration:none}
+.bc{font-family:'Barlow Condensed',sans-serif;font-weight:800}
+.oculto{display:none !important}
+
+/* Acceso */
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-box{width:100%;max-width:360px;background:var(--card);border-radius:24px;padding:32px 24px 26px;text-align:center}
+.login-box .ico{font-size:40px}
+.login-box h1{font-size:26px;margin:6px 0 2px}
+.login-box p{color:var(--txt2);font-size:13.5px;margin-bottom:20px}
+.login-box input{width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--borde);background:var(--bg3);color:var(--txt);font-size:16px;margin-bottom:10px}
+.login-box input:focus{outline:none;border-color:var(--marca)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;border-radius:14px;font-weight:900;font-size:15.5px;width:100%}
+.btn:disabled{opacity:.5;pointer-events:none}
+.btn-marca{background:var(--marca);color:#fff}
+.err{color:#EF5350;font-size:13.5px;font-weight:800;min-height:20px;margin-top:10px}
+
+/* App */
+#app{max-width:640px;margin:0 auto;min-height:100vh;padding-bottom:40px}
+header{position:sticky;top:0;z-index:10;background:var(--bg2);border-bottom:1px solid var(--borde);padding:12px 16px;display:flex;align-items:center;gap:10px}
+header .tit{flex:1;min-width:0}
+header .tit b{display:block;font-family:'Barlow Condensed',sans-serif;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .tit small{color:var(--txt2);font-size:12.5px;font-weight:700}
+.icon-btn{width:40px;height:40px;border-radius:11px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--txt2)}
+#gps{margin:12px 16px 0;border-radius:14px;padding:12px 14px;font-size:13.5px;font-weight:800;display:flex;gap:10px;align-items:center;line-height:1.35}
+#gps.on{background:rgba(21,101,192,.18);color:#90CAF9}
+#gps.err{background:rgba(229,57,53,.15);color:#EF9A9A}
+#gps .pulso{width:10px;height:10px;border-radius:50%;background:currentColor;flex-shrink:0;animation:pulso 1.4s infinite}
+@keyframes pulso{0%{box-shadow:0 0 0 0 rgba(144,202,249,.6)}70%{box-shadow:0 0 0 10px rgba(144,202,249,0)}100%{box-shadow:0 0 0 0 rgba(144,202,249,0)}}
+.sec{padding:18px 16px 4px;font-size:12px;font-weight:900;color:var(--txt3);text-transform:uppercase;letter-spacing:.7px}
+.vacio{text-align:center;color:var(--txt3);padding:50px 24px}
+.vacio .ico{font-size:40px;margin-bottom:10px}
+.vacio h3{color:var(--txt2);font-family:'Barlow Condensed',sans-serif;font-size:19px;margin-bottom:6px}
+.card{background:var(--card);border:1px solid var(--borde);border-radius:18px;margin:10px 16px;padding:16px}
+.card.camino{border-color:rgba(21,101,192,.6)}
+.card.listo{opacity:.6}
+.c-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.c-id{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:800}
+.badge{font-size:11px;font-weight:900;padding:4px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px}
+.b-preparacion,.b-nuevo{background:rgba(245,124,0,.18);color:#FFB74D}
+.b-camino{background:rgba(21,101,192,.22);color:#90CAF9}
+.b-listo{background:rgba(46,125,50,.2);color:#81C784}
+.c-nom{font-size:17px;font-weight:900;margin-top:10px}
+.c-dir{font-size:15px;font-weight:700;margin-top:4px;line-height:1.4}
+.c-ref{font-size:13px;color:var(--txt2);font-weight:600;margin-top:4px;line-height:1.4}
+.c-items{font-size:13px;color:var(--txt2);font-weight:700;margin-top:8px}
+.cobro{margin-top:12px;border-radius:12px;padding:11px 13px;font-size:14px;font-weight:900;display:flex;justify-content:space-between;align-items:center}
+.cobro.efectivo{background:rgba(245,124,0,.16);color:#FFCC80}
+.cobro.pagado{background:rgba(46,125,50,.16);color:#A5D6A7}
+.acc{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.acc a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;border-radius:12px;background:var(--bg3);font-size:11.5px;font-weight:800;color:var(--txt2)}
+.acc a span{font-size:19px}
+.principal{margin-top:12px}
+.btn-salir{background:var(--marca);color:#fff}
+.btn-entregar{background:var(--verde);color:#fff}
+
+/* Hoja de cobro */
+.hoja{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center}
+.hoja-panel{width:100%;max-width:640px;background:var(--bg2);border-radius:22px 22px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom))}
+.hoja-panel h2{font-family:'Barlow Condensed',sans-serif;font-size:23px;margin-bottom:6px}
+.hoja-panel p{color:var(--txt2);font-size:14px;margin-bottom:14px;line-height:1.5}
+.hoja-panel input{width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--borde);background:var(--bg3);color:var(--txt);font-size:20px;font-weight:900;margin-bottom:12px}
+.fila-btn{display:flex;gap:10px}
+.fila-btn .btn{flex:1}
+.btn-gris{background:var(--bg3);color:var(--txt)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(90px);background:#fff;color:#111;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:800;transition:transform .25s;z-index:99;max-width:92vw;text-align:center}
+#toast.ver{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form class="login-box" id="loginForm" autocomplete="on">
+    <div class="ico">🛵</div>
+    <h1 class="bc" id="loginTienda">Delivery</h1>
+    <p>Entra con el usuario y la clave que te dio el local.</p>
+    <input id="lUsuario" placeholder="Usuario" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <input id="lClave" type="password" placeholder="Clave" autocomplete="current-password">
+    <button class="btn btn-marca" id="lBtn" type="submit">Entrar</button>
+    <div class="err" id="lErr"></div>
+  </form>
+</div>
+
+<div id="app" class="oculto">
+  <header>
+    <div class="tit"><b id="hTienda">Delivery</b><small id="hYo"></small></div>
+    <button class="icon-btn" id="btnRecargar" title="Actualizar">⟳</button>
+    <button class="icon-btn" id="btnSalir" title="Salir">⏻</button>
+  </header>
+  <div id="gps" class="oculto"></div>
+  <div id="lista"></div>
+</div>
+
+<div class="hoja oculto" id="hojaCobro">
+  <div class="hoja-panel">
+    <h2 id="cobroTit">Entregar pedido</h2>
+    <p id="cobroTxt"></p>
+    <input id="cobroMonto" type="number" inputmode="numeric" min="0">
+    <div class="fila-btn">
+      <button class="btn btn-gris" id="cobroCancelar">Cancelar</button>
+      <button class="btn btn-entregar" id="cobroOk">✅ Confirmar entrega</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM",
+  authDomain:        "tienda-test-burgers.firebaseapp.com",
+  projectId:         "tienda-test-burgers",
+  storageBucket:     "tienda-test-burgers.firebasestorage.app",
+  messagingSenderId: "406623629835",
+  appId:             "1:406623629835:web:31152eac803ed8c679cd0e"
+};
+let STORE_ID = "";
+let auth, db;
+let pedidos = [], idsVistos = null, cobrando = null;
+let watchId = null, wakeLock = null, ultimoEnvio = 0, ultimaPos = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const precio = n => "$" + Math.round(Number(n) || 0).toLocaleString("es-CL");
+function toast(t, ms){ const el = $("#toast"); el.textContent = t; el.classList.add("ver"); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove("ver"), ms || 2600); }
+function vibrar(p){ try { navigator.vibrate && navigator.vibrate(p || [200, 100, 200]); } catch(e){} }
+const emailDe = u => u + "--" + STORE_ID + "@repartidor.derlabs.cl";
+
+/* ── API del repartidor ── */
+async function api(accion, datos){
+  const u = auth.currentUser;
+  if (!u) throw new Error("Sin sesión");
+  const t = await u.getIdToken();
+  const r = await fetch("/api/delivery", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + t },
+    body: JSON.stringify(Object.assign({ accion, storeId: STORE_ID }, datos || {}))
+  });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 || r.status === 403){ await salir(j.error || "Tu acceso ya no está activo."); throw new Error("sin acceso"); }
+  if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
+  return j;
+}
+
+/* ── Arranque: tienda por dominio, nombre y color ── */
+(async function(){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  auth = firebase.auth(); db = firebase.firestore();
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  try {
+    const d = await db.collection("dominios").doc(location.hostname).get();
+    if (d.exists) STORE_ID = d.data().storeId || "";
+  } catch(e){ console.warn(e); }
+  if (!STORE_ID){ $("#lErr").textContent = "Esta dirección no corresponde a ninguna tienda."; $("#lBtn").disabled = true; return; }
+  try {
+    const c = await db.collection("tiendas").doc(STORE_ID).collection("config").doc("general").get();
+    const cfg = c.exists ? c.data() : {};
+    if (cfg.nombre){ $("#loginTienda").textContent = cfg.nombre; $("#hTienda").textContent = cfg.nombre; document.title = "Delivery · " + cfg.nombre; }
+    if (cfg.colorPrimario) document.documentElement.style.setProperty("--marca", cfg.colorPrimario);
+  } catch(e){}
+  auth.onAuthStateChanged(async u => {
+    if (!u){ mostrarLogin(); return; }
+    try { await cargar(); $("#login").classList.add("oculto"); $("#app").classList.remove("oculto"); }
+    catch(e){ if (e.message !== "sin acceso"){ $("#lErr").textContent = "No se pudo conectar: " + e.message; } }
+  });
+})();
+
+function mostrarLogin(){ $("#app").classList.add("oculto"); $("#login").classList.remove("oculto"); detenerGPS(); }
+async function salir(msg){
+  detenerGPS();
+  try { await auth.signOut(); } catch(e){}
+  mostrarLogin();
+  $("#lErr").textContent = msg || "";
+}
+$("#btnSalir").addEventListener("click", () => {
+  if (pedidos.some(p => p.estado === "camino") && !confirm("Tienes un pedido en camino. Si sales, se deja de compartir tu ubicación. ¿Salir igual?")) return;
+  salir("");
+});
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const usuario = $("#lUsuario").value.trim().toLowerCase(), clave = $("#lClave").value;
+  if (!usuario || !clave){ $("#lErr").textContent = "Escribe tu usuario y tu clave."; return; }
+  $("#lBtn").disabled = true; $("#lErr").textContent = "";
+  try { await auth.signInWithEmailAndPassword(emailDe(usuario), clave); }
+  catch(err){
+    const c = err && err.code || "";
+    $("#lErr").textContent = c.indexOf("disabled") !== -1 ? "Tu cuenta está pausada. Habla con el local."
+      : c.indexOf("too-many") !== -1 ? "Demasiados intentos. Espera un momento."
+      : "Usuario o clave incorrectos.";
+  } finally { $("#lBtn").disabled = false; }
+});
+
+/* ── Pedidos ── */
+async function cargar(){
+  const j = await api("pedidos");
+  const nuevos = idsVistos ? j.pedidos.filter(p => p.estado !== "listo" && !idsVistos.has(p.id)) : [];
+  pedidos = j.pedidos;
+  idsVistos = new Set(pedidos.map(p => p.id));
+  $("#hYo").textContent = "🛵 " + (j.yo.nombre || j.yo.usuario || "");
+  if (nuevos.length){ vibrar([300, 120, 300, 120, 300]); toast("📦 Nuevo pedido asignado: " + nuevos.map(p => p.id).join(", "), 4000); }
+  render();
+  sincronizarGPS();
+}
+setInterval(() => { if (auth && auth.currentUser && !document.hidden) cargar().catch(() => {}); }, 15000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && auth && auth.currentUser) cargar().catch(() => {}); });
+$("#btnRecargar").addEventListener("click", () => cargar().then(() => toast("Actualizado")).catch(e => { if (e.message !== "sin acceso") toast(e.message); }));
+
+const ETQ = { nuevo:"Por preparar", preparacion:"Por retirar", camino:"En camino", listo:"Entregado" };
+function tarjeta(p){
+  const c = p.cliente || {};
+  const dir = [c.direccion, c.comuna].filter(Boolean).join(", ");
+  const q = encodeURIComponent(dir + ", Chile");
+  let tel = String(c.telefono || "").replace(/\D/g, "");
+  if (tel.length === 9 && tel[0] === "9") tel = "56" + tel;
+  const efectivo = p.metodoPago !== "mercadopago";
+  const items = (p.items || []).map(i => i.cantidad + "× " + i.nombre).join(" · ");
+  let boton = "";
+  if (p.estado === "camino") boton = `<button class="btn btn-entregar principal" data-entregar="${esc(p.id)}">✅ Entregado</button>`;
+  else if (p.estado !== "listo") boton = `<button class="btn btn-salir principal" data-salir="${esc(p.id)}">🛵 Salí con el pedido</button>`;
+  return `
+    <div class="card ${esc(p.estado)}">
+      <div class="c-top"><span class="c-id">${esc(p.id)}</span><span class="badge b-${esc(p.estado)}">${ETQ[p.estado] || esc(p.estado)}</span></div>
+      <div class="c-nom">${esc(c.nombre || "Cliente")}</div>
+      <div class="c-dir">📍 ${esc(dir || "Sin dirección")}</div>
+      ${c.referencias ? `<div class="c-ref">🏠 ${esc(c.referencias)}</div>` : ""}
+      ${c.notas ? `<div class="c-ref">📝 ${esc(c.notas)}</div>` : ""}
+      <div class="c-items">${esc(items)}</div>
+      ${p.estado === "listo"
+        ? (efectivo ? `<div class="cobro pagado"><span>Cobraste</span><span>${precio(p.envio && p.envio.cobrado)}</span></div>` : "")
+        : efectivo ? `<div class="cobro efectivo"><span>💵 Cobrar en efectivo</span><span>${precio(p.total)}</span></div>`
+                   : `<div class="cobro pagado"><span>✅ Ya pagado</span><span>No cobrar</span></div>`}
+      ${p.estado !== "listo" ? `<div class="acc">
+        <a href="https://www.google.com/maps/dir/?api=1&destination=${q}" target="_blank" rel="noopener"><span>🗺️</span>Maps</a>
+        <a href="https://waze.com/ul?q=${q}&navigate=yes" target="_blank" rel="noopener"><span>🚗</span>Waze</a>
+        <a href="${tel ? "tel:+" + tel : "#"}"><span>📞</span>Llamar</a>
+        <a href="${tel ? "https://wa.me/" + tel : "#"}" target="_blank" rel="noopener"><span>💬</span>WhatsApp</a>
+      </div>` : ""}
+      ${boton}
+    </div>`;
+}
+function render(){
+  const activos = pedidos.filter(p => p.estado !== "listo");
+  const hechos = pedidos.filter(p => p.estado === "listo").reverse();
+  if (!pedidos.length){
+    $("#lista").innerHTML = `<div class="vacio"><div class="ico">📭</div><h3>Sin pedidos asignados</h3><p>Cuando el local te asigne un pedido, aparece aquí. Mantén esta página abierta.</p></div>`;
+    return;
+  }
+  $("#lista").innerHTML =
+    (activos.length ? `<div class="sec">Por entregar (${activos.length})</div>` + activos.map(tarjeta).join("")
+                    : `<div class="vacio"><div class="ico">✅</div><h3>Todo entregado</h3><p>Espera el próximo pedido.</p></div>`) +
+    (hechos.length ? `<div class="sec">Entregados hoy (${hechos.length})</div>` + hechos.map(tarjeta).join("") : "");
+}
+$("#lista").addEventListener("click", async e => {
+  const bs = e.target.closest("[data-salir]"), be = e.target.closest("[data-entregar]");
+  if (bs){
+    bs.disabled = true;
+    try {
+      await pedirPermisoGPS();
+      await api("salir", { id: bs.dataset.salir });
+      toast("🛵 ¡Buen viaje! El cliente y el local ya saben que vas en camino.");
+      await cargar();
+    } catch(err){ if (err.message !== "sin acceso") toast(err.message, 4000); bs.disabled = false; }
+  }
+  if (be){
+    const p = pedidos.find(x => x.id === be.dataset.entregar); if (!p) return;
+    cobrando = p;
+    const efectivo = p.metodoPago !== "mercadopago";
+    $("#cobroTit").textContent = "Entregar " + p.id;
+    $("#cobroTxt").textContent = efectivo ? "¿Cuánto cobraste? El total del pedido es " + precio(p.total) + "." : "Este pedido ya está pagado. Confirma que lo entregaste.";
+    $("#cobroMonto").classList.toggle("oculto", !efectivo);
+    $("#cobroMonto").value = Math.round(p.total || 0);
+    $("#hojaCobro").classList.remove("oculto");
+  }
+});
+$("#cobroCancelar").addEventListener("click", () => { $("#hojaCobro").classList.add("oculto"); cobrando = null; });
+$("#cobroOk").addEventListener("click", async () => {
+  if (!cobrando) return;
+  const btn = $("#cobroOk"); btn.disabled = true;
+  try {
+    await api("entregar", { id: cobrando.id, cobrado: Number($("#cobroMonto").value) || 0 });
+    $("#hojaCobro").classList.add("oculto");
+    toast("✅ Entregado. ¡Bien hecho!");
+    vibrar([120]);
+    cobrando = null;
+    await cargar();
+  } catch(err){ if (err.message !== "sin acceso") toast(err.message, 4000); }
+  finally { btn.disabled = false; }
+});
+
+/* ── GPS: solo mientras hay un pedido en camino ── */
+function avisoGPS(clase, html){ const g = $("#gps"); g.className = clase; g.innerHTML = html; }
+function pedirPermisoGPS(){
+  return new Promise(res => {
+    if (!("geolocation" in navigator)) return res();
+    navigator.geolocation.getCurrentPosition(() => res(), () => res(), { enableHighAccuracy: true, timeout: 8000 });
+  });
+}
+async function mantenerPantalla(){
+  try { if ("wakeLock" in navigator && !wakeLock){ wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } } catch(e){}
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && watchId !== null) mantenerPantalla(); });
+function sincronizarGPS(){
+  const enCamino = pedidos.some(p => p.estado === "camino");
+  if (enCamino && watchId === null) iniciarGPS();
+  if (!enCamino && watchId !== null) detenerGPS();
+}
+function iniciarGPS(){
+  if (!("geolocation" in navigator)){ avisoGPS("err", "⚠️ Este celular no permite compartir ubicación."); return; }
+  avisoGPS("on", '<span class="pulso"></span><span>Compartiendo tu ubicación con el cliente y el local. <b>Deja esta pantalla abierta</b> hasta entregar.</span>');
+  mantenerPantalla();
+  watchId = navigator.geolocation.watchPosition(pos => {
+    const { latitude: lat, longitude: lng, accuracy: prec } = pos.coords;
+    const ahora = Date.now();
+    const movio = !ultimaPos || Math.abs(lat - ultimaPos.lat) + Math.abs(lng - ultimaPos.lng) > 0.0003;
+    if (ahora - ultimoEnvio < 10000 && !movio) return;
+    if (ahora - ultimoEnvio < 5000) return;
+    ultimoEnvio = ahora; ultimaPos = { lat, lng };
+    api("ubicacion", { lat, lng, prec }).catch(() => {});
+    avisoGPS("on", '<span class="pulso"></span><span>Compartiendo tu ubicación con el cliente y el local. <b>Deja esta pantalla abierta</b> hasta entregar.</span>');
+  }, err => {
+    avisoGPS("err", err.code === 1
+      ? "⚠️ Ubicación bloqueada. Actívala: toca el candado junto a la dirección → Permisos → Ubicación → Permitir."
+      : "⚠️ No se pudo obtener tu ubicación. Revisa que el GPS esté encendido.");
+  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+}
+function detenerGPS(){
+  if (watchId !== null){ try { navigator.geolocation.clearWatch(watchId); } catch(e){} watchId = null; }
+  if (wakeLock){ try { wakeLock.release(); } catch(e){} wakeLock = null; }
+  ultimaPos = null;
+  $("#gps").className = "oculto";
+}
+</script>
+</body>
+</html>

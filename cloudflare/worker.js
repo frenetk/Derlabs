@@ -30,6 +30,7 @@ import { getDb } from "./functions/_firebase.js";
 import { guardarLead } from "./functions/guardarLead.js";
 import { gestionLeads } from "./functions/gestionLeads.js";
 import { seguimientoPedido } from "./functions/seguimientoPedido.js";
+import { gestionRepartidores, delivery } from "./functions/repartidores.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -51,7 +52,9 @@ const FUNCIONES = {
   ultimoPedido,
   guardarLead,
   gestionLeads,
-  seguimientoPedido
+  seguimientoPedido,
+  gestionRepartidores,
+  delivery
 };
 
 
@@ -181,6 +184,11 @@ export default {
       return manifestTienda(request, env);
     }
 
+    /* ── Gestor del repartidor: tienda.cl/delivery ── */
+    if (url.pathname === "/delivery" || url.pathname === "/delivery/") {
+      const urlDel = new URL(request.url); urlDel.pathname = "/delivery.html";
+      return env.ASSETS.fetch(new Request(urlDel, request));
+    }
     /* ── Rutas de función: ambos patrones, viejo y nuevo. ── */
     let nombreFuncion = null;
     if (url.pathname.startsWith("/.netlify/functions/")) {

@@ -283,3 +283,34 @@ export async function autorizarDominio(hostname){
   if (!r2.ok) throw new Error("guardar dominio: " + (j2.error && j2.error.message ? j2.error.message : r2.status));
   return { agregado: true };
 }
+
+
+/* ─── Administración de cuentas (Auth REST con la service account) ───
+   ruta: ":update" (clave, pausar) o ":delete". Lo usa repartidores.js. */
+export async function authRest(ruta, body){
+  if (!_serviceAccount) throw new Error("Firebase no inicializado — llamá a getDb(env) primero");
+  const token = await _getAccessToken(_serviceAccount);
+  const r = await fetch("https://identitytoolkit.googleapis.com/v1/projects/" + _serviceAccount.project_id + "/accounts" + ruta, {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const j = await r.json().catch(function(){ return {}; });
+  if (!r.ok) throw new Error("auth" + ruta + ": " + (j.error && j.error.message ? j.error.message : r.status));
+  return j;
+}
+
+/* ─── Quién llama: valida el ID token de Firebase (header Authorization:
+   Bearer <token>) contra Firebase Auth y devuelve su uid, o null. ─── */
+export async function uidDesdeToken(request, env){
+  const t = String(request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!t) return null;
+  const key = env.FIREBASE_API_KEY || "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM";
+  const r = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + key, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: t })
+  });
+  if (!r.ok) return null;
+  const j = await r.json().catch(function(){ return {}; });
+  const u = j.users && j.users[0];
+  return u && !u.disabled ? u.localId : null;
+}

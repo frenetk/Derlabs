@@ -637,6 +637,45 @@ a{color:inherit;text-decoration:none}
    UTILIDADES
 ══════════════════════════════════════ */
 .oculto{display:none!important}
+
+/* ══════════════════════════════════════
+   DELIVERY PROPIO (repartidores)
+══════════════════════════════════════ */
+.btn-hdr-rep{margin-right:8px}
+.chip-envio{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 11px;border-radius:999px;font-size:12.5px;font-weight:800;background:rgba(21,101,192,.18);color:#64B5F6}
+.chip-envio.propio{background:rgba(255,255,255,.08);color:var(--txt2)}
+.chip-envio.sin{background:rgba(245,124,0,.15);color:#FFB74D}
+.btn-enviar{width:46px;height:46px;border-radius:12px;flex-shrink:0;background:#1565C0;display:flex;align-items:center;justify-content:center;color:#fff}
+.btn-enviar svg{width:22px;height:22px}
+.rep-panel{max-height:88vh;overflow-y:auto}
+.rep-fila{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--borde)}
+.rep-fila:last-child{border-bottom:none}
+.rep-info{flex:1;min-width:0}
+.rep-nom{font-weight:800;font-size:14.5px}
+.rep-sub{font-size:12px;color:var(--txt2);font-weight:600;margin-top:2px}
+.rp{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:999px}
+.rp::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.rp-on{background:rgba(67,160,71,.15);color:#81C784}
+.rp-ruta{background:rgba(21,101,192,.2);color:#64B5F6}
+.rp-off{background:rgba(255,255,255,.06);color:var(--txt3)}
+.rep-acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.rep-acc button{padding:7px 11px;border-radius:9px;background:var(--bg3);font-size:12px;font-weight:800;color:var(--txt)}
+.rep-acc button.peligro{color:#EF5350}
+.rep-form{display:grid;gap:10px;margin:6px 0 4px}
+.rep-form input{width:100%;background:var(--bg3);border:1.5px solid var(--borde);border-radius:10px;padding:12px 13px;font-size:14.5px}
+.rep-form input:focus{border-color:var(--azul)}
+.rep-btn{width:100%;padding:13px;border-radius:12px;background:#1565C0;color:#fff;font-weight:900;font-size:14.5px}
+.rep-btn:disabled{opacity:.5;pointer-events:none}
+.rep-cred{background:var(--bg3);border-radius:12px;padding:14px;margin:10px 0;font-size:13.5px;line-height:1.6}
+.rep-cred b{font-family:monospace;font-size:15px;color:#fff}
+.rep-cred a{display:block;margin-top:10px;text-align:center;padding:11px;border-radius:10px;background:#25D366;color:#fff;font-weight:900}
+.rep-vacio{font-size:13px;color:var(--txt2);font-weight:600;padding:8px 0 4px}
+#envioSel{position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end;justify-content:center}
+#envioSel.oculto,#repPanel.oculto{display:none !important}
+.env-op{width:100%;display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:var(--bg3);margin-bottom:8px;text-align:left;font-size:14.5px;font-weight:800}
+.env-op small{display:block;font-size:12px;color:var(--txt2);font-weight:600;margin-top:2px}
+.env-op[disabled]{opacity:.45}
+.env-op.quitar{background:none;border:1px dashed var(--borde);color:var(--txt2);justify-content:center}
 </style>
 </head>
 <body>
@@ -685,6 +724,7 @@ a{color:inherit;text-decoration:none}
       <div class="conn-dot" id="connDot"></div>
       <span class="conn-label" id="connLabel">Conectado</span>
     </div>
+    <button class="btn-settings btn-hdr-rep" id="btnRepartidores" aria-label="Repartidores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="2.5"/><circle cx="18.5" cy="17" r="2.5"/><path d="M8 17h7l3-6h-4l-2-4H9"/><path d="M15 11l-3 6"/></svg></button>
     <button class="btn-settings" id="btnSettings" aria-label="Configuración">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -774,6 +814,33 @@ a{color:inherit;text-decoration:none}
       Se activan y gestionan desde el panel de administración de la tienda (pestaña "Notificaciones"), no acá — así todos los dispositivos quedan en un solo lugar, sin duplicar la lista.
     </p>
     <a href="/?dev=1" class="btn-ir-devmode">Ir al panel de administración →</a>
+  </div>
+</div>
+
+<!-- REPARTIDORES -->
+<div id="repPanel" class="oculto" style="position:fixed;inset:0;z-index:500;display:flex;align-items:flex-end;justify-content:center">
+  <div class="set-overlay" data-cerrar-rep></div>
+  <div class="set-panel rep-panel">
+    <div class="set-tit">🛵 Mis repartidores</div>
+    <p class="set-row-sub" style="margin-bottom:10px;line-height:1.5">Cada repartidor tiene su usuario y clave. Entra desde <b id="repLink">/delivery</b> en su celular, ve solo los pedidos que le asignas y comparte su ubicación mientras reparte.</p>
+    <div id="repLista"></div>
+    <div class="set-tit" style="margin-top:18px">Agregar repartidor</div>
+    <div class="rep-form">
+      <input id="repNombre" placeholder="Nombre (ej: Pedro)" maxlength="40" autocomplete="off">
+      <input id="repUsuario" placeholder="Usuario (ej: pedro)" maxlength="20" autocomplete="off" autocapitalize="none">
+      <input id="repTel" placeholder="Teléfono (para enviarle su acceso)" inputmode="tel" maxlength="20" autocomplete="off">
+      <button class="rep-btn" id="repCrear">Crear cuenta</button>
+    </div>
+    <div id="repResultado"></div>
+  </div>
+</div>
+
+<!-- ELEGIR CON QUIÉN SE ENVÍA -->
+<div id="envioSel" class="oculto">
+  <div class="set-overlay" data-cerrar-env></div>
+  <div class="set-panel">
+    <div class="set-tit" id="envTit">Enviar pedido</div>
+    <div id="envOps"></div>
   </div>
 </div>
 
@@ -1115,6 +1182,7 @@ function mostrarApp(user){
   cargarNombreTienda();
   iniciarListenerPedidos();
   limpiarPendientesVencidos();
+  cargarRepartidores();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1291,12 +1359,21 @@ function iniciarListenerPedidos(){
     function(snap){
       setConexion(true);
       var nuevosIds = [];
+      var avisosRep = [];
 
       if(!_primeraCarga){
         snap.docChanges().forEach(function(change){
           if(change.type === "added"){
             var d = change.doc.data();
             if(d.estado === "nuevo") nuevosIds.push(d.id || change.doc.id);
+          }
+          if(change.type === "modified"){
+            var dm = change.doc.data(), evm = dm.envio || {}, prev = _envioPrev[change.doc.id] || {};
+            if(evm.repartidorNombre && evm.entregadoEn && evm.entregadoEn !== prev.entregadoEn){
+              avisosRep.push("✅ " + evm.repartidorNombre + " entregó " + (dm.id || change.doc.id) + (evm.cobrado ? " · cobró " + fmtPrecio(evm.cobrado) : ""));
+            } else if(evm.repartidorNombre && evm.salioEn && evm.salioEn !== prev.salioEn){
+              avisosRep.push("🛵 " + evm.repartidorNombre + " salió con " + (dm.id || change.doc.id));
+            }
           }
         });
       }
@@ -1308,6 +1385,7 @@ function iniciarListenerPedidos(){
         return d;
       });
 
+      _pedidos.forEach(function(p){ _envioPrev[p._docId] = p.envio || {}; });
       _primeraCarga = false;
 
       if(nuevosIds.length){
@@ -1319,6 +1397,13 @@ function iniciarListenerPedidos(){
         );
         // Actualizar tab badge en el título
         document.title = "(" + contarPorEstado("nuevo") + ") Pedidos";
+      }
+
+      if(avisosRep.length){
+        reproducirAlerta();
+        vibrar();
+        mostrarToast(avisosRep.join(" · "), 6000, true);
+        if(_repartidores.length) cargarRepartidores();
       }
 
       /* Debounce corto: si Firestore emite varios snapshots seguidos
@@ -1452,6 +1537,7 @@ function cardHTML(p){
     '<div class="card-cliente">' + esc(cl.nombre || "Cliente") +
       (cl.telefono ? ' <span>· ' + esc(cl.telefono) + '</span>' : '') + '</div>',
     '<div class="card-items">' + esc(items) + '</div>',
+    chipEnvio(p),
     (cl.direccion ? '<div class="card-dir">📍 ' + esc(cl.direccion) + (cl.comuna ? ", " + esc(cl.comuna) : "") + '</div>' : ''),
     '<div class="card-footer">',
       '<div class="card-total">' + fmtPrecio(p.total) + '</div>',
@@ -1462,6 +1548,7 @@ function cardHTML(p){
         '<button class="btn-estado ' + btnCls + '" data-id="' + esc(p.id) + '" data-accion="avanzar">',
           btnTxt,
         '</button>',
+        (p.tipo === "delivery" && (estad === "nuevo" || estad === "preparacion") ? '<button class="btn-enviar" data-id="' + esc(p.id) + '" data-accion="enviar" aria-label="Enviar con"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="2.5"/><circle cx="18.5" cy="17" r="2.5"/><path d="M8 17h7l3-6h-4l-2-4H9"/><path d="M15 11l-3 6"/></svg></button>' : ''),
         '<button class="btn-wa" data-id="' + esc(p.id) + '" data-accion="wa" aria-label="WhatsApp">',
           '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.117 1.532 5.845L.057 23.077a.75.75 0 0 0 .924.924l5.232-1.475A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.64-.523-5.144-1.428l-.368-.22-3.808 1.074 1.074-3.808-.22-.368A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>',
         '</button>',
@@ -1524,6 +1611,14 @@ qs("#listWrap").addEventListener("click", function(e){
     var id = btnEst.dataset.id;
     var ped = _pedidos.find(function(p){ return p.id === id; });
     if(ped) avanzarEstado(ped);
+    return;
+  }
+  // Botón Enviar con…
+  var btnEnv = e.target.closest("[data-accion='enviar']");
+  if(btnEnv){
+    e.stopPropagation();
+    var pe = _pedidos.find(function(p){ return p.id === btnEnv.dataset.id; });
+    if(pe) abrirSelectorEnvio(pe);
     return;
   }
   // Botón WhatsApp
@@ -1698,6 +1793,21 @@ function renderDetalle(){
     body.push('<div class="det-section"><div class="det-section-tit">Retiro en local</div></div>');
   }
 
+  // — Reparto
+  if(p.tipo === "delivery"){
+    body.push('<div class="det-section">');
+    body.push('<div class="det-section-tit">Reparto</div>');
+    body.push('<div>' + (chipEnvio(p) || '<span class="chip-envio sin">Sin asignar</span>') + '</div>');
+    var ev = p.envio || {};
+    if(ev.salioEn)     body.push(detalleRow(iconSVG("clock"), "Salió", fmtFecha(ev.salioEn)));
+    if(ev.entregadoEn) body.push(detalleRow(iconSVG("clock"), "Entregado", fmtFecha(ev.entregadoEn)));
+    if(ev.entregadoEn && p.metodoPago !== "mercadopago") body.push(detalleRow(iconSVG("card"), "Cobró", fmtPrecio(ev.cobrado || 0)));
+    if(p.estado === "nuevo" || p.estado === "preparacion"){
+      body.push('<button class="rep-btn" id="detBtnEnviar" style="margin-top:10px">🛵 Enviar con…</button>');
+    }
+    body.push('</div>');
+  }
+
   // — Productos
   body.push('<div class="det-section">');
   body.push('<div class="det-section-tit">Productos</div>');
@@ -1826,6 +1936,10 @@ function renderDetalle(){
       abrirWhatsApp(_detPedido);
     });
   }
+  var detBtnEnv = qs("#detBtnEnviar");
+  if(detBtnEnv){
+    detBtnEnv.addEventListener("click", function(){ abrirSelectorEnvio(_detPedido); });
+  }
   var detBtnDel = qs("#detBtnEliminar");
   if(detBtnDel){
     detBtnDel.addEventListener("click", function(){
@@ -1904,6 +2018,171 @@ qs("#btnLogout").addEventListener("click", function(){
   if(!confirm("¿Cerrar sesión?")) return;
   auth.signOut();
   qs("#settings").classList.add("oculto");
+});
+
+/* ══════════════════════════════════════════════════════════════
+   DELIVERY PROPIO — repartidores con cuenta y asignación de pedidos
+   Las cuentas se crean/cambian/borran en el servidor
+   (/api/gestionRepartidores, verifica que quien llama tenga rol en la
+   tienda). Asignar un pedido es solo escribir pedido.envio, igual que
+   cambiar su estado. El repartidor trabaja desde /delivery.
+══════════════════════════════════════════════════════════════ */
+var _repartidores = [];
+var _envioPrev = {};
+var _envioPedido = null;
+
+async function apiRep(accion, datos){
+  var u = auth.currentUser;
+  if(!u) throw new Error("Sin sesión");
+  var t = await u.getIdToken();
+  var r = await fetch("/api/gestionRepartidores", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + t },
+    body: JSON.stringify(Object.assign({ accion: accion, storeId: STORE_ID }, datos || {}))
+  });
+  var j = await r.json().catch(function(){ return {}; });
+  if(!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
+  return j;
+}
+
+function cargarRepartidores(){
+  return apiRep("listar").then(function(j){
+    _repartidores = j.repartidores || [];
+    renderRepLista();
+    if(!qs("#envioSel").classList.contains("oculto") && _envioPedido) renderEnvioOps();
+  }).catch(function(e){ console.warn("repartidores:", e.message); });
+}
+setInterval(function(){
+  if(auth && auth.currentUser && !document.hidden && _repartidores.length) cargarRepartidores();
+}, 30000);
+
+function estadoRep(r){
+  if(!r.activo) return { t: "Pausado", c: "rp-off" };
+  if(r.enRuta) return { t: "En ruta", c: "rp-ruta" };
+  var min = r.ultimaVez ? (Date.now() - Date.parse(r.ultimaVez)) / 60000 : 1e9;
+  return min < 3 ? { t: "Conectado", c: "rp-on" } : { t: "Desconectado", c: "rp-off" };
+}
+
+function chipEnvio(p){
+  var ev = p && p.envio;
+  if(!ev || !ev.metodo) return "";
+  if(ev.metodo === "propio") return '<div class="chip-envio propio">🙋 Lo lleva el local</div>';
+  if(ev.metodo === "repartidor"){
+    var txt = ev.entregadoEn ? " · entregado" : ev.salioEn ? " · en camino" : "";
+    return '<div class="chip-envio">🛵 ' + esc(ev.repartidorNombre || "Repartidor") + txt + '</div>';
+  }
+  return "";
+}
+
+/* ── Selector "Enviar con…" ── */
+function abrirSelectorEnvio(ped){
+  if(!ped) return;
+  _envioPedido = ped;
+  qs("#envTit").textContent = "Enviar " + ped.id + " con…";
+  renderEnvioOps();
+  qs("#envioSel").classList.remove("oculto");
+  cargarRepartidores();
+}
+function cerrarSelectorEnvio(){ qs("#envioSel").classList.add("oculto"); _envioPedido = null; }
+function renderEnvioOps(){
+  var ped = _envioPedido; if(!ped) return;
+  var actual = (ped.envio && ped.envio.repartidorUid) || "";
+  var ops = _repartidores.filter(function(r){ return r.activo; }).map(function(r){
+    var e = estadoRep(r);
+    return '<button class="env-op" data-rep="' + esc(r.id) + '">🛵<span style="flex:1">' + esc(r.nombre) +
+      (r.id === actual ? ' ✓' : '') + '<small>' + e.t + '</small></span></button>';
+  });
+  if(!ops.length) ops.push('<p class="rep-vacio">Todavía no tienes repartidores activos. Agrégalos en el botón 🛵 de arriba.</p>');
+  ops.push('<button class="env-op" data-rep="__propio">🙋<span style="flex:1">Lo llevo yo / el local<small>Sin GPS — marcas los estados desde aquí</small></span></button>');
+  if(ped.envio && ped.envio.metodo) ops.push('<button class="env-op quitar" data-rep="__quitar">Quitar asignación</button>');
+  qs("#envOps").innerHTML = ops.join("");
+  aplicarIconosGlobal(qs("#envOps"));
+}
+qs("#envOps").addEventListener("click", function(e){
+  var b = e.target.closest("[data-rep]"); if(!b || !_envioPedido) return;
+  var ped = _envioPedido, v = b.dataset.rep, ahora = new Date().toISOString(), envio, msg;
+  if(v === "__quitar"){ envio = firebase.firestore.FieldValue.delete(); msg = "Asignación quitada"; }
+  else if(v === "__propio"){ envio = { metodo: "propio", asignadoEn: ahora }; msg = ped.id + " lo lleva el local"; }
+  else {
+    var r = _repartidores.find(function(x){ return x.id === v; }); if(!r) return;
+    envio = { metodo: "repartidor", repartidorUid: r.id, repartidorNombre: r.nombre, asignadoEn: ahora };
+    msg = "🛵 " + ped.id + " asignado a " + r.nombre;
+  }
+  db.collection("tiendas").doc(STORE_ID).collection("pedidos").doc(ped._docId)
+    .update({ envio: envio })
+    .then(function(){ mostrarToast(msg); cerrarSelectorEnvio(); })
+    .catch(function(err){ mostrarToast("❌ No se pudo asignar"); console.error(err); });
+});
+document.addEventListener("click", function(e){
+  if(e.target.closest("[data-cerrar-env]")) cerrarSelectorEnvio();
+  if(e.target.closest("[data-cerrar-rep]")) qs("#repPanel").classList.add("oculto");
+});
+
+/* ── Panel de repartidores ── */
+qs("#btnRepartidores").addEventListener("click", function(){
+  qs("#repLink").textContent = location.host + "/delivery";
+  qs("#repResultado").innerHTML = "";
+  renderRepLista();
+  qs("#repPanel").classList.remove("oculto");
+  cargarRepartidores();
+});
+function renderRepLista(){
+  var w = qs("#repLista"); if(!w) return;
+  if(!_repartidores.length){ w.innerHTML = '<p class="rep-vacio">Aún no hay repartidores.</p>'; return; }
+  w.innerHTML = _repartidores.map(function(r){
+    var e = estadoRep(r);
+    return '<div class="rep-fila"><div class="rep-info">' +
+      '<div class="rep-nom">' + esc(r.nombre) + ' <span class="rp ' + e.c + '">' + e.t + '</span></div>' +
+      '<div class="rep-sub">Usuario: ' + esc(r.usuario) + (r.telefono ? ' · ' + esc(r.telefono) : '') + '</div>' +
+      '<div class="rep-acc">' +
+        '<button data-rclave="' + esc(r.id) + '">Nueva clave</button>' +
+        '<button data-ractivo="' + esc(r.id) + '">' + (r.activo ? 'Pausar' : 'Reactivar') + '</button>' +
+        '<button class="peligro" data-rborrar="' + esc(r.id) + '">Eliminar</button>' +
+      '</div></div></div>';
+  }).join("");
+}
+function mostrarCredenciales(r, clave, titulo){
+  var tienda = (qs("#hTiendaNombre") && qs("#hTiendaNombre").textContent) || "la tienda";
+  var link = location.origin + "/delivery";
+  var txt = "Hola " + r.nombre + ", este es tu acceso de repartidor de " + tienda + ":\n" + link + "\nUsuario: " + r.usuario + "\nClave: " + clave;
+  var tel = String(r.telefono || "").replace(/\D/g, "");
+  if(tel && tel.length === 9 && tel[0] === "9") tel = "56" + tel;
+  var wa = "https://wa.me/" + tel + "?text=" + encodeURIComponent(txt);
+  qs("#repResultado").innerHTML = '<div class="rep-cred">' + esc(titulo) + '<br>Usuario: <b>' + esc(r.usuario) + '</b><br>Clave: <b>' + esc(clave) + '</b>' +
+    '<br><span style="color:var(--txt2);font-size:12px">Guárdala ahora: por seguridad no se vuelve a mostrar.</span>' +
+    '<a href="' + wa + '" target="_blank" rel="noopener">💬 Enviar acceso por WhatsApp</a></div>';
+  aplicarIconosGlobal(qs("#repResultado"));
+}
+qs("#repCrear").addEventListener("click", function(){
+  var btn = this;
+  var datos = { nombre: qs("#repNombre").value.trim(), usuario: qs("#repUsuario").value.trim().toLowerCase(), telefono: qs("#repTel").value.trim() };
+  if(!datos.nombre || !datos.usuario){ mostrarToast("Escribe nombre y usuario"); return; }
+  btn.disabled = true; btn.textContent = "Creando…";
+  apiRep("crear", datos).then(function(j){
+    mostrarCredenciales(datos, j.clave, "✅ Cuenta creada para " + datos.nombre);
+    qs("#repNombre").value = ""; qs("#repUsuario").value = ""; qs("#repTel").value = "";
+    return cargarRepartidores();
+  }).catch(function(e){ mostrarToast("❌ " + e.message, 5000); })
+    .then(function(){ btn.disabled = false; btn.textContent = "Crear cuenta"; });
+});
+qs("#repLista").addEventListener("click", function(e){
+  var b;
+  if((b = e.target.closest("[data-rclave]"))){
+    var r1 = _repartidores.find(function(x){ return x.id === b.dataset.rclave; });
+    if(!r1 || !confirm("¿Generar una clave nueva para " + r1.nombre + "? La anterior deja de funcionar.")) return;
+    apiRep("clave", { id: r1.id }).then(function(j){ mostrarCredenciales(r1, j.clave, "🔑 Clave nueva para " + r1.nombre); })
+      .catch(function(err){ mostrarToast("❌ " + err.message, 5000); });
+  } else if((b = e.target.closest("[data-ractivo]"))){
+    var r2 = _repartidores.find(function(x){ return x.id === b.dataset.ractivo; });
+    if(!r2) return;
+    apiRep("activo", { id: r2.id, activo: !r2.activo }).then(function(){ mostrarToast(r2.activo ? "⏸ " + r2.nombre + " pausado" : "▶ " + r2.nombre + " reactivado"); return cargarRepartidores(); })
+      .catch(function(err){ mostrarToast("❌ " + err.message, 5000); });
+  } else if((b = e.target.closest("[data-rborrar]"))){
+    var r3 = _repartidores.find(function(x){ return x.id === b.dataset.rborrar; });
+    if(!r3 || !confirm("¿Eliminar la cuenta de " + r3.nombre + "? No podrá volver a entrar.")) return;
+    apiRep("eliminar", { id: r3.id }).then(function(){ mostrarToast("🗑️ " + r3.nombre + " eliminado"); return cargarRepartidores(); })
+      .catch(function(err){ mostrarToast("❌ " + err.message, 5000); });
+  }
 });
 
 /* Restaurar preferencias */

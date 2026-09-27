@@ -35,6 +35,16 @@ export async function seguimientoPedido(request, env){
     const p = doc.data();
     if (!p.seguimiento || p.seguimiento !== t) return json({ ok:false, error:"No encontrado" }, 404);
     const c = p.cliente || {};
+    /* Delivery propio: nombre del repartidor y, mientras va en camino, su ubicación */
+    let repartidor = null;
+    if (p.envio && p.envio.repartidorUid){
+      repartidor = { nombre: p.envio.repartidorNombre || "" };
+      if (p.estado === "camino"){
+        const r = await db.doc("tiendas/" + storeId + "/repartidores/" + p.envio.repartidorUid).get();
+        const u = r.exists ? r.data().ubicacion : null;
+        if (u && u.ts && Date.now() - Date.parse(u.ts) < 10 * 60 * 1000) repartidor.ubicacion = { lat: u.lat, lng: u.lng, ts: u.ts };
+      }
+    }
     return json({ ok:true, pedido:{
       id: p.id || id,
       estado: p.estado || "nuevo",
@@ -46,7 +56,8 @@ export async function seguimientoPedido(request, env){
       subtotal: p.subtotal || 0, descuento: p.descuento || 0, costoDelivery: p.costoDelivery || 0, total: p.total || 0,
       cuponAplicado: p.cuponAplicado || null,
       cliente: { nombre: c.nombre || "", direccion: c.direccion || "", comuna: c.comuna || "", local: c.local || "", tipo: c.tipo || "" },
-      envio: p.envio || null
+      envio: p.envio ? { metodo: p.envio.metodo || "", salioEn: p.envio.salioEn || "", entregadoEn: p.envio.entregadoEn || "" } : null,
+      repartidor
     }});
   } catch(e){
     console.error("seguimientoPedido:", e.message);

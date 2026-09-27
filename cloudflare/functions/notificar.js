@@ -1,3 +1,4 @@
+import { getDb } from "./_firebase.js";
 /* cloudflare/functions/notificar.js
    REESCRITURA REAL, no conversión de formato — el original usaba
    node:crypto de bajo nivel (createPrivateKey, diffieHellman,
@@ -162,32 +163,27 @@ async function cifrarPayloadWebPush(p256dhB64u, authB64u, payloadStr){
 
 /* ── Lee dispositivos desde Firestore REST (idéntico al original —
    sin cambios, fetch() es la misma API en ambos runtimes). ── */
-async function listarDispositivos(storeId){
-  const url = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT +
-    "/databases/(default)/documents/tiendas/" + storeId + "/dispositivos?pageSize=50&key=" + FIREBASE_API_KEY;
-  const r = await fetch(url);
-  if (!r.ok){ const t = await r.text(); throw new Error("Firestore " + r.status + ": " + t.slice(0,200)); }
-  const j = await r.json();
+/* ── Lee dispositivos con el Admin SDK (service account): no depende de
+   las reglas de Firestore, que (bien) no dejan leer suscripciones sin sesión. ── */
+async function listarDispositivos(storeId, env){
+  const db = getDb(env);
+  const snap = await db.collection("tiendas/" + storeId + "/dispositivos").get();
   const out = [];
-  (j.documents || []).forEach(function(doc){
+  snap.docs.forEach(function(doc){
     try {
-      const fields = doc.fields || {};
-      const subStr = fields.subscription && fields.subscription.stringValue;
+      const subStr = (doc.data() || {}).subscription;
       if (!subStr) return;
       const sub = JSON.parse(subStr);
       if (!sub.endpoint) return;
-      out.push({ sub, docName: doc.name });
-    } catch(e){ console.warn("Doc inválido:", doc.name, e.message); }
+      out.push({ sub, docName: "tiendas/" + storeId + "/dispositivos/" + doc.id });
+    } catch(e){ console.warn("Doc inválido:", doc.id, e.message); }
   });
   return out;
 }
 
-async function borrarDoc(docName){
+async function borrarDoc(docName, env){
   if (!docName) return;
-  try {
-    await fetch("https://firestore.googleapis.com/v1/" + docName + "?key=" + FIREBASE_API_KEY,
-      { method:"DELETE" });
-  } catch(e){ /* silencioso */ }
+  try { await getDb(env).doc(docName).delete(); } catch(e){ /* silencioso */ }
 }
 
 async function enviarPush(dispositivo, payloadStr, jwtCache, env){
@@ -230,7 +226,7 @@ async function enviarPush(dispositivo, payloadStr, jwtCache, env){
 
   if (r.status === 201 || r.status === 200 || r.status === 202) return "ok";
   if (r.status === 404 || r.status === 410 || r.status === 400 || r.status === 403){
-    await borrarDoc(docName);
+    await borrarDoc(docName, env);
     return "expirado:" + r.status;
   }
   const txt = await r.text().catch(() => "");
@@ -270,7 +266,7 @@ export async function notificar(request, env, bodyYaParseado){
     });
 
   let dispositivos;
-  try { dispositivos = await listarDispositivos(storeId); }
+  try { dispositivos = await listarDispositivos(storeId, env); }
   catch(e){
     return new Response(JSON.stringify({ ok:false, error:"No pude leer dispositivos: " + e.message }),
       { status: 502, headers: { "Content-Type": "application/json" } });
