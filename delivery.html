@@ -434,8 +434,9 @@ function moverMotoRuta(){
       const leg = res.routes[0].legs[0];
       $("#rutaTxt").textContent = leg.distance.text + " · " + leg.duration.text + " aprox. · " + (leg.end_address || "");
     } else {
-      $("#rutaTxt").textContent = "No se pudo trazar la ruta. Tu ubicación sigue visible en el mapa.";
+      $("#rutaTxt").textContent = "No se pudo trazar la ruta (" + st + "). Tu ubicación sigue visible en el mapa.";
       ruta.mapa.setCenter(posActual);
+      setTimeout(() => { if (ruta.id === p.id) ruta.pedida = false; }, 30000);
     }
   });
 }
