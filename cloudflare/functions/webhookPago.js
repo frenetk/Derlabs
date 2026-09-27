@@ -114,6 +114,7 @@ export async function webhookPago(request, env){
       estado: "nuevo",
       pagoId: data.id,
       seguimiento: intento.seguimiento || null,
+      uid: (intento.cliente && intento.cliente.uid) || null,
       fecha: intento.creadoEn || ahora,
       estadoTimeline: { nuevo: ahora, preparacion: null, camino: null, listo: null }
     };

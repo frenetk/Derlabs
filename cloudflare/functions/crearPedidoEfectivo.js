@@ -45,6 +45,7 @@ export async function crearPedidoEfectivo(request, env){
 
     const pedidoObj = {
       id, storeId, tipo, cliente, seguimiento,
+      uid: clienteUid || null,
       items: itemsConVariantes, subtotal, descuento, cuponAplicado: cuponFinal,
       costoDelivery: costoDeliveryReal, total,
       metodoPago: "efectivo",

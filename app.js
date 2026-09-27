@@ -5939,10 +5939,12 @@ function escucharHistorial(uid){
   if (_unsubHistorial){ _unsubHistorial(); _unsubHistorial = null; }
   if (!db || !uid) return;
   _unsubHistorial = db.collection("tiendas").doc(STORE_ID).collection("pedidos")
-    .where("uid","==",uid).orderBy("fecha","desc").limit(50)
+    .where("uid","==",uid).limit(100)
     .onSnapshot(function(s){
       _histTodos = [];
       s.forEach(function(d){ _histTodos.push(Object.assign({id:d.id}, d.data())); });
+      /* Orden en el navegador: evita exigir un índice compuesto uid+fecha en Firestore */
+      _histTodos.sort(function(a, b){ return String(b.fecha || "").localeCompare(String(a.fecha || "")); });
       renderHistorial(_histTodos);
       renderPagos(_histTodos);
     }, function(e){ console.warn("historial:", e); });
