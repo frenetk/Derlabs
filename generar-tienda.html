@@ -650,6 +650,7 @@ qs("#formTienda").addEventListener("submit", async (e) => {
       body: JSON.stringify({
         nombreNegocio,
         rubro: rubroSeleccionado,
+        subrubro: subrubroSeleccionado,
         hostname,
         colorPrimario: qs("#fColor").value,
         logoBase64: logoBase64 || undefined,

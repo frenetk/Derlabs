@@ -690,6 +690,14 @@ function _haySesionDevmode(){ return lsGet("tb_dev_session") === "1" || document
 async function sembrarDatosDemo(){
   const batch = db.batch();
   const _cfgSemilla = Object.assign({}, DEMO_DATA.config, DEMO_DATA.semillaConfig || {});
+  /* Conservar lo que generar-tienda ya guardó (rubro, nombre, color, logo...) */
+  try {
+    const _cfgPrevia = await col("config").doc("general").get();
+    if (_cfgPrevia.exists){
+      const _d = _cfgPrevia.data();
+      Object.keys(_d).forEach(function(k){ if (_d[k] !== "" && _d[k] != null) _cfgSemilla[k] = _d[k]; });
+    }
+  } catch(e){ console.warn("Seed: no se pudo leer config previa", e); }
   batch.set(col("config").doc("general"), _cfgSemilla);
   batch.set(col("config").doc("privado"), DEMO_DATA.configPrivado);
   DEMO_DATA.productos.forEach(function(p){ batch.set(col("productos").doc(p.id), p); });
