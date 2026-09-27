@@ -183,6 +183,7 @@ async function listarDispositivos(storeId){
 }
 
 async function borrarDoc(docName){
+  if (!docName) return;
   try {
     await fetch("https://firestore.googleapis.com/v1/" + docName + "?key=" + FIREBASE_API_KEY,
       { method:"DELETE" });
@@ -257,6 +258,7 @@ export async function notificar(request, env, bodyYaParseado){
   const cliente  = body.cliente  || {};
   const total    = body.total    || 0;
   const items    = body.items    || [];
+  const resumen  = items.map(function(i){ return (i.cantidad || 1) + "x " + (i.nombre || ""); }).join(", ").slice(0, 120);
 
     /* Titulo y texto custom (lead, alertas) o fallback al pedido */
     const tituloCustom = body.titulo || null;
@@ -366,4 +368,16 @@ export async function verificarRFC8291(){
     console.log("Obtenido:", resultadoB64u);
   }
   return coincide;
+}
+
+/* Envío a una lista de suscripciones ya leídas (lo usan guardarLead y
+   gestionLeads para los avisos del landing). Devuelve "ok",
+   "expirado:NNN" o "error:..." por cada una. */
+export async function enviarPushLista(subs, payloadObj, env){
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) throw new Error("Faltan VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY");
+  const payloadStr = JSON.stringify(payloadObj);
+  const jwtCache = {};
+  return Promise.all(subs.map(function(s){
+    return enviarPush({ sub: s.sub, docName: "" }, payloadStr, jwtCache, env).catch(function(e){ return "error:" + e.message; });
+  }));
 }

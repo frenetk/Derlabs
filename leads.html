@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Contactos del landing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Gestor de contactos del landing (derlabs.cl/leads.html).
+   Mismo estilo que formulario-respuestas.html y pedidos.html. Los datos
+   van por /api/gestionLeads con la clave de administrador (la misma de
+   generar-tienda.html); el push usa el mismo sw.js y la misma VAPID. */
+:root{
+  color-scheme:dark;
+  --rojo:#9B1B30;--dorado:#D4A017;--verde:#2E7D32;--wa:#25D366;
+  --bg:#0E0E0E;--bg2:#181818;--bg3:#222;--card:#1E1E1E;
+  --borde:rgba(255,255,255,.08);--txt:#F5F5F5;--txt2:#A0A0A0;--txt3:#606060;
+  --radius:16px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);font-family:'Nunito',sans-serif;min-height:100%}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font-family:inherit}
+a{color:inherit;text-decoration:none}
+.bc{font-family:'Barlow Condensed',sans-serif;font-weight:800}
+.oculto{display:none !important}
+
+/* Acceso */
+#gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;z-index:100;background:var(--bg)}
+.gate-box{width:100%;max-width:360px;background:var(--card);border-radius:24px;padding:34px 26px 28px;text-align:center}
+.gate-box h1{font-size:25px;margin:8px 0 4px}
+.gate-box p{color:var(--txt2);font-size:13.5px;margin-bottom:20px}
+.gate-box input{width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--borde);background:var(--bg3);color:var(--txt);font-size:15px;margin-bottom:12px}
+.gate-box input:focus{outline:none;border-color:var(--rojo)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border-radius:12px;font-weight:800;font-size:14px}
+.btn-rojo{background:var(--rojo);color:#fff;width:100%}
+.btn:disabled{opacity:.5;pointer-events:none}
+.gate-err{color:#EF5350;font-size:13px;font-weight:700;min-height:18px;margin-top:10px}
+
+/* Layout */
+#app{max-width:680px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+header{position:sticky;top:0;z-index:20;background:var(--bg2);border-bottom:1px solid var(--borde);padding:12px 16px calc(12px) ;display:flex;align-items:center;gap:10px}
+header h1{font-size:21px;flex:1}
+.chip-cont{background:var(--bg3);border-radius:20px;padding:5px 12px;font-size:12.5px;font-weight:800;color:var(--txt2)}
+.icon-btn{width:38px;height:38px;border-radius:10px;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--txt2);font-size:17px;position:relative}
+.icon-btn .punto{position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--verde)}
+.tabs{display:flex;gap:8px;padding:12px 16px 4px}
+.tab{padding:8px 14px;border-radius:999px;background:var(--bg2);border:1px solid var(--borde);font-size:13px;font-weight:800;color:var(--txt2)}
+.tab.activo{background:var(--txt);color:#111;border-color:var(--txt)}
+#lista{flex:1;padding:10px 16px 40px}
+.vacio{text-align:center;padding:60px 20px;color:var(--txt3)}
+.vacio .ico{font-size:38px;margin-bottom:12px}
+.vacio h3{font-family:'Barlow Condensed',sans-serif;color:var(--txt2);font-size:18px;margin-bottom:6px}
+.vacio p{font-size:13.5px;line-height:1.5}
+
+.card{background:var(--card);border:1px solid var(--borde);border-radius:var(--radius);padding:15px 16px;margin-bottom:10px;cursor:pointer;transition:transform .1s}
+.card:active{transform:scale(.99)}
+.card.nuevo{border-color:rgba(212,160,23,.45)}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.card-nombre{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800}
+.badge{flex-shrink:0;background:var(--dorado);color:#241A05;font-size:10.5px;font-weight:900;padding:3px 9px;border-radius:20px}
+.meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--txt2);font-weight:700}
+.prev{font-size:13px;color:var(--txt3);margin-top:8px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* Hojas (detalle y notificaciones) */
+.hoja{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+.hoja-panel{width:100%;max-width:680px;max-height:88vh;background:var(--bg2);border-radius:24px 24px 0 0;display:flex;flex-direction:column;animation:subir .22s ease}
+@keyframes subir{from{transform:translateY(100%)}to{transform:none}}
+.hoja-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px 14px;border-bottom:1px solid var(--borde)}
+.hoja-head h2{font-family:'Barlow Condensed',sans-serif;font-size:22px}
+.hoja-body{flex:1;overflow-y:auto;padding:16px 20px 24px}
+.fila{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--borde);font-size:14px}
+.fila:last-child{border-bottom:none}
+.fila span:first-child{color:var(--txt2);font-weight:700;flex-shrink:0}
+.fila span:last-child{font-weight:700;text-align:right;word-break:break-word}
+.msg{background:var(--bg3);border-radius:12px;padding:14px;font-size:14px;line-height:1.55;white-space:pre-wrap;margin-top:14px}
+.hoja-acciones{display:flex;gap:10px;padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--borde);flex-wrap:wrap}
+.hoja-acciones .btn{flex:1;min-width:120px}
+.btn-wa{background:var(--wa);color:#fff}
+.btn-gris{background:var(--bg3);color:var(--txt)}
+.btn-borrar{background:rgba(155,27,48,.18);color:#EF5350}
+.nota{font-size:13px;color:var(--txt2);line-height:1.5;margin-bottom:14px}
+.estado{font-size:13px;font-weight:700;margin-top:10px;min-height:18px}
+.disp{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--borde);font-size:13.5px;font-weight:700}
+.disp small{display:block;color:var(--txt3);font-weight:600;margin-top:2px}
+.disp button{color:#EF5350;font-size:12.5px;font-weight:800}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#fff;color:#111;padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:800;transition:transform .25s;z-index:300;max-width:90vw;text-align:center}
+#toast.ver{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <form class="gate-box" id="gateForm">
+    <div style="font-size:34px">📩</div>
+    <h1 class="bc">Contactos del landing</h1>
+    <p>Acceso solo para administración.</p>
+    <input type="password" id="gateInput" placeholder="Clave de administrador" autocomplete="current-password">
+    <button type="submit" class="btn btn-rojo" id="gateBtn">Entrar</button>
+    <div class="gate-err" id="gateErr"></div>
+  </form>
+</div>
+
+<div id="app" class="oculto">
+  <header>
+    <h1 class="bc">📩 Contactos</h1>
+    <span class="chip-cont" id="contador">0</span>
+    <button class="icon-btn" id="btnNotif" title="Notificaciones">🔔<span class="punto oculto" id="notifPunto"></span></button>
+    <button class="icon-btn" id="btnSalir" title="Salir">⏻</button>
+  </header>
+  <div class="tabs">
+    <button class="tab activo" data-f="nuevos">Nuevos</button>
+    <button class="tab" data-f="todos">Todos</button>
+  </div>
+  <div id="lista"></div>
+</div>
+
+<div class="hoja oculto" id="hojaDet"></div>
+
+<div class="hoja oculto" id="hojaNotif">
+  <div class="hoja-panel">
+    <div class="hoja-head"><h2>🔔 Notificaciones</h2><button class="icon-btn" data-cerrar>✕</button></div>
+    <div class="hoja-body">
+      <p class="nota">Activa las notificaciones en cada celular o computador donde quieras enterarte al instante de un contacto nuevo del landing. Son independientes de las alertas de pedidos de las tiendas.</p>
+      <button class="btn btn-rojo" id="btnActivar">Activar en este dispositivo</button>
+      <div class="estado" id="notifEstado"></div>
+      <div id="dispLista" style="margin-top:14px"></div>
+    </div>
+    <div class="hoja-acciones"><button class="btn btn-gris" id="btnProbar">Enviar notificación de prueba</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = "/api/gestionLeads";
+const VAPID_KEY = "BN0atA77lvF6LY8buvjl9RLsPXb8ZqESonUfWBDDewV2-_Mr70vcsPNrpvcuFLGJU_mHVRnp084azSSnjvB6ANs"; // misma key que app.js
+const RUBROS = { comida:"🍔 Comida / Restaurant", retail:"🛍️ Retail / Tienda", tecnologia:"📱 Tecnología", ropa:"👕 Ropa / Accesorios", otro:"🏪 Otro" };
+
+let SECRETO = "";
+let leads = [], dispositivos = [], filtro = "nuevos", idsVistos = null, abiertoId = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("ver"); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove("ver"), 2600); }
+function fecha(iso){
+  if (!iso) return "";
+  const f = new Date(iso), hoy = new Date();
+  const h = f.toLocaleTimeString("es-CL", { hour:"2-digit", minute:"2-digit" });
+  if (f.toDateString() === hoy.toDateString()) return "Hoy, " + h;
+  const ayer = new Date(Date.now() - 86400000);
+  if (f.toDateString() === ayer.toDateString()) return "Ayer, " + h;
+  return f.toLocaleDateString("es-CL", { day:"numeric", month:"short" }) + ", " + h;
+}
+function waLink(numero, nombre){
+  let n = String(numero || "").replace(/\D/g, "");
+  if (n.length === 9 && n[0] === "9") n = "56" + n;          // celular chileno sin código de país
+  const txt = "Hola " + (nombre || "") + ", te escribo de DerLabs por tu mensaje en nuestra web 👋";
+  return "https://wa.me/" + n + "?text=" + encodeURIComponent(txt);
+}
+
+async function api(accion, datos){
+  const r = await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "X-Admin-Secret": SECRETO },
+    body: JSON.stringify(Object.assign({ accion }, datos || {}))
+  });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401){ salir("Clave incorrecta."); throw new Error("401"); }
+  if (!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+
+/* ── Acceso ── */
+$("#gateForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const v = $("#gateInput").value.trim();
+  if (!v){ $("#gateErr").textContent = "Ingresa la clave."; return; }
+  SECRETO = v; $("#gateBtn").disabled = true; $("#gateErr").textContent = "";
+  try { await cargar(); sessionStorage.setItem("adminSecret", v); entrar(); }
+  catch(err){ if (err.message !== "401") $("#gateErr").textContent = "No se pudo conectar: " + err.message; }
+  finally { $("#gateBtn").disabled = false; }
+});
+function entrar(){ $("#gate").classList.add("oculto"); $("#app").classList.remove("oculto"); }
+function salir(msg){
+  sessionStorage.removeItem("adminSecret"); SECRETO = "";
+  $("#app").classList.add("oculto"); $("#gate").classList.remove("oculto");
+  $("#gateErr").textContent = msg || ""; $("#gateInput").value = "";
+}
+$("#btnSalir").addEventListener("click", () => salir(""));
+
+/* ── Datos ── */
+async function cargar(){
+  const j = await api("listar");
+  const nuevos = idsVistos ? j.leads.filter(l => !idsVistos.has(l.id)) : [];
+  leads = j.leads; dispositivos = j.dispositivos;
+  idsVistos = new Set(leads.map(l => l.id));
+  if (nuevos.length){ toast("📩 " + (nuevos.length === 1 ? "Nuevo contacto: " + nuevos[0].nombre : nuevos.length + " contactos nuevos")); try { navigator.vibrate && navigator.vibrate([200,100,200]); } catch(e){} }
+  render(); renderDisp();
+}
+setInterval(() => { if (SECRETO && !document.hidden) cargar().catch(() => {}); }, 20000);
+document.addEventListener("visibilitychange", () => { if (SECRETO && !document.hidden) cargar().catch(() => {}); });
+
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  filtro = t.dataset.f;
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("activo", x === t));
+  render();
+}));
+
+function render(){
+  const sinRevisar = leads.filter(l => !l.revisado).length;
+  $("#contador").textContent = sinRevisar ? sinRevisar + " nuevos" : leads.length + " en total";
+  const lista = filtro === "nuevos" ? leads.filter(l => !l.revisado) : leads;
+  if (!lista.length){
+    $("#lista").innerHTML = `<div class="vacio"><div class="ico">${filtro === "nuevos" ? "✅" : "📭"}</div>
+      <h3>${filtro === "nuevos" ? "Estás al día" : "Todavía no hay contactos"}</h3>
+      <p>${filtro === "nuevos" ? "No hay contactos sin revisar. Los revisados están en «Todos»." : "Cuando alguien complete el formulario del landing, aparece acá."}</p></div>`;
+    return;
+  }
+  $("#lista").innerHTML = lista.map(l => `
+    <div class="card ${l.revisado ? "" : "nuevo"}" data-id="${esc(l.id)}">
+      <div class="card-top"><span class="card-nombre">${esc(l.nombre || "Sin nombre")}</span>${l.revisado ? "" : '<span class="badge">NUEVO</span>'}</div>
+      <div class="meta"><span>${esc(RUBROS[l.rubro] || l.rubro || "Sin rubro")}</span><span>🕐 ${esc(fecha(l.fecha))}</span><span>📱 ${esc(l.whatsapp)}</span></div>
+      ${l.mensaje ? `<div class="prev">${esc(l.mensaje)}</div>` : ""}
+    </div>`).join("");
+}
+$("#lista").addEventListener("click", e => { const c = e.target.closest(".card"); if (c) abrir(c.dataset.id); });
+
+/* ── Detalle ── */
+function abrir(id){
+  const l = leads.find(x => x.id === id); if (!l) return;
+  abiertoId = id;
+  $("#hojaDet").innerHTML = `
+    <div class="hoja-panel">
+      <div class="hoja-head"><h2>${esc(l.nombre || "Sin nombre")}</h2><button class="icon-btn" data-cerrar>✕</button></div>
+      <div class="hoja-body">
+        <div class="fila"><span>WhatsApp</span><span>${esc(l.whatsapp)}</span></div>
+        <div class="fila"><span>Negocio</span><span>${esc(RUBROS[l.rubro] || l.rubro || "—")}</span></div>
+        <div class="fila"><span>Recibido</span><span>${esc(fecha(l.fecha))}</span></div>
+        <div class="fila"><span>Estado</span><span>${l.revisado ? "✅ Revisado" : "🟡 Sin revisar"}</span></div>
+        ${l.mensaje ? `<div class="msg">${esc(l.mensaje)}</div>` : ""}
+      </div>
+      <div class="hoja-acciones">
+        <a class="btn btn-wa" href="${esc(waLink(l.whatsapp, l.nombre))}" target="_blank" rel="noopener" id="detWa">💬 Escribir por WhatsApp</a>
+        <button class="btn btn-gris" id="detRevisar">${l.revisado ? "Marcar como nuevo" : "✓ Marcar revisado"}</button>
+        <button class="btn btn-borrar" id="detBorrar">🗑 Eliminar</button>
+      </div>
+    </div>`;
+  $("#hojaDet").classList.remove("oculto");
+  $("#detWa").addEventListener("click", () => { if (!l.revisado) marcar(l, true, false); });
+  $("#detRevisar").addEventListener("click", () => marcar(l, !l.revisado, true));
+  $("#detBorrar").addEventListener("click", async () => {
+    if (!confirm("¿Eliminar el contacto de " + (l.nombre || "esta persona") + "? No se puede deshacer.")) return;
+    try { await api("eliminar", { id: l.id }); leads = leads.filter(x => x.id !== l.id); cerrarHojas(); render(); toast("Contacto eliminado"); }
+    catch(err){ if (err.message !== "401") toast("No se pudo eliminar"); }
+  });
+}
+async function marcar(l, valor, cerrar){
+  const antes = l.revisado; l.revisado = valor; render();
+  if (cerrar) cerrarHojas();
+  try { await api("revisar", { id: l.id, valor }); }
+  catch(err){ l.revisado = antes; render(); if (err.message !== "401") toast("No se pudo guardar"); }
+}
+function cerrarHojas(){ document.querySelectorAll(".hoja").forEach(h => h.classList.add("oculto")); abiertoId = null; }
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-cerrar]") || e.target.classList.contains("hoja")) cerrarHojas();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") cerrarHojas(); });
+
+/* ── Notificaciones push ── */
+function nombreDispositivo(){
+  const ua = navigator.userAgent;
+  const so = /Android/i.test(ua) ? "Android" : /iPhone|iPad/i.test(ua) ? "iPhone" : /Windows/i.test(ua) ? "Windows" : /Mac/i.test(ua) ? "Mac" : "Equipo";
+  const nav = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Navegador";
+  return so + " · " + nav + " · " + location.hostname;
+}
+function b64ABytes(b64){
+  const pad = "=".repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+function renderDisp(){
+  $("#notifPunto").classList.toggle("oculto", !dispositivos.length);
+  $("#dispLista").innerHTML = dispositivos.length ? dispositivos.map(d => `
+    <div class="disp"><span>📱 ${esc(d.dispositivo)}<small>activado ${esc(fecha(d.activadoEn))}</small></span><button data-quitar="${esc(d.id)}">Quitar</button></div>`).join("")
+    : '<p class="nota" style="margin:0">Ningún dispositivo activado todavía.</p>';
+}
+$("#btnNotif").addEventListener("click", () => { renderDisp(); $("#hojaNotif").classList.remove("oculto"); });
+$("#dispLista").addEventListener("click", async e => {
+  const b = e.target.closest("[data-quitar]"); if (!b) return;
+  try { await api("quitar", { id: b.dataset.quitar }); dispositivos = dispositivos.filter(d => d.id !== b.dataset.quitar); renderDisp(); toast("Dispositivo quitado"); }
+  catch(err){ if (err.message !== "401") toast("No se pudo quitar"); }
+});
+$("#btnActivar").addEventListener("click", async () => {
+  const est = $("#notifEstado"); est.style.color = "var(--txt2)"; est.textContent = "Activando…";
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("este navegador no permite notificaciones");
+    if (await Notification.requestPermission() !== "granted") throw new Error("permiso denegado — actívalo en los ajustes del navegador");
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ABytes(VAPID_KEY) });
+    await api("registrar", { subscription: sub.toJSON(), dispositivo: nombreDispositivo() });
+    est.style.color = "#66BB6A"; est.textContent = "✅ Listo: este dispositivo te avisará de cada contacto nuevo.";
+    await cargar();
+  } catch(err){
+    if (err.message === "401") return;
+    est.style.color = "#EF5350"; est.textContent = "❌ No se pudo activar: " + err.message;
+  }
+});
+$("#btnProbar").addEventListener("click", async () => {
+  try { const j = await api("probar"); toast(j.enviados ? "🔔 Prueba enviada a " + j.enviados + " dispositivo(s)" : "No llegó a ningún dispositivo"); }
+  catch(err){ if (err.message !== "401") toast(err.message); }
+});
+
+/* ── Arranque: si la clave ya se ingresó en esta pestaña, entrar directo ── */
+(async function(){
+  const s = sessionStorage.getItem("adminSecret");
+  if (!s) return;
+  SECRETO = s;
+  try { await cargar(); entrar(); } catch(e){ if (e.message !== "401") salir(""); }
+})();
+</script>
+</body>
+</html>

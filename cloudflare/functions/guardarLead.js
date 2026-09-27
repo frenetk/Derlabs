@@ -1,27 +1,44 @@
 /* cloudflare/functions/guardarLead.js
    Recibe POST del formulario del landing (nombre, whatsapp, rubro, mensaje).
-   Guarda en Firestore en la colección "leads" y dispara un push al celular
-   del dueño reusando notificar() — sin duplicar la lógica de cifrado. */
+   1) Lo guarda en Firestore, colección "leads" (Admin SDK, no depende de reglas).
+   2) Avisa por push a los dispositivos activados desde el gestor /leads.html
+      (colección "leads_dispositivos"), separados de los de las tiendas. */
 import { getDb } from "./_firebase.js";
-import { notificar } from "./notificar.js";
+import { enviarPushLista } from "./notificar.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type"
 };
+const json = (obj, status) => new Response(JSON.stringify(obj),
+  { status: status || 200, headers: { "Content-Type": "application/json", ...CORS } });
+
+const RUBROS = { comida:"Comida", retail:"Retail", tecnologia:"Tecnología", ropa:"Ropa", otro:"Otro" };
+
+export async function avisarLead(db, env, lead){
+  const snap = await db.collection("leads_dispositivos").get();
+  const subs = [];
+  snap.docs.forEach(function(d){
+    try { const sub = JSON.parse(d.data().subscription || "{}"); if (sub.endpoint) subs.push({ id: d.id, sub }); } catch(e){}
+  });
+  if (!subs.length) return { enviados: 0, msg: "Sin dispositivos activados en /leads.html" };
+  const resultados = await enviarPushLista(subs, {
+    title: "📩 Nuevo contacto: " + lead.nombre,
+    body: (RUBROS[lead.rubro] || lead.rubro || "Sin rubro") + " · WA " + lead.whatsapp + (lead.mensaje ? " · " + lead.mensaje.slice(0, 80) : ""),
+    url: "/leads.html"
+  }, env);
+  /* Suscripciones vencidas: se borran para no reintentar siempre */
+  await Promise.all(resultados.map(function(r, i){
+    return String(r).indexOf("expirado") === 0 ? db.doc("leads_dispositivos/" + subs[i].id).delete().catch(function(){}) : null;
+  }));
+  return { enviados: resultados.filter(function(r){ return r === "ok"; }).length, resultados };
+}
 
 export async function guardarLead(request, env){
-  if (request.method === "OPTIONS"){
-    return new Response(null, { status: 204, headers: CORS });
-  }
-  if (request.method === "GET"){
-    return new Response(JSON.stringify({ ok:true, msg:"Función activa. Usa POST." }),
-      { status: 200, headers: { "Content-Type": "application/json", ...CORS } });
-  }
-  if (request.method !== "POST"){
-    return new Response("Method Not Allowed", { status: 405, headers: CORS });
-  }
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  if (request.method === "GET") return json({ ok:true, msg:"Función activa. Usa POST." });
+  if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: CORS });
 
   let body = {};
   try { body = JSON.parse(await request.text() || "{}"); } catch(e){ body = {}; }
@@ -30,48 +47,28 @@ export async function guardarLead(request, env){
   const whatsapp = String(body.whatsapp || "").trim().slice(0, 30);
   const rubro    = String(body.rubro    || "").trim().slice(0, 50);
   const mensaje  = String(body.mensaje  || "").trim().slice(0, 500);
-
-  if (!nombre || !whatsapp){
-    return new Response(JSON.stringify({ ok:false, error:"Nombre y WhatsApp son obligatorios" }),
-      { status: 400, headers: { "Content-Type": "application/json", ...CORS } });
-  }
+  if (!nombre || !whatsapp) return json({ ok:false, error:"Nombre y WhatsApp son obligatorios" }, 400);
 
   const lead = {
     nombre, whatsapp, rubro, mensaje,
-    origen: "landing.derlabs.cl",
+    origen: new URL(request.url).hostname || "landing",
     fecha: new Date().toISOString(),
-    userAgent: request.headers.get("user-agent") || "",
+    revisado: false,
+    userAgent: (request.headers.get("user-agent") || "").slice(0, 200),
     ip: request.headers.get("cf-connecting-ip") || ""
   };
 
-  // 1) Guardar en Firestore (no bloquea el push si falla)
+  let db;
   try {
-    const db = getDb(env);
+    db = getDb(env);
     await db.collection("leads").add(lead);
   } catch(e){
     console.error("guardarLead firestore:", e.message);
+    return json({ ok:false, error:"No se pudo guardar. Intenta de nuevo." }, 500);
   }
 
-  // 2) Push al celular — reusa notificar() con título custom
-  try {
-    const resumenLead = nombre + " · " + (rubro || "sin rubro") + " · WA " + whatsapp
-                      + (mensaje ? " · " + mensaje.slice(0, 80) : "");
-    const notifBody = {
-      storeId: "test-burgers",
-      titulo: "📩 Nuevo lead desde el landing",
-      texto: resumenLead,
-      url: "/",
-      cliente: { nombre: nombre },
-      total: 0,
-      items: []
-    };
-    /* Llamada directa con el body ya armado — evitamos el Request
-       sintetico que rompia el .text() en Workers. */
-    await notificar({ method: "POST" }, env, notifBody);
-  } catch(e){
-    console.error("guardarLead push:", e.message);
-  }
+  try { console.log("guardarLead push:", JSON.stringify(await avisarLead(db, env, lead))); }
+  catch(e){ console.error("guardarLead push:", e.message); }
 
-  return new Response(JSON.stringify({ ok:true, guardado:true }),
-    { status: 200, headers: { "Content-Type": "application/json", ...CORS } });
+  return json({ ok:true, guardado:true });
 }
