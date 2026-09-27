@@ -544,6 +544,14 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
 .lead-priv{margin-top:8px;font-size:12px;color:rgba(255,255,255,.55);text-align:center}
 .lead-alt{margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.15);font-size:14px;color:rgba(255,255,255,.7);text-align:center}
 .lead-alt a{color:#fff;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+
+/* Demos de tiendas reales en el hero */
+.demos-hero{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--borde)}
+.demos-label{font-size:13px;font-weight:700;color:var(--texto2);margin-right:4px}
+.demo-link{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:var(--fondo-card);border:1px solid var(--borde);font-size:13px;font-weight:700;color:var(--texto);transition:border-color .15s,transform .1s}
+.demo-link:hover{border-color:var(--morado);color:var(--morado-dark)}
+.demo-link:active{transform:scale(.97)}
+@media (max-width:720px){.demos-hero{gap:8px}.demo-link{font-size:12px;padding:7px 12px}}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -622,6 +630,15 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
       <a href="#contacto" class="btn-primario">Cotiza tu tienda →</a>
       <a href="#features" class="btn-secundario">Ver cómo funciona</a>
     </div>
+    <div class="demos-hero">
+      <span class="demos-label">Mira una tienda real →</span>
+      <a href="https://derlabs.store" target="_blank" rel="noopener" class="demo-link">
+        🍔 Ver tienda de comida
+      </a>
+      <a href="https://derlabs.online" target="_blank" rel="noopener" class="demo-link">
+        🛍️ Ver tienda retail
+      </a>
+    </div>
   </div>
 </section>
 
@@ -668,7 +685,7 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
 <li>Preferencias de compra: todo queda en TU base de datos</li>
 <li>Direcciones guardadas: la próxima compra es en 2 toques</li>
 <li>Sectorización de costos de envío automática con Google Maps</li>
-<li>Integración de pedidos y envíos: migra a tu ritmo y sigue usando las flotas de las apps</li>
+<li>PedidosYa Envíos integrado: ingresa tu token y migra a tu ritmo a tus clientes frecuentes. Potencia tu propia cartera de clientes: DerLabs tiene todo lo que necesitas</li>
 </ul>
 </div>
 <div class="camino-bloque">
@@ -791,13 +808,28 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
         </div>
         <div class="feature-card">
           <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M3 6.5h10.5V16H3z"/> <path d="M13.5 9.5h4l3 3.2V16h-7"/> <circle cx="7" cy="17.5" r="1.7"/> <circle cx="17" cy="17.5" r="1.7"/> </svg></span></div>
-          <h3>Asignación al repartidor más cercano</h3>
+          <h3>Asigna pedidos a tus repartidores con un toque</h3>
           <p>Un toque y el pedido queda asignado. El repartidor recibe la orden con dirección y mapa en su celular. Menos tiempo muerto, más entregas por hora.</p>
         </div>
         <div class="feature-card">
           <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5v10A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/> <path d="M12 10.5v3"/> <path d="M10.5 12h3"/> <circle cx="7" cy="10.5" r="0.8"/> <circle cx="17" cy="13.5" r="0.8"/> </svg></span></div>
           <h3>Caja y cuadre automático</h3>
           <p>Cada repartidor ve su efectivo, sus entregas y su liquidación. Vos ves todo consolidado. Al final del día, los números cuadran solos: sin cuadernos, sin errores, sin discusiones.</p>
+        </div>
+        <div class="feature-card">
+          <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/> <circle cx="12" cy="10" r="3"/> </svg></span></div>
+          <h3>Seguimiento en vivo para tu cliente</h3>
+          <p>Tu cliente no tiene que preguntar dónde va su pedido: ve el estado en tiempo real y el mapa del repartidor desde su propio celular. Menos llamadas, más confianza.</p>
+        </div>
+        <div class="feature-card">
+          <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="7" y="3" width="10" height="18" rx="2.5"/> <path d="M11 18h2"/> </svg></span></div>
+          <h3>Página propia del repartidor</h3>
+          <p>Cada repartidor tiene su pantalla con los pedidos asignados, mapa, cambio de estado y su caja del día. Sin papeles, sin llamadas, sin excusas.</p>
+        </div>
+        <div class="feature-card">
+          <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5v10A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/> <path d="M12 10.5v3"/> <path d="M10.5 12h3"/> </svg></span></div>
+          <h3>Caja con cuadre y deuda acumulada</h3>
+          <p>Cada repartidor acumula lo que debe entregar de efectivo. Vos ves la deuda total y por repartidor, se cuadra con un toque y queda registro de cada movimiento.</p>
         </div>
       </div>
       <div class="banner-verde" style="margin-top:32px">
@@ -838,7 +870,7 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
           <li><span class="check">✓</span> Soporte 24/7 real — siempre hay alguien del otro lado</li>
         <li><span class="check">✓</span> Actualizaciones y mejoras constantes de la plataforma — DerLabs evoluciona cada día, no estás solo</li>
         </ul>
-        <a href="#contacto" class="btn-primario" style="width:100%;justify-content:center">Cotizar mensualidad</a>
+        <a href="#contacto" class="btn-primario" style="width:100%;justify-content:center">Cotizar plan anual</a>
       </div>
       <div class="plan-card destacado">
         <div class="plan-header">
