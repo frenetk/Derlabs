@@ -671,7 +671,38 @@ a{color:inherit;text-decoration:none}
 .rep-cred a{display:block;margin-top:10px;text-align:center;padding:11px;border-radius:10px;background:#25D366;color:#fff;font-weight:900}
 .rep-vacio{font-size:13px;color:var(--txt2);font-weight:600;padding:8px 0 4px}
 #envioSel{position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end;justify-content:center}
-#envioSel.oculto,#repPanel.oculto,#mapaPanel.oculto{display:none !important}
+#envioSel.oculto,#repPanel.oculto,#mapaPanel.oculto,#cajaPanel.oculto,#cajaHoja.oculto{display:none !important}
+#cajaPanel{position:fixed;inset:0;z-index:540;background:var(--bg);display:flex;flex-direction:column}
+.caja-tabs{display:flex;gap:8px;padding:12px 16px 0}
+.caja-tab{flex:1;padding:10px;border-radius:12px;background:var(--bg2);border:1px solid var(--borde);font-weight:900;font-size:13.5px;color:var(--txt2)}
+.caja-tab.activo{background:var(--txt);color:#111}
+.caja-nav{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.caja-nav b{flex:1;text-align:center;font-size:15px}
+.caja-nav button{width:42px;height:42px;border-radius:12px;background:var(--bg3);font-size:18px;font-weight:900}
+#cajaBody{flex:1;overflow-y:auto;padding:0 16px 40px}
+.caja-res{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.caja-res div{background:var(--bg2);border:1px solid var(--borde);border-radius:14px;padding:12px}
+.caja-res b{display:block;font-size:19px;font-weight:900}
+.caja-res span{font-size:12px;color:var(--txt2);font-weight:700}
+.caja-card{background:var(--card);border:1px solid var(--borde);border-radius:16px;padding:14px;margin-bottom:10px}
+.caja-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.caja-nom{font-size:16px;font-weight:900}
+.deuda{text-align:right;font-size:12px;font-weight:800;color:var(--txt2)}
+.deuda b{display:block;font-size:19px}
+.deuda.debe b{color:#FFB74D}
+.deuda.ok b{color:#81C784}
+.caja-lin{font-size:13px;color:var(--txt2);font-weight:700;margin-top:8px;line-height:1.5}
+.caja-mov{font-size:12.5px;font-weight:700;margin-top:6px;padding:8px 10px;border-radius:10px;background:var(--bg3)}
+.caja-btns{display:flex;gap:8px;margin-top:12px}
+.caja-btns button{flex:1;padding:11px;border-radius:11px;font-weight:900;font-size:13.5px;background:var(--bg3);color:var(--txt)}
+.caja-btns .cuadrar{background:var(--verde);color:#fff}
+.sem{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+.sem th,.sem td{padding:7px 4px;text-align:right;border-bottom:1px solid var(--borde)}
+.sem th:first-child,.sem td:first-child{text-align:left}
+.sem th{color:var(--txt3);font-weight:800;font-size:11px;text-transform:uppercase}
+.sem tr.tot td{font-weight:900;border-bottom:none}
+#cajaHoja{position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end;justify-content:center}
+#cajaHoja input{width:100%;background:var(--bg3);border:1.5px solid var(--borde);border-radius:10px;padding:13px;font-size:16px;margin-bottom:10px}
 .btn-estado.espera{background:var(--bg3);color:var(--txt2);cursor:default}
 #mapaPanel{position:fixed;inset:0;z-index:550;background:var(--bg);display:flex;flex-direction:column}
 .mapa-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--borde)}
@@ -732,6 +763,7 @@ a{color:inherit;text-decoration:none}
       <div class="conn-dot" id="connDot"></div>
       <span class="conn-label" id="connLabel">Conectado</span>
     </div>
+    <button class="btn-settings btn-hdr-rep" id="btnCaja" aria-label="Caja de repartidores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></button>
     <button class="btn-settings btn-hdr-rep" id="btnMapaRep" aria-label="Mapa de repartidores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
     <button class="btn-settings btn-hdr-rep" id="btnRepartidores" aria-label="Repartidores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="2.5"/><circle cx="18.5" cy="17" r="2.5"/><path d="M8 17h7l3-6h-4l-2-4H9"/><path d="M15 11l-3 6"/></svg></button>
     <button class="btn-settings" id="btnSettings" aria-label="Configuración">
@@ -841,6 +873,27 @@ a{color:inherit;text-decoration:none}
       <button class="rep-btn" id="repCrear">Crear cuenta</button>
     </div>
     <div id="repResultado"></div>
+  </div>
+</div>
+
+<!-- CAJA DE REPARTIDORES -->
+<div id="cajaPanel" class="oculto">
+  <div class="mapa-head">
+    <b>💵 Caja de repartidores<small>Efectivo cobrado y lo que falta rendir</small></b>
+    <button class="btn-settings" id="cajaCerrar" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="caja-tabs"><button class="caja-tab activo" data-cvista="dia">Día</button><button class="caja-tab" data-cvista="semana">Semana</button></div>
+  <div class="caja-nav"><button id="cajaAnt" aria-label="Anterior">‹</button><b id="cajaFecha">Hoy</b><button id="cajaSig" aria-label="Siguiente">›</button></div>
+  <div id="cajaBody"></div>
+</div>
+<div id="cajaHoja" class="oculto">
+  <div class="set-overlay" data-cerrar-hoja></div>
+  <div class="set-panel">
+    <div class="set-tit" id="hojaTit"></div>
+    <p class="set-row-sub" id="hojaTxt" style="margin-bottom:12px;line-height:1.5"></p>
+    <input id="hojaMonto" type="number" inputmode="numeric">
+    <input id="hojaNota" placeholder="Nota (opcional)" maxlength="120">
+    <button class="rep-btn" id="hojaOk">Confirmar</button>
   </div>
 </div>
 
@@ -2147,6 +2200,106 @@ document.addEventListener("click", function(e){
   if(e.target.closest("[data-cerrar-env]")) cerrarSelectorEnvio();
   if(e.target.closest("[data-cerrar-rep]")) qs("#repPanel").classList.add("oculto");
 });
+
+/* ── Caja de repartidores ──
+   Todo se calcula en el servidor (/api/gestionRepartidores, acción "caja"):
+   efectivo cobrado por día (hora de Chile), cuadres y ajustes con fecha y hora,
+   y la deuda acumulada (lo que no se cuadra un día pasa solo al siguiente). */
+var _caja = { vista: "dia", dia: null, datos: null, hoy: null };
+function _sumarDias(d, n){ var t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+function _lunes(d){ var t = new Date(d + "T12:00:00Z"); var w = (t.getUTCDay() + 6) % 7; return _sumarDias(d, -w); }
+var _DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+function _fechaLarga(d){ var t = new Date(d + "T12:00:00Z"); return t.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }); }
+function _hora(iso){ try { return new Date(iso).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }); } catch(e){ return ""; } }
+function abrirCaja(){
+  qs("#cajaPanel").classList.remove("oculto");
+  cargarCaja();
+}
+qs("#btnCaja").addEventListener("click", abrirCaja);
+qs("#cajaCerrar").addEventListener("click", function(){ qs("#cajaPanel").classList.add("oculto"); });
+document.querySelectorAll("[data-cvista]").forEach(function(b){ b.addEventListener("click", function(){
+  _caja.vista = b.dataset.cvista;
+  document.querySelectorAll("[data-cvista]").forEach(function(x){ x.classList.toggle("activo", x === b); });
+  cargarCaja();
+}); });
+qs("#cajaAnt").addEventListener("click", function(){ if(!_caja.dia) return; _caja.dia = _sumarDias(_caja.dia, _caja.vista === "semana" ? -7 : -1); cargarCaja(); });
+qs("#cajaSig").addEventListener("click", function(){ if(!_caja.dia) return; _caja.dia = _sumarDias(_caja.dia, _caja.vista === "semana" ? 7 : 1); cargarCaja(); });
+function cargarCaja(){
+  var desde, hasta;
+  if(_caja.dia){
+    desde = _caja.vista === "semana" ? _lunes(_caja.dia) : _caja.dia;
+    hasta = _caja.vista === "semana" ? _sumarDias(desde, 6) : _caja.dia;
+  }
+  qs("#cajaBody").innerHTML = '<p class="rep-vacio">Cargando…</p>';
+  apiRep("caja", desde ? { desde: desde, hasta: hasta } : {}).then(function(j){
+    _caja.datos = j; _caja.hoy = j.hoy;
+    if(!_caja.dia){ _caja.dia = j.hoy; if(_caja.vista === "semana") return cargarCaja(); }
+    renderCaja();
+  }).catch(function(e){ qs("#cajaBody").innerHTML = '<p class="rep-vacio">❌ ' + esc(e.message) + '</p>'; });
+}
+function renderCaja(){
+  var j = _caja.datos; if(!j) return;
+  var semana = _caja.vista === "semana";
+  qs("#cajaFecha").textContent = semana ? ("Semana del " + _fechaLarga(j.desde).replace(/^\w+,?\s*/, "")) : (j.desde === j.hoy ? "Hoy · " : "") + _fechaLarga(j.desde);
+  qs("#cajaSig").disabled = !semana ? j.desde >= j.hoy : j.hasta >= j.hoy;
+  var reps = j.repartidores || [];
+  if(!reps.length){ qs("#cajaBody").innerHTML = '<p class="rep-vacio">Todavía no hay repartidores con entregas.</p>'; return; }
+  var totEf = 0, totDeuda = 0, totEnt = 0;
+  reps.forEach(function(r){ totDeuda += r.deuda; Object.keys(r.dias).forEach(function(d){ totEf += r.dias[d].efectivo; totEnt += r.dias[d].entregas; }); });
+  var html = '<div class="caja-res"><div><b>' + fmtPrecio(totEf) + '</b><span>Efectivo cobrado ' + (semana ? "en la semana" : "en el día") + ' · ' + totEnt + ' entregas</span></div>' +
+    '<div><b style="color:' + (totDeuda > 0 ? "#FFB74D" : "#81C784") + '">' + fmtPrecio(totDeuda) + '</b><span>Por rendir hoy (todos)</span></div></div>';
+  html += reps.map(function(r){
+    var dias = Object.keys(r.dias).sort(), suma = { entregas: 0, ventas: 0, efectivo: 0 };
+    dias.forEach(function(d){ var x = r.dias[d]; suma.entregas += x.entregas; suma.ventas += x.ventas; suma.efectivo += x.efectivo; });
+    var cuerpo;
+    if(semana){
+      var filas = [];
+      for(var i = 0; i < 7; i++){
+        var d = _sumarDias(j.desde, i), x = r.dias[d] || { entregas: 0, ventas: 0, efectivo: 0 };
+        filas.push('<tr><td>' + _DIAS[i] + ' ' + d.slice(8) + '</td><td>' + x.entregas + '</td><td>' + fmtPrecio(x.ventas) + '</td><td>' + fmtPrecio(x.efectivo) + '</td></tr>');
+      }
+      cuerpo = '<table class="sem"><tr><th>Día</th><th>Entr.</th><th>Ventas</th><th>Efectivo</th></tr>' + filas.join("") +
+        '<tr class="tot"><td>Total</td><td>' + suma.entregas + '</td><td>' + fmtPrecio(suma.ventas) + '</td><td>' + fmtPrecio(suma.efectivo) + '</td></tr></table>';
+    } else {
+      cuerpo = '<div class="caja-lin">' + suma.entregas + ' entregas · ventas ' + fmtPrecio(suma.ventas) + ' · efectivo cobrado <b style="color:var(--txt)">' + fmtPrecio(suma.efectivo) + '</b></div>' +
+        (r.entregas || []).map(function(e){ return '<div class="caja-lin" style="margin-top:2px">· ' + esc(e.pedidoId) + ' · ' + _hora(e.hora) + ' · ' + (e.metodoPago === "mercadopago" ? "pagado online" : "efectivo " + fmtPrecio(e.efectivo)) + '</div>'; }).join("");
+    }
+    var movs = (r.movimientos || []).map(function(m){
+      return '<div class="caja-mov">' + (m.tipo === "cuadre" ? "✅ Cuadre " + fmtPrecio(m.monto) : "✏️ Ajuste " + (m.monto > 0 ? "+" : "−") + fmtPrecio(Math.abs(m.monto))) +
+        ' · ' + (semana ? m.dia.slice(8) + "/" + m.dia.slice(5, 7) + " " : "") + _hora(m.fecha) + ' · quedó ' + fmtPrecio(m.deudaDespues) + (m.nota ? ' · ' + esc(m.nota) : '') + '</div>';
+    }).join("");
+    var btns = j.esPropietario ? '<div class="caja-btns"><button class="cuadrar" data-cuadrar="' + esc(r.id) + '"' + (r.deuda > 0 ? '' : ' disabled style="opacity:.45"') + '>Cuadrar repartidor</button><button data-ajuste="' + esc(r.id) + '">Ajuste</button></div>' : '';
+    return '<div class="caja-card"><div class="caja-top"><div class="caja-nom">🛵 ' + esc(r.nombre) + (r.activo ? '' : ' <small style="color:var(--txt3)">(pausado)</small>') + '</div>' +
+      '<div class="deuda ' + (r.deuda > 0 ? "debe" : "ok") + '"><b>' + fmtPrecio(r.deuda) + '</b>' + (r.deuda > 0 ? "por rendir" : "al día") + '</div></div>' +
+      cuerpo + movs + btns + '</div>';
+  }).join("");
+  qs("#cajaBody").innerHTML = html;
+  aplicarIconosGlobal(qs("#cajaBody"));
+}
+var _hojaAccion = null;
+qs("#cajaBody").addEventListener("click", function(e){
+  var b = e.target.closest("[data-cuadrar],[data-ajuste]"); if(!b || b.disabled) return;
+  var cuadrar = !!b.dataset.cuadrar, id = b.dataset.cuadrar || b.dataset.ajuste;
+  var r = (_caja.datos.repartidores || []).find(function(x){ return x.id === id; }); if(!r) return;
+  _hojaAccion = { accion: cuadrar ? "cuadrar" : "ajuste", id: id };
+  qs("#hojaTit").textContent = cuadrar ? "Cuadrar a " + r.nombre : "Ajuste para " + r.nombre;
+  qs("#hojaTxt").textContent = cuadrar
+    ? "Por rendir: " + fmtPrecio(r.deuda) + ". Escribe cuánto te entregó. Si es menos, la diferencia queda como deuda."
+    : "Corrige un error (por ejemplo, un monto mal anotado). Usa un número negativo para rebajar la deuda, o positivo para aumentarla. Queda registrado.";
+  qs("#hojaMonto").value = cuadrar ? r.deuda : "";
+  qs("#hojaMonto").placeholder = cuadrar ? "Monto recibido" : "Ej: -2000";
+  qs("#hojaNota").value = "";
+  qs("#cajaHoja").classList.remove("oculto");
+});
+qs("#hojaOk").addEventListener("click", function(){
+  if(!_hojaAccion) return;
+  var btn = this; btn.disabled = true;
+  apiRep(_hojaAccion.accion, { id: _hojaAccion.id, monto: Number(qs("#hojaMonto").value) || 0, nota: qs("#hojaNota").value.trim() })
+    .then(function(j){ mostrarToast((_hojaAccion.accion === "cuadrar" ? "✅ Cuadrado" : "✏️ Ajuste guardado") + " · queda " + fmtPrecio(j.deuda)); qs("#cajaHoja").classList.add("oculto"); cargarCaja(); })
+    .catch(function(err){ mostrarToast("❌ " + err.message, 5000); })
+    .then(function(){ btn.disabled = false; });
+});
+document.addEventListener("click", function(e){ if(e.target.closest("[data-cerrar-hoja]")) qs("#cajaHoja").classList.add("oculto"); });
 
 /* ── Mapa de repartidores (Google Maps, misma key que el embed del detalle) ── */
 var _gmapsProm = null, _mapaRep = null, _mapaMarcas = {}, _mapaTimer = null, _mapaFoco = null, _mapaAjustado = false;

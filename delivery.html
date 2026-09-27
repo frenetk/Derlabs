@@ -93,6 +93,24 @@ header .tit small{color:var(--txt2);font-size:12.5px;font-weight:700}
 .fila-btn{display:flex;gap:10px}
 .fila-btn .btn{flex:1}
 .btn-gris{background:var(--bg3);color:var(--txt)}
+/* Turno, herramientas y ruta */
+#turno{margin:12px 16px 0;border-radius:16px;padding:14px;background:linear-gradient(135deg,rgba(21,101,192,.25),rgba(21,101,192,.08));border:1px solid rgba(21,101,192,.35)}
+#turno .rank{font-size:15.5px;font-weight:900;line-height:1.35}
+#turno .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+#turno .stat{background:rgba(0,0,0,.25);border-radius:12px;padding:9px 6px;text-align:center}
+#turno .stat b{display:block;font-size:17px;font-weight:900}
+#turno .stat span{font-size:11px;color:var(--txt2);font-weight:800}
+.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 16px 0}
+.tools a,.tools button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;border-radius:12px;background:var(--bg3);font-size:11.5px;font-weight:800;color:var(--txt2)}
+.tools span{font-size:18px}
+#ruta{margin:12px 16px 0;border-radius:18px;overflow:hidden;border:1px solid rgba(21,101,192,.6);background:var(--card)}
+#rutaMapa{height:260px;background:#1a1a1a}
+.ruta-info{padding:12px 14px}
+.ruta-info b{display:block;font-size:15px}
+.ruta-info small{color:var(--txt2);font-weight:700;font-size:12.5px}
+.ruta-acc{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ruta-acc a,.ruta-acc button{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:12px;background:var(--bg3);font-size:13px;font-weight:900}
+.ruta-acc .llegue{background:var(--wa);color:#fff}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(90px);background:#fff;color:#111;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:800;transition:transform .25s;z-index:99;max-width:92vw;text-align:center}
 #toast.ver{transform:translateX(-50%) translateY(0)}
 </style>
@@ -118,6 +136,21 @@ header .tit small{color:var(--txt2);font-size:12.5px;font-weight:700}
     <button class="icon-btn" id="btnSalir" title="Salir">⏻</button>
   </header>
   <div id="gps" class="oculto"></div>
+  <div id="turno" class="oculto"></div>
+  <div class="tools">
+    <a id="tLocalWa" href="#" target="_blank" rel="noopener"><span>💬</span>WhatsApp local</a>
+    <a id="tLocalTel" href="#"><span>📞</span>Llamar local</a>
+    <button id="tRecargar" type="button"><span>🔄</span>Actualizar</button>
+  </div>
+  <div id="ruta" class="oculto">
+    <div id="rutaMapa"></div>
+    <div class="ruta-info"><b id="rutaTit"></b><small id="rutaTxt"></small>
+      <div class="ruta-acc">
+        <a id="rutaLlegue" class="llegue" href="#" target="_blank" rel="noopener">🏁 Avisar que llegué</a>
+        <button id="rutaCopiar" type="button">📋 Copiar dirección</button>
+      </div>
+    </div>
+  </div>
   <div id="lista"></div>
 </div>
 
@@ -147,6 +180,9 @@ const FIREBASE_CONFIG = {
 let STORE_ID = "test-burgers"; // igual que index.html y pedidos.html: valor por defecto si el dominio no está registrado en "dominios"
 let auth, db;
 let pedidos = [], idsVistos = null, cobrando = null;
+const GOOGLE_MAPS_KEY = "AIzaSyAc5TwfbIVzuRfuOelbRRXdPXHq8hHD00w"; // misma key que index.html y pedidos.html
+let TIENDA = { nombre: "", whatsapp: "" }, YO = "";
+let posActual = null, ruta = { id: null, mapa: null, moto: null, pedida: false };
 let watchId = null, wakeLock = null, ultimoEnvio = 0, ultimaPos = null;
 
 const $ = s => document.querySelector(s);
@@ -186,6 +222,13 @@ async function api(accion, datos){
     const cfg = c.exists ? c.data() : {};
     if (cfg.nombre){ $("#loginTienda").textContent = cfg.nombre; $("#hTienda").textContent = cfg.nombre; document.title = "Delivery · " + cfg.nombre; }
     if (cfg.colorPrimario) document.documentElement.style.setProperty("--marca", cfg.colorPrimario);
+    TIENDA = { nombre: cfg.nombre || "", whatsapp: String(cfg.whatsapp || "") };
+    let wa = TIENDA.whatsapp.replace(/\D/g, "");
+    if (wa.length === 9 && wa[0] === "9") wa = "56" + wa;
+    if (wa.length >= 8 && TIENDA.whatsapp !== "CONFIGURAR_WHATSAPP"){
+      $("#tLocalWa").href = "https://wa.me/" + wa + "?text=" + encodeURIComponent("Hola, soy repartidor de " + (cfg.nombre || "la tienda") + ". ");
+      $("#tLocalTel").href = "tel:+" + wa;
+    } else { $("#tLocalWa").classList.add("oculto"); $("#tLocalTel").classList.add("oculto"); }
   } catch(e){}
   auth.onAuthStateChanged(async u => {
     if (!u){ mostrarLogin(); return; }
@@ -225,13 +268,17 @@ async function cargar(){
   const nuevos = idsVistos ? j.pedidos.filter(p => p.estado !== "listo" && !idsVistos.has(p.id)) : [];
   pedidos = j.pedidos;
   idsVistos = new Set(pedidos.map(p => p.id));
-  $("#hYo").textContent = "🛵 " + (j.yo.nombre || j.yo.usuario || "");
+  YO = j.yo.nombre || j.yo.usuario || "";
+  $("#hYo").textContent = "🛵 " + YO;
+  pintarTurno(j.turno);
   if (nuevos.length){ vibrar([300, 120, 300, 120, 300]); toast("📦 Nuevo pedido asignado: " + nuevos.map(p => p.id).join(", "), 4000); }
   render();
   sincronizarGPS();
+  actualizarRuta();
 }
 setInterval(() => { if (auth && auth.currentUser && !document.hidden) cargar().catch(() => {}); }, 15000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && auth && auth.currentUser) cargar().catch(() => {}); });
+$("#tRecargar").addEventListener("click", () => $("#btnRecargar").click());
 $("#btnRecargar").addEventListener("click", () => cargar().then(() => toast("Actualizado")).catch(e => { if (e.message !== "sin acceso") toast(e.message); }));
 
 const ETQ = { nuevo:"Por preparar", preparacion:"Por retirar", camino:"En camino", listo:"Entregado" };
@@ -317,6 +364,88 @@ $("#cobroOk").addEventListener("click", async () => {
   finally { btn.disabled = false; }
 });
 
+/* ── Turno: resumen del día y ranking simple (más entregas hoy = más rápido) ── */
+function pintarTurno(t){
+  const el = $("#turno");
+  if (!t){ el.classList.add("oculto"); return; }
+  let rank;
+  if (!t.entregas) rank = "🚀 Aún no entregas hoy. ¡Vamos por la primera!";
+  else if (t.puesto === 1) rank = t.repartidoresHoy > 1 ? "🏆 ¡Eres el repartidor más rápido de hoy!" : "🏆 ¡Vas liderando el día!";
+  else rank = (t.puesto === 2 ? "🥈" : t.puesto === 3 ? "🥉" : "💪") + " Vas en " + t.puesto + "° lugar" + (t.faltanParaPrimero ? " · te " + (t.faltanParaPrimero === 1 ? "falta 1 entrega" : "faltan " + t.faltanParaPrimero + " entregas") + " para el primero" : "");
+  el.innerHTML = '<div class="rank">' + esc(rank) + '</div><div class="stats">' +
+    '<div class="stat"><b>' + t.entregas + '</b><span>Entregas hoy</span></div>' +
+    '<div class="stat"><b>' + precio(t.efectivo) + '</b><span>Efectivo hoy</span></div>' +
+    '<div class="stat"><b>' + precio(t.deuda) + '</b><span>Por rendir</span></div></div>';
+  el.classList.remove("oculto");
+}
+
+/* ── Ruta dentro de la página: mapa con el camino al cliente y la moto en vivo ── */
+let _gmProm = null;
+function cargarGMaps(){
+  if (_gmProm) return _gmProm;
+  _gmProm = new Promise((ok, mal) => {
+    if (window.google && window.google.maps){ ok(); return; }
+    window.__gmDelivery = () => ok();
+    const sc = document.createElement("script");
+    sc.src = "https://maps.googleapis.com/maps/api/js?key=" + GOOGLE_MAPS_KEY + "&language=es&region=CL&callback=__gmDelivery";
+    sc.async = true; sc.onerror = () => { _gmProm = null; mal(new Error("mapa")); };
+    document.head.appendChild(sc);
+  });
+  return _gmProm;
+}
+function destinoDe(p){
+  const c = p.cliente || {};
+  if (c.lat != null && c.lng != null && c.lat !== "" && c.lng !== "") return { lat: Number(c.lat), lng: Number(c.lng) };
+  return [c.direccion, c.comuna, "Chile"].filter(Boolean).join(", ");
+}
+function actualizarRuta(){
+  const p = pedidos.find(x => x.estado === "camino");
+  if (!p){ $("#ruta").classList.add("oculto"); ruta = { id: null, mapa: null, moto: null, pedida: false }; return; }
+  const c = p.cliente || {};
+  let tel = String(c.telefono || "").replace(/\D/g, "");
+  if (tel.length === 9 && tel[0] === "9") tel = "56" + tel;
+  $("#rutaLlegue").href = tel ? "https://wa.me/" + tel + "?text=" + encodeURIComponent("Hola " + (c.nombre || "") + ", soy " + YO + " de " + (TIENDA.nombre || "la tienda") + ". ¡Llegué con tu pedido! 🛵") : "#";
+  $("#rutaLlegue").classList.toggle("oculto", !tel);
+  $("#ruta").classList.remove("oculto");
+  if (ruta.id === p.id) return;
+  ruta = { id: p.id, mapa: null, moto: null, pedida: false };
+  $("#rutaTit").textContent = "Ruta a " + (c.nombre || "cliente") + " · " + p.id;
+  $("#rutaTxt").textContent = "Calculando ruta…";
+  cargarGMaps().then(() => {
+    const dest = destinoDe(p);
+    ruta.mapa = new google.maps.Map($("#rutaMapa"), { center: typeof dest === "object" ? dest : { lat: -33.45, lng: -70.66 }, zoom: 14,
+      disableDefaultUI: true, zoomControl: true, clickableIcons: false, gestureHandling: "greedy" });
+    ruta.render = new google.maps.DirectionsRenderer({ map: ruta.mapa, suppressMarkers: false, preserveViewport: false,
+      polylineOptions: { strokeColor: "#42A5F5", strokeWeight: 6 } });
+    moverMotoRuta();
+  }).catch(() => { $("#rutaTxt").textContent = "El mapa no se pudo cargar. Usa los botones Maps o Waze de la tarjeta."; $("#rutaMapa").style.display = "none"; });
+}
+function moverMotoRuta(){
+  if (!ruta.mapa || !posActual || !window.google) return;
+  if (!ruta.moto) ruta.moto = new google.maps.Marker({ map: ruta.mapa, position: posActual, zIndex: 9,
+    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#42A5F5", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 3 } });
+  else ruta.moto.setPosition(posActual);
+  if (ruta.pedida) return;
+  ruta.pedida = true;
+  const p = pedidos.find(x => x.id === ruta.id); if (!p) return;
+  new google.maps.DirectionsService().route({ origin: posActual, destination: destinoDe(p), travelMode: google.maps.TravelMode.DRIVING }, (res, st) => {
+    if (st === "OK" && res.routes[0]){
+      ruta.render.setDirections(res);
+      const leg = res.routes[0].legs[0];
+      $("#rutaTxt").textContent = leg.distance.text + " · " + leg.duration.text + " aprox. · " + (leg.end_address || "");
+    } else {
+      $("#rutaTxt").textContent = "No se pudo trazar la ruta. Tu ubicación sigue visible en el mapa.";
+      ruta.mapa.setCenter(posActual);
+    }
+  });
+}
+$("#rutaCopiar").addEventListener("click", async () => {
+  const p = pedidos.find(x => x.id === ruta.id); if (!p) return;
+  const c = p.cliente || {};
+  const t = [c.direccion, c.comuna].filter(Boolean).join(", ") + (c.referencias ? " (" + c.referencias + ")" : "");
+  try { await navigator.clipboard.writeText(t); toast("📋 Dirección copiada"); } catch(e){ toast(t, 5000); }
+});
+
 /* ── GPS: solo mientras hay un pedido en camino ── */
 function avisoGPS(clase, html){ const g = $("#gps"); g.className = clase; g.innerHTML = html; }
 function pedirPermisoGPS(){
@@ -340,6 +469,8 @@ function iniciarGPS(){
   mantenerPantalla();
   watchId = navigator.geolocation.watchPosition(pos => {
     const { latitude: lat, longitude: lng, accuracy: prec } = pos.coords;
+    posActual = { lat, lng };
+    moverMotoRuta();
     const ahora = Date.now();
     const movio = !ultimaPos || Math.abs(lat - ultimaPos.lat) + Math.abs(lng - ultimaPos.lng) > 0.0003;
     if (ahora - ultimoEnvio < 10000 && !movio) return;
