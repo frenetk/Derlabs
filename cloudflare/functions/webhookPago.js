@@ -113,6 +113,7 @@ export async function webhookPago(request, env){
       metodoPago: "mercadopago",
       estado: "nuevo",
       pagoId: data.id,
+      seguimiento: intento.seguimiento || null,
       fecha: intento.creadoEn || ahora,
       estadoTimeline: { nuevo: ahora, preparacion: null, camino: null, listo: null }
     };

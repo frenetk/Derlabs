@@ -2516,6 +2516,7 @@ function construirPedido(pedidoId, cliente){
   const ahora = new Date().toISOString();
   return {
     id: pedidoId,
+    seguimiento: tokenSeguimiento(),
     fecha: ahora,
     estado: "nuevo",
     total: Math.max(0, sub - desc) + del,
@@ -2630,7 +2631,8 @@ async function confirmarPedido(){
             cliente: cliente,
             cuponAplicado: ped.cuponAplicado,
             costoDelivery: ped.costoDelivery,
-            tipo: ped.tipo
+            tipo: ped.tipo,
+            seguimiento: ped.seguimiento
           })
         });
         const j = await res.json().catch(function(){ return {}; });
@@ -2709,7 +2711,8 @@ async function confirmarPedido(){
         cliente: cliente,
         cuponAplicado: ped.cuponAplicado,
         costoDelivery: ped.costoDelivery,
-        tipo: ped.tipo
+        tipo: ped.tipo,
+        seguimiento: ped.seguimiento
       })
     });
     const j = await res.json().catch(function(){ return {}; });
@@ -2776,6 +2779,40 @@ function _dispararEmails(ped){
 
 function guardarUltimoPedido(ped){
   lsSet("tb_ultimo_pedido", JSON.stringify(ped));
+}
+
+/* Código de seguimiento: largo y aleatorio, solo lo tiene quien compró.
+   Con él, el cliente (aunque sea invitado) consulta el estado de SU pedido
+   vía /seguimientoPedido, sin que las reglas de Firestore tengan que
+   abrir la colección de pedidos. */
+function tokenSeguimiento(){
+  try { const b = new Uint8Array(18); crypto.getRandomValues(b); return Array.from(b, function(x){ return ("0" + x.toString(16)).slice(-2); }).join(""); }
+  catch(e){ return (Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/g, "").slice(0, 36); }
+}
+let _segCallbacks = {}, _segCorriendo = false, _segTimer = null;
+function seguirPedidoPublico(clave, cb){
+  _segCallbacks[clave] = cb;
+  if (_segCorriendo){ clearTimeout(_segTimer); _segTimer = setTimeout(_segTick, 50); return; }
+  _segCorriendo = true;
+  _segTick();
+}
+async function _segTick(){
+  _segTimer = null;
+  const ult = ultimoPedido();
+  if (!ult || !ult.id || !ult.seguimiento || !functionsListas()){ _segCorriendo = false; return; }
+  let p = null;
+  if (!document.hidden){
+    try {
+      const r = await fetch(functionsURL() + "/seguimientoPedido?storeId=" + encodeURIComponent(STORE_ID) +
+        "&id=" + encodeURIComponent(ult.id) + "&t=" + encodeURIComponent(ult.seguimiento), { cache: "no-store" });
+      const j = await r.json();
+      if (j && j.ok && j.pedido) p = j.pedido;
+    } catch(e){ /* sin red: se reintenta en el próximo ciclo */ }
+    if (p) Object.keys(_segCallbacks).forEach(function(k){ try { _segCallbacks[k](p); } catch(e){ console.warn("seguimiento:", e); } });
+  }
+  const est = p ? normEstado(p.estado) : "";
+  if (est === "listo" || est === "cancelado"){ _segCorriendo = false; return; }
+  if (!_segTimer) _segTimer = setTimeout(_segTick, est === "camino" ? 8000 : 12000);
 }
 
 /* Al volver de MercadoPago: ?status=approved&pedido_id=XXX
@@ -2869,6 +2906,16 @@ function escucharPedidoActivoBanner(){
   if (_unsubPedidoActivo){ _unsubPedidoActivo(); _unsubPedidoActivo = null; }
   _pedidoActivo = null;
   const ult = ultimoPedido();
+  if (ult && ult.id && ult.seguimiento && functionsListas()){
+    seguirPedidoPublico("banner", function(p){
+      if (!p || p.id !== (ultimoPedido() || {}).id) return;
+      _pedidoActivo = Object.assign({ id: p.id }, p);
+      renderBannerPedidoActivo();
+      if (_cliPedAbierto) pintarCliPedModal(_pedidoActivo);
+    });
+    renderBannerPedidoActivo();
+    return;
+  }
   if (!db || !ult || !ult.id){ renderBannerPedidoActivo(); return; }
   _unsubPedidoActivo = db.collection("tiendas").doc(STORE_ID)
     .collection("pedidos").doc(ult.id)
@@ -2980,6 +3027,16 @@ function initCliPedModal(){
 function escucharEstadoPedido(pedidoId){
   if (_unsubPedidoCliente){ _unsubPedidoCliente(); _unsubPedidoCliente = null; }
   if (_timeoutVerificacionPago){ clearTimeout(_timeoutVerificacionPago); _timeoutVerificacionPago = null; }
+  const _ultS = ultimoPedido();
+  if (pedidoId && _ultS && _ultS.id === pedidoId && _ultS.seguimiento && functionsListas()){
+    seguirPedidoPublico("confirmacion", function(p){
+      if (!p || p.id !== pedidoId) return;
+      const estado = p.estado || "nuevo";
+      actualizarEncabezadoConfirmacion(estado);
+      actualizarTimeline(estado);
+      if (estado !== "pendiente_pago" && estado !== "esperando" && _timeoutVerificacionPago){ clearTimeout(_timeoutVerificacionPago); _timeoutVerificacionPago = null; }
+    });
+  } else {
   if (!db || !pedidoId) return;
   _unsubPedidoCliente = db.collection("tiendas").doc(STORE_ID)
     .collection("pedidos").doc(pedidoId)
@@ -2993,6 +3050,7 @@ function escucharEstadoPedido(pedidoId){
         _timeoutVerificacionPago = null;
       }
     }, function(e){ console.warn("escucharEstadoPedido:", e); });
+  }
   /* Si tras un rato razonable el pago sigue sin confirmarse, es probable
      que algo falló del lado del webhook — avisar al cliente en vez de
      dejarlo mirando "verificando…" indefinidamente. */

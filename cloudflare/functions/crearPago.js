@@ -28,6 +28,7 @@ export async function crearPago(request, env){
   try {
     const body = JSON.parse(await request.text() || "{}");
     const { storeId, items, cliente, pedidoId, tipo, costoDelivery, cuponAplicado } = body;
+    const seguimiento = /^[A-Za-z0-9]{20,64}$/.test(String(body.seguimiento || "")) ? String(body.seguimiento) : crypto.randomUUID().replace(/-/g, "");
 
     if (!storeId || !items || !items.length) {
       return new Response(JSON.stringify({ ok: false, error: "Faltan datos del pedido" }), { status: 400, headers });
@@ -91,6 +92,7 @@ export async function crearPago(request, env){
       items: itemsValidados, subtotal: subtotalReal, descuento: descuentoReal, cuponAplicado: cuponFinal,
       costoDelivery: costoDeliveryReal, total: totalReal,
       preferenceId: preference.id,
+      seguimiento,
       estado: "iniciado",
       creadoEn: new Date().toISOString()
     };

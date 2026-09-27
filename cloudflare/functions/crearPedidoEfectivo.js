@@ -18,6 +18,7 @@ export async function crearPedidoEfectivo(request, env){
   try {
     const body = JSON.parse(await request.text() || "{}");
     const { storeId, items, cliente, pedidoId, tipo, costoDelivery, cuponAplicado } = body;
+    const seguimiento = /^[A-Za-z0-9]{20,64}$/.test(String(body.seguimiento || "")) ? String(body.seguimiento) : crypto.randomUUID().replace(/-/g, "");
 
     if (!storeId || !items || !items.length) {
       return new Response(JSON.stringify({ ok: false, error: "Faltan datos del pedido" }), { status: 400, headers });
@@ -43,7 +44,7 @@ export async function crearPedidoEfectivo(request, env){
     const ahora = new Date().toISOString();
 
     const pedidoObj = {
-      id, storeId, tipo, cliente,
+      id, storeId, tipo, cliente, seguimiento,
       items: itemsConVariantes, subtotal, descuento, cuponAplicado: cuponFinal,
       costoDelivery: costoDeliveryReal, total,
       metodoPago: "efectivo",
