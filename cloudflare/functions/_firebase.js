@@ -261,3 +261,25 @@ export const admin = {
     return { createUser: _createUserViaRest };
   }
 };
+
+
+/* ─── Agrega un dominio a Firebase Auth → Dominios autorizados ───
+   Así el login con Google funciona en cada tienda nueva sin tocar la consola. */
+export async function autorizarDominio(hostname){
+  if (!_serviceAccount) throw new Error("Firebase no inicializado — llamá a getDb(env) primero");
+  const token = await _getAccessToken(_serviceAccount);
+  const url = "https://identitytoolkit.googleapis.com/admin/v2/projects/" + _serviceAccount.project_id + "/config";
+  const r1 = await fetch(url, { headers: { "Authorization": "Bearer " + token } });
+  const cfg = await r1.json();
+  if (!r1.ok) throw new Error("leer config Auth: " + (cfg.error && cfg.error.message ? cfg.error.message : r1.status));
+  const lista = Array.isArray(cfg.authorizedDomains) ? cfg.authorizedDomains : [];
+  if (lista.indexOf(hostname) !== -1) return { yaEstaba: true };
+  const r2 = await fetch(url + "?updateMask=authorizedDomains", {
+    method: "PATCH",
+    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify({ authorizedDomains: lista.concat([hostname]) })
+  });
+  const j2 = await r2.json();
+  if (!r2.ok) throw new Error("guardar dominio: " + (j2.error && j2.error.message ? j2.error.message : r2.status));
+  return { agregado: true };
+}

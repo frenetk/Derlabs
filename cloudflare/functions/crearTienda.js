@@ -9,7 +9,7 @@
    que no hace falta comprobar las dos variantes de mayúscula/minúscula
    como sí hacía el original de Netlify). */
 
-import { admin, getDb, corsHeaders } from "./_firebase.js";
+import { admin, getDb, corsHeaders, autorizarDominio } from "./_firebase.js";
 
 const RUBROS = {
   "comida": {
@@ -135,6 +135,9 @@ export async function crearTienda(request, env){
     await db.doc("tiendas/" + storeId + "/config/general").set(configGeneral);
     await db.doc("tiendas/" + storeId + "/config/privado").set(configPrivado);
     await db.doc("dominios/" + hostnameLimpio).set({ storeId, creadoEn: ahora });
+    let avisoDominio = null;
+    try { await autorizarDominio(hostnameLimpio); }
+    catch (e) { avisoDominio = "Tienda creada, pero no se pudo autorizar el dominio para el login con Google (" + e.message + "). Agrégalo a mano en Firebase → Authentication → Dominios autorizados."; }
 
     let propietario = null;
     if (emailPropietario && passwordPropietario) {
@@ -157,7 +160,7 @@ export async function crearTienda(request, env){
     }
 
     return new Response(
-      JSON.stringify({ ok: true, storeId, hostname: hostnameLimpio, propietario }),
+      JSON.stringify({ ok: true, storeId, hostname: hostnameLimpio, propietario, avisoDominio }),
       { status: 200, headers }
     );
   } catch (e) {

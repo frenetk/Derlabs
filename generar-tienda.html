@@ -692,6 +692,9 @@ qs("#formTienda").addEventListener("submit", async (e) => {
        generar el link de cobro). No bloquea el resultado de "tienda
        creada" si esto falla: la tienda ya existe igual, la mensualidad
        se puede reintentar después sin perder nada de lo demás. */
+    if (j.avisoDominio){
+      avisoProp += `<div class="estado-msg error" style="display:block;margin-top:10px">${j.avisoDominio}</div>`;
+    }
     let avisoSuscripcion = "";
     const montoMensual = qs("#fMontoMensual").value.replace(/\D/g, "");
     const emailParaSuscripcion = qs("#fEmailProp").value.trim();

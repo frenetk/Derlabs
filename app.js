@@ -1042,6 +1042,8 @@ function renderAll(){
 }
 
 function renderNombre(){
+  /* Mientras Firestore no responde, no pisar el nombre real (ya viene en el HTML) con el de muestra */
+  if (db && !_cargaFirebaseLista) return;
   const n = state.config.nombre || "TEST BURGERS";
   const logo = state.config.logoBase64;
   const imgEl = qs("#logoImg");
@@ -3639,7 +3641,7 @@ async function confirmarImagen(){
       try {
         const base64url = ev.target.result; /* data:image/jpeg;base64,... */
         /* Comprimir si es muy grande (max ~800px ancho) */
-        const compressed = await comprimirImagen(base64url, 800, 0.82);
+        const compressed = f === "logoBase64" ? await procesarLogo(base64url) : await comprimirImagen(base64url, 800, 0.82);
         await guardarInline(c, d, f, compressed);
         cerrarImgModal(); renderAll();
         toast("🖼 Imagen guardada");
@@ -3659,6 +3661,47 @@ async function confirmarImagen(){
     toast("Error al procesar la imagen");
     btn.disabled = false; btn.textContent = "Confirmar";
   }
+}
+
+/* Logo: conserva transparencia (PNG/WebP), recorta bordes vacíos o del
+   color de fondo, y limita a 600x240 px para que se vea nítido en el header. */
+function procesarLogo(dataURL){
+  return new Promise(function(resolve, reject){
+    const img = new Image();
+    img.onload = function(){
+      const W = img.width, H = img.height;
+      const c0 = document.createElement("canvas"); c0.width = W; c0.height = H;
+      const x0 = c0.getContext("2d"); x0.drawImage(img, 0, 0);
+      let px; try { px = x0.getImageData(0, 0, W, H).data; } catch(e){ px = null; }
+      let minX = 0, minY = 0, maxX = W - 1, maxY = H - 1;
+      if (px){
+        const r0 = px[0], g0 = px[1], b0 = px[2], a0 = px[3];
+        const vacio = function(i){
+          if (a0 < 16) return px[i+3] < 16;
+          return px[i+3] < 16 || (Math.abs(px[i]-r0) + Math.abs(px[i+1]-g0) + Math.abs(px[i+2]-b0) < 40);
+        };
+        minX = W; minY = H; maxX = -1; maxY = -1;
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
+          if (!vacio((y*W + x) * 4)){ if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+        }
+        if (maxX < 0){ minX = 0; minY = 0; maxX = W - 1; maxY = H - 1; }
+        const pad = Math.round(Math.max(maxX - minX, maxY - minY) * 0.02);
+        minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+        maxX = Math.min(W - 1, maxX + pad); maxY = Math.min(H - 1, maxY + pad);
+      }
+      let w = maxX - minX + 1, h = maxY - minY + 1;
+      const esc = Math.min(1, 600 / w, 240 / h);
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(w * esc)); c.height = Math.max(1, Math.round(h * esc));
+      const x = c.getContext("2d"); x.imageSmoothingQuality = "high";
+      x.drawImage(img, minX, minY, w, h, 0, 0, c.width, c.height);
+      let out = c.toDataURL("image/png");
+      if (out.length > 250000){ const wp = c.toDataURL("image/webp", 0.9); if (wp.indexOf("data:image/webp") === 0 && wp.length < out.length) out = wp; }
+      resolve(out);
+    };
+    img.onerror = function(){ reject(new Error("No se pudo cargar la imagen")); };
+    img.src = dataURL;
+  });
 }
 
 /* Comprime una imagen base64 a max ancho/calidad dada — sin Storage */
@@ -6075,7 +6118,20 @@ function ocultarSplash(){
   if (s) s.classList.add("oculto");
 }
 
+/* Protección básica de imágenes: sin "Guardar imagen" al mantener presionado,
+   sin clic derecho y sin arrastrar. (Una captura de pantalla no se puede impedir.) */
+function protegerImagenes(){
+  try {
+    const st = document.createElement("style");
+    st.textContent = "img{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}";
+    document.head.appendChild(st);
+    document.addEventListener("contextmenu", function(e){ if (e.target && e.target.tagName === "IMG") e.preventDefault(); });
+    document.addEventListener("dragstart", function(e){ if (e.target && e.target.tagName === "IMG") e.preventDefault(); });
+  } catch(e){}
+}
+
 async function boot(){
+  protegerImagenes();
   initNav(); initMenu(); initCarrito(); initCheckout();
   initCupones(); initWhatsApp(); initDev(); initImgModal(); initPanel(); initDetProducto();
   initProdSel(); initCliPedModal();
