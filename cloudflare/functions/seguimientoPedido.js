@@ -55,7 +55,7 @@ export async function seguimientoPedido(request, env){
       items: (p.items || []).map(function(i){ return { id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, variantes: i.variantes || null, notaPersonal: i.notaPersonal || null }; }),
       subtotal: p.subtotal || 0, descuento: p.descuento || 0, costoDelivery: p.costoDelivery || 0, total: p.total || 0,
       cuponAplicado: p.cuponAplicado || null,
-      cliente: { nombre: c.nombre || "", direccion: c.direccion || "", comuna: c.comuna || "", local: c.local || "", tipo: c.tipo || "" },
+      cliente: { nombre: c.nombre || "", direccion: c.direccion || "", comuna: c.comuna || "", local: c.local || "", tipo: c.tipo || "", lat: c.lat != null ? c.lat : null, lng: c.lng != null ? c.lng : null },
       envio: p.envio ? { metodo: p.envio.metodo || "", salioEn: p.envio.salioEn || "", entregadoEn: p.envio.entregadoEn || "" } : null,
       repartidor
     }});

@@ -671,11 +671,19 @@ a{color:inherit;text-decoration:none}
 .rep-cred a{display:block;margin-top:10px;text-align:center;padding:11px;border-radius:10px;background:#25D366;color:#fff;font-weight:900}
 .rep-vacio{font-size:13px;color:var(--txt2);font-weight:600;padding:8px 0 4px}
 #envioSel{position:fixed;inset:0;z-index:600;display:flex;align-items:flex-end;justify-content:center}
-#envioSel.oculto,#repPanel.oculto{display:none !important}
+#envioSel.oculto,#repPanel.oculto,#mapaPanel.oculto{display:none !important}
+.btn-estado.espera{background:var(--bg3);color:var(--txt2);cursor:default}
+#mapaPanel{position:fixed;inset:0;z-index:550;background:var(--bg);display:flex;flex-direction:column}
+.mapa-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--borde)}
+.mapa-head b{flex:1;font-size:16px}
+.mapa-head small{display:block;font-size:12px;color:var(--txt2);font-weight:600}
+#mapaCanvas{flex:1;background:#1a1a1a}
+.mapa-vacio{position:absolute;left:16px;right:16px;bottom:24px;background:var(--bg2);border:1px solid var(--borde);border-radius:14px;padding:14px;font-size:13.5px;font-weight:700;color:var(--txt2);text-align:center}
 .env-op{width:100%;display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;background:var(--bg3);margin-bottom:8px;text-align:left;font-size:14.5px;font-weight:800}
 .env-op small{display:block;font-size:12px;color:var(--txt2);font-weight:600;margin-top:2px}
 .env-op[disabled]{opacity:.45}
 .env-op.quitar{background:none;border:1px dashed var(--borde);color:var(--txt2);justify-content:center}
+.mapa-etq{background:#1565C0;padding:5px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.4);transform:translateY(-14px)}
 </style>
 </head>
 <body>
@@ -724,6 +732,7 @@ a{color:inherit;text-decoration:none}
       <div class="conn-dot" id="connDot"></div>
       <span class="conn-label" id="connLabel">Conectado</span>
     </div>
+    <button class="btn-settings btn-hdr-rep" id="btnMapaRep" aria-label="Mapa de repartidores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
     <button class="btn-settings btn-hdr-rep" id="btnRepartidores" aria-label="Repartidores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="2.5"/><circle cx="18.5" cy="17" r="2.5"/><path d="M8 17h7l3-6h-4l-2-4H9"/><path d="M15 11l-3 6"/></svg></button>
     <button class="btn-settings" id="btnSettings" aria-label="Configuración">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -832,6 +841,18 @@ a{color:inherit;text-decoration:none}
       <button class="rep-btn" id="repCrear">Crear cuenta</button>
     </div>
     <div id="repResultado"></div>
+  </div>
+</div>
+
+<!-- MAPA DE REPARTIDORES -->
+<div id="mapaPanel" class="oculto">
+  <div class="mapa-head">
+    <b>🛵 Repartidores en ruta<small id="mapaSub">Se actualiza cada 10 segundos</small></b>
+    <button class="btn-settings" id="mapaCerrar" aria-label="Cerrar">✕</button>
+  </div>
+  <div style="position:relative;flex:1;display:flex">
+    <div id="mapaCanvas"></div>
+    <div class="mapa-vacio oculto" id="mapaVacio">Ningún repartidor está compartiendo su ubicación ahora. Aparecen aquí apenas tocan "Salí con el pedido".</div>
   </div>
 </div>
 
@@ -1521,6 +1542,8 @@ function cardHTML(p){
   var btnTxt = btnEstadoTxt(estad);
   var btnCls = btnEstadoCls(estad);
   var hayBoton = btnTxt !== null;
+  var repEnvio = p.envio && p.envio.metodo === "repartidor" && (estad === "preparacion" || estad === "camino");
+  var repNom = repEnvio ? esc(p.envio.repartidorNombre || "el repartidor") : "";
 
   return [
     '<div class="card-head">',
@@ -1545,9 +1568,9 @@ function cardHTML(p){
     '</div>',
     hayBoton ? [
       '<div class="card-acciones">',
-        '<button class="btn-estado ' + btnCls + '" data-id="' + esc(p.id) + '" data-accion="avanzar">',
-          btnTxt,
-        '</button>',
+        (repEnvio
+          ? '<button class="btn-estado espera" disabled>' + (estad === "camino" ? "🛵 " + repNom + " va en camino" : "⏳ Esperando que " + repNom + " salga") + '</button>'
+          : '<button class="btn-estado ' + btnCls + '" data-id="' + esc(p.id) + '" data-accion="avanzar">' + btnTxt + '</button>'),
         (p.tipo === "delivery" && (estad === "nuevo" || estad === "preparacion") ? '<button class="btn-enviar" data-id="' + esc(p.id) + '" data-accion="enviar" aria-label="Enviar con"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="2.5"/><circle cx="18.5" cy="17" r="2.5"/><path d="M8 17h7l3-6h-4l-2-4H9"/><path d="M15 11l-3 6"/></svg></button>' : ''),
         '<button class="btn-wa" data-id="' + esc(p.id) + '" data-accion="wa" aria-label="WhatsApp">',
           '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.117 1.532 5.845L.057 23.077a.75.75 0 0 0 .924.924l5.232-1.475A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.64-.523-5.144-1.428l-.368-.22-3.808 1.074 1.074-3.808-.22-.368A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>',
@@ -1805,6 +1828,9 @@ function renderDetalle(){
     if(p.estado === "nuevo" || p.estado === "preparacion"){
       body.push('<button class="rep-btn" id="detBtnEnviar" style="margin-top:10px">🛵 Enviar con…</button>');
     }
+    if(p.estado === "camino" && ev.metodo === "repartidor"){
+      body.push('<button class="rep-btn" id="detBtnMapa" style="margin-top:10px">📍 Ver a ' + esc(ev.repartidorNombre || "el repartidor") + ' en el mapa</button>');
+    }
     body.push('</div>');
   }
 
@@ -1935,6 +1961,10 @@ function renderDetalle(){
     detBtnW.addEventListener("click", function(){
       abrirWhatsApp(_detPedido);
     });
+  }
+  var detBtnMapa = qs("#detBtnMapa");
+  if(detBtnMapa){
+    detBtnMapa.addEventListener("click", function(){ var uidR = _detPedido && _detPedido.envio && _detPedido.envio.repartidorUid; cerrarDetalle(); abrirMapaRep(uidR); });
   }
   var detBtnEnv = qs("#detBtnEnviar");
   if(detBtnEnv){
@@ -2068,7 +2098,7 @@ function chipEnvio(p){
   if(!ev || !ev.metodo) return "";
   if(ev.metodo === "propio") return '<div class="chip-envio propio">🙋 Lo lleva el local</div>';
   if(ev.metodo === "repartidor"){
-    var txt = ev.entregadoEn ? " · entregado" : ev.salioEn ? " · en camino" : "";
+    var txt = (p.estado === "listo" || ev.entregadoEn) ? " · entregado" : (p.estado === "camino" || ev.salioEn) ? " · en camino" : " · asignado";
     return '<div class="chip-envio">🛵 ' + esc(ev.repartidorNombre || "Repartidor") + txt + '</div>';
   }
   return "";
@@ -2117,6 +2147,62 @@ document.addEventListener("click", function(e){
   if(e.target.closest("[data-cerrar-env]")) cerrarSelectorEnvio();
   if(e.target.closest("[data-cerrar-rep]")) qs("#repPanel").classList.add("oculto");
 });
+
+/* ── Mapa de repartidores (Google Maps, misma key que el embed del detalle) ── */
+var _gmapsProm = null, _mapaRep = null, _mapaMarcas = {}, _mapaTimer = null, _mapaFoco = null, _mapaAjustado = false;
+function cargarGMaps(){
+  if(_gmapsProm) return _gmapsProm;
+  _gmapsProm = new Promise(function(ok, mal){
+    if(window.google && window.google.maps){ ok(); return; }
+    window.__gmapsPedidos = function(){ ok(); };
+    var sc = document.createElement("script");
+    sc.src = "https://maps.googleapis.com/maps/api/js?key=" + GOOGLE_MAPS_KEY + "&language=es&region=CL&callback=__gmapsPedidos";
+    sc.async = true;
+    sc.onerror = function(){ _gmapsProm = null; mal(new Error("No se pudo cargar Google Maps")); };
+    document.head.appendChild(sc);
+  });
+  return _gmapsProm;
+}
+function abrirMapaRep(foco){
+  _mapaFoco = foco || null; _mapaAjustado = false;
+  qs("#mapaPanel").classList.remove("oculto");
+  cargarGMaps().then(function(){
+    if(!_mapaRep){
+      _mapaRep = new google.maps.Map(qs("#mapaCanvas"), { center: { lat: -33.45, lng: -70.66 }, zoom: 12, disableDefaultUI: true, zoomControl: true, clickableIcons: false, gestureHandling: "greedy" });
+    }
+    refrescarMapaRep();
+  }).catch(function(e){ mostrarToast("❌ " + e.message); });
+  clearInterval(_mapaTimer);
+  _mapaTimer = setInterval(refrescarMapaRep, 10000);
+}
+function cerrarMapaRep(){ qs("#mapaPanel").classList.add("oculto"); clearInterval(_mapaTimer); _mapaTimer = null; }
+qs("#btnMapaRep").addEventListener("click", function(){ abrirMapaRep(null); });
+qs("#mapaCerrar").addEventListener("click", cerrarMapaRep);
+function refrescarMapaRep(){
+  if(qs("#mapaPanel").classList.contains("oculto")) return;
+  cargarRepartidores().then(function(){
+    if(!_mapaRep || !window.google) return;
+    var sinIcono = { path: google.maps.SymbolPath.CIRCLE, scale: 0 };
+    var vistos = {}, bounds = new google.maps.LatLngBounds(), hay = 0;
+    _repartidores.forEach(function(r){
+      var u = r.ubicacion;
+      if(!u || !r.enRuta) return;
+      var edad = (Date.now() - Date.parse(u.ts)) / 60000;
+      if(!(edad < 15)) return;
+      var pos = { lat: Number(u.lat), lng: Number(u.lng) };
+      var txt = "🛵 " + r.nombre + (edad >= 2 ? " (hace " + Math.round(edad) + " min)" : "");
+      var m = _mapaMarcas[r.id];
+      if(!m){ m = _mapaMarcas[r.id] = new google.maps.Marker({ map: _mapaRep, position: pos, icon: sinIcono, label: { text: txt, color: "#fff", fontSize: "14px", fontWeight: "800", className: "mapa-etq" } }); }
+      else { m.setPosition(pos); m.setLabel({ text: txt, color: "#fff", fontSize: "14px", fontWeight: "800", className: "mapa-etq" }); m.setMap(_mapaRep); }
+      vistos[r.id] = true; bounds.extend(pos); hay++;
+    });
+    Object.keys(_mapaMarcas).forEach(function(id){ if(!vistos[id]){ _mapaMarcas[id].setMap(null); delete _mapaMarcas[id]; } });
+    qs("#mapaVacio").classList.toggle("oculto", hay > 0);
+    qs("#mapaSub").textContent = hay ? hay + " en ruta · se actualiza cada 10 segundos" : "Se actualiza cada 10 segundos";
+    if(_mapaFoco && _mapaMarcas[_mapaFoco]){ _mapaRep.panTo(_mapaMarcas[_mapaFoco].getPosition()); if(!_mapaAjustado){ _mapaRep.setZoom(15); _mapaAjustado = true; } }
+    else if(hay && !_mapaAjustado){ if(hay === 1){ _mapaRep.setCenter(bounds.getCenter()); _mapaRep.setZoom(15); } else { _mapaRep.fitBounds(bounds, 60); } _mapaAjustado = true; }
+  });
+}
 
 /* ── Panel de repartidores ── */
 qs("#btnRepartidores").addEventListener("click", function(){

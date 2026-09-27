@@ -159,6 +159,8 @@ export async function delivery(request, env){
         const a = await pedidoAsignado(b.id);
         if (!a) return json({ ok:false, error:"Ese pedido no está asignado a ti" }, 404);
         if (a.p.estado === "listo" || a.p.estado === "cancelado") return json({ ok:false, error:"Ese pedido ya está cerrado" }, 409);
+        if (a.p.estado === "nuevo") return json({ ok:false, error:"El local todavía no empieza a preparar este pedido. Espera a que lo marque en preparación." }, 409);
+        if (a.p.estado === "camino") return json({ ok:true });
         await a.ref.set({ estado: "camino", estadoTimeline: Object.assign({}, a.p.estadoTimeline || {}, { camino: ahora }),
                           envio: Object.assign({}, a.p.envio, { salioEn: ahora }) }, { merge: true });
         await repRef.set({ enRuta: true, ultimaVez: ahora }, { merge: true });

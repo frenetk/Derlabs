@@ -1767,7 +1767,9 @@ function instalarAutocomplete(inputEl, onSelect){
 
 /* Mini-mapa con marcador */
 var _minimapas = {};
+var _ckCoords = null;   /* coordenadas de la dirección elegida en el checkout (para el mapa de seguimiento) */
 function mostrarMiniMapa(divId, lat, lng){
+  if (divId === "ckMapa") _ckCoords = (lat != null && lng != null) ? { lat: Number(lat), lng: Number(lng) } : null;
   var el = document.getElementById(divId);
   if (!el) return;
   if (lat==null||lng==null){ el.classList.remove("show"); return; }
@@ -2417,7 +2419,9 @@ function datosCliente(){
     tipo:        tipoEntrega,
     metodoPago:  metodoPago,
     efectivo:    metodoPago === "efectivo" ? (qs("#fEfectivo").value.trim() || "") : "",
-    uid:         clienteUser ? clienteUser.uid : null
+    uid:         clienteUser ? clienteUser.uid : null,
+    lat:         tipoEntrega === "delivery" && _ckCoords ? _ckCoords.lat : null,
+    lng:         tipoEntrega === "delivery" && _ckCoords ? _ckCoords.lng : null
   };
 }
 
@@ -2869,7 +2873,28 @@ function ultimoPedido(){
 let _unsubPedidoCliente = null;
 let _timeoutVerificacionPago = null;
 
+function _botonSeguirConfirmacion(){
+  const tl = qs("#confTimeline"); if (!tl) return;
+  const ult = ultimoPedido();
+  let b = qs("#btnSeguirVivo");
+  if (!ult || !ult.id){ if (b) b.remove(); return; }
+  if (!b){
+    b = document.createElement("button");
+    b.id = "btnSeguirVivo"; b.type = "button";
+    b.style.cssText = "display:block;width:100%;margin:14px 0 0;padding:13px;border-radius:999px;border:2px solid var(--rojo);background:transparent;color:var(--rojo);font-weight:800;font-size:15px;cursor:pointer;font-family:inherit";
+    b.textContent = "📍 Ver seguimiento en vivo";
+    tl.parentNode.insertBefore(b, tl.nextSibling);
+    b.addEventListener("click", function(){
+      const u = ultimoPedido(); if (!u) return;
+      const m = qs("#cliPedModal"); if (!m) return;
+      pintarCliPedModal(_pedidoActivo && _pedidoActivo.id === u.id
+        ? Object.assign({}, u, _pedidoActivo, { seguimiento: u.seguimiento, cliente: _mezclaCliente(u.cliente, _pedidoActivo.cliente) }) : u);
+      m.classList.add("open"); _cliPedAbierto = true;
+    });
+  }
+}
 function actualizarTimeline(estado){
+  _botonSeguirConfirmacion();
   const cont = qs("#confTimeline");
   if (!cont) return;
   if (estado === "esperando" || estado === "pendiente_pago"){
@@ -2942,7 +2967,7 @@ function renderBannerPedidoActivo(){
       '<span class="pa-ico">' + (ICO[est] || "🧾") + '</span>' +
       '<div class="pa-txt">' +
         '<p class="pa-titulo">' + (TIT[est] || "Pedido en curso") + '</p>' +
-        '<p class="pa-sub">#' + esc(p.id) + ' · Ver estado →</p>' +
+        '<p class="pa-sub">#' + esc(p.id) + (est === "camino" && p.repartidor ? ' · 🛵 ' + esc(p.repartidor.nombre || "Repartidor") + ' · Ver en el mapa →' : ' · Ver estado →') + '</p>' +
       '</div>' +
       '<span class="pa-flecha">›</span>' +
     '</div>';
@@ -2954,7 +2979,93 @@ function _horaCorta(iso){
   catch(e){ return ""; }
 }
 
+/* ══ SEGUIMIENTO EN VIVO — mapa del repartidor dentro de la ventana del pedido ══
+   Sirve igual para el aviso de inicio, la confirmación y "Mis pedidos":
+   cualquier pedido que tenga código de seguimiento consulta /seguimientoPedido
+   mientras la ventana está abierta, y si va con un repartidor de la tienda
+   muestra su ubicación en el mapa (y la casa del cliente si hay coordenadas). */
+let _vivoPed = null, _vivoTimer = null, _vivoMapa = null;
+function _mezclaCliente(a, b){
+  const r = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach(function(k){ if (b[k] != null && b[k] !== "") r[k] = b[k]; });
+  return r;
+}
+function _vivoAbierto(){ const m = qs("#cliPedModal"); return !!(m && m.classList.contains("open")); }
+function _vivoCaja(){
+  let c = qs("#cliPedMapa");
+  if (!c){
+    const ref = qs("#cliPedTimeline"); if (!ref || !ref.parentNode) return null;
+    c = document.createElement("div"); c.id = "cliPedMapa"; c.style.cssText = "margin:0 0 14px";
+    ref.parentNode.insertBefore(c, ref);
+  }
+  return c;
+}
+function pintarMapaVivo(p){
+  const caja = _vivoCaja(); if (!caja) return;
+  const r = p && p.repartidor;
+  if (!p || normEstado(p.estado) !== "camino" || !r){ caja.innerHTML = ""; caja.style.display = "none"; _vivoMapa = null; return; }
+  caja.style.display = "";
+  if (!caja.querySelector(".vivo-mapa")){
+    caja.innerHTML = '<div class="vivo-info" style="font-size:13px;font-weight:800;margin:0 0 8px;line-height:1.4"></div>' +
+      '<div class="vivo-mapa" style="height:230px;border-radius:14px;overflow:hidden;background:#EDEDED"></div>';
+    _vivoMapa = null;
+  }
+  const info = caja.querySelector(".vivo-info"), div = caja.querySelector(".vivo-mapa");
+  const nombre = r.nombre || "Tu repartidor";
+  const u = r.ubicacion;
+  if (!u){ info.textContent = "🛵 " + nombre + " va en camino · esperando su ubicación…"; div.style.display = "none"; return; }
+  div.style.display = "";
+  const seg = Math.max(0, Math.round((Date.now() - Date.parse(u.ts)) / 1000));
+  info.textContent = "🛵 " + nombre + " va en camino · ubicación de hace " + (seg < 60 ? seg + " s" : Math.round(seg / 60) + " min");
+  const c = p.cliente || {};
+  const destino = (c.lat != null && c.lng != null && c.lat !== "" && c.lng !== "") ? { lat: Number(c.lat), lng: Number(c.lng) } : null;
+  cargarMaps().then(function(){
+    const pos = { lat: Number(u.lat), lng: Number(u.lng) };
+    const sinIcono = { path: google.maps.SymbolPath.CIRCLE, scale: 0 };
+    if (_vivoMapa && destino && !_vivoMapa.destino) _vivoMapa = null;   /* llegó la dirección: se rearma con la casa */
+    if (!_vivoMapa || _vivoMapa.div !== div){
+      const mapa = new google.maps.Map(div, { center: pos, zoom: 15, disableDefaultUI: true, zoomControl: true, clickableIcons: false, gestureHandling: "greedy" });
+      const moto = new google.maps.Marker({ map: mapa, position: pos, icon: sinIcono, label: { text: "🛵", fontSize: "26px" }, zIndex: 2 });
+      if (destino){
+        new google.maps.Marker({ map: mapa, position: destino, icon: sinIcono, label: { text: "🏠", fontSize: "22px" }, zIndex: 1 });
+        const b = new google.maps.LatLngBounds(); b.extend(pos); b.extend(destino); mapa.fitBounds(b, 50);
+      }
+      _vivoMapa = { div: div, mapa: mapa, moto: moto, destino: destino };
+    } else {
+      _vivoMapa.moto.setPosition(pos);
+      if (!_vivoMapa.destino) _vivoMapa.mapa.panTo(pos);
+    }
+  }).catch(function(){ info.textContent += " · el mapa no se pudo cargar"; div.style.display = "none"; });
+}
+function seguirPedidoVivo(p){
+  _vivoPed = p;
+  clearTimeout(_vivoTimer);
+  if (!p || !p.id || !p.seguimiento || !functionsListas()) return;
+  const tick = async function(){
+    if (!_vivoAbierto() || !_vivoPed || _vivoPed.id !== p.id) return;
+    try {
+      const r = await fetch(functionsURL() + "/seguimientoPedido?storeId=" + encodeURIComponent(STORE_ID) +
+        "&id=" + encodeURIComponent(p.id) + "&t=" + encodeURIComponent(p.seguimiento), { cache: "no-store" });
+      const j = await r.json();
+      if (j && j.ok && j.pedido && _vivoAbierto() && _vivoPed && _vivoPed.id === p.id){
+        _vivoPed = Object.assign({}, _vivoPed, j.pedido, { seguimiento: p.seguimiento, cliente: _mezclaCliente(_vivoPed.cliente, j.pedido.cliente) });
+        _pintarCliPedBase(_vivoPed); pintarMapaVivo(_vivoPed);
+      }
+    } catch(e){ /* sin red: reintenta */ }
+    const est = normEstado((_vivoPed || {}).estado);
+    if (est !== "listo" && est !== "cancelado") _vivoTimer = setTimeout(tick, est === "camino" ? 8000 : 15000);
+  };
+  _vivoTimer = setTimeout(tick, 200);
+}
 function pintarCliPedModal(p){
+  if (!p) return;
+  /* Mientras la ventana se actualiza sola con el seguimiento en vivo, el aviso de inicio no la pisa */
+  if (!p.seguimiento && _vivoPed && _vivoAbierto()) return;
+  _pintarCliPedBase(p);
+  pintarMapaVivo(p);
+  if (p.seguimiento && (!_vivoPed || _vivoPed.id !== p.id || !_vivoAbierto())) seguirPedidoVivo(p);
+}
+function _pintarCliPedBase(p){
   if (!p) return;
   const est = normEstado(p.estado);
   const elId = qs("#cliPedId");     if (elId) elId.textContent = "#" + p.id;
@@ -5829,6 +5940,17 @@ function renderCuentaLogin(){
   }
 }
 
+let _misPedidosCuenta = [];
+/* Tocar un pedido en "Mis pedidos" abre su seguimiento (la plantilla retail tiene su propio manejador) */
+document.addEventListener("click", function(e){
+  if (_sk("misPedidos")) return;
+  const row = e.target.closest && e.target.closest("#misPedidosLista [data-cliped]");
+  if (!row) return;
+  const p = _misPedidosCuenta.find(function(x){ return x.id === row.dataset.cliped; });
+  const m = qs("#cliPedModal");
+  if (!p || !m) return;
+  pintarCliPedModal(p); m.classList.add("open"); _cliPedAbierto = true;
+});
 function escucharMisPedidos(uid){
   if (!db || !uid) return;
   if (_unsubMisPedidos){ _unsubMisPedidos(); _unsubMisPedidos = null; }
@@ -5839,12 +5961,13 @@ function escucharMisPedidos(uid){
       s.forEach(function(d){ arr.push(Object.assign({ id: d.id }, d.data())); });
       arr.sort(function(a, b){ return new Date(b.fecha) - new Date(a.fecha); });
       const ml = document.getElementById("misPedidosLista");
+      _misPedidosCuenta = arr;
       if (ml && _sk("misPedidos")) ml.innerHTML = SKIN.misPedidos(arr);
       else if (ml){
         ml.innerHTML = arr.length ? arr.map(function(p){
           const est = p.estado || "nuevo";
           const its = (p.items || []).map(function(i){ return i.cantidad + "x " + i.nombre; }).join(", ");
-          return '<div style="background:var(--crema);border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid var(--rojo)">' +
+          return '<div data-cliped="' + esc(p.id) + '" role="button" tabindex="0" style="cursor:pointer;background:var(--crema);border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid var(--rojo)">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
             '<span style="font-weight:900;font-size:12px;color:var(--rojo)">#' + esc(p.id) + '</span>' +
             '<span class="ped-badge ' + est + '">' + badgeEstado(est) + '</span></div>' +

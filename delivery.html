@@ -82,6 +82,7 @@ header .tit small{color:var(--txt2);font-size:12.5px;font-weight:700}
 .principal{margin-top:12px}
 .btn-salir{background:var(--marca);color:#fff}
 .btn-entregar{background:var(--verde);color:#fff}
+.espera{margin-top:12px;border-radius:12px;padding:12px 14px;background:var(--bg3);color:var(--txt2);font-size:13.5px;font-weight:800;line-height:1.4;text-align:center}
 
 /* Hoja de cobro */
 .hoja{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center}
@@ -244,6 +245,7 @@ function tarjeta(p){
   const items = (p.items || []).map(i => i.cantidad + "× " + i.nombre).join(" · ");
   let boton = "";
   if (p.estado === "camino") boton = `<button class="btn btn-entregar principal" data-entregar="${esc(p.id)}">✅ Entregado</button>`;
+  else if (p.estado === "nuevo") boton = `<div class="espera">⏳ El local aún no empieza a preparar este pedido. Podrás salir cuando esté en preparación.</div>`;
   else if (p.estado !== "listo") boton = `<button class="btn btn-salir principal" data-salir="${esc(p.id)}">🛵 Salí con el pedido</button>`;
   return `
     <div class="card ${esc(p.estado)}">
