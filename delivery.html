@@ -143,7 +143,7 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "406623629835",
   appId:             "1:406623629835:web:31152eac803ed8c679cd0e"
 };
-let STORE_ID = "";
+let STORE_ID = "test-burgers"; // igual que index.html y pedidos.html: valor por defecto si el dominio no está registrado en "dominios"
 let auth, db;
 let pedidos = [], idsVistos = null, cobrando = null;
 let watchId = null, wakeLock = null, ultimoEnvio = 0, ultimaPos = null;
@@ -180,7 +180,6 @@ async function api(accion, datos){
     const d = await db.collection("dominios").doc(location.hostname).get();
     if (d.exists) STORE_ID = d.data().storeId || "";
   } catch(e){ console.warn(e); }
-  if (!STORE_ID){ $("#lErr").textContent = "Esta dirección no corresponde a ninguna tienda."; $("#lBtn").disabled = true; return; }
   try {
     const c = await db.collection("tiendas").doc(STORE_ID).collection("config").doc("general").get();
     const cfg = c.exists ? c.data() : {};
