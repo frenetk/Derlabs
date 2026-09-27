@@ -3664,7 +3664,7 @@ async function confirmarImagen(){
 }
 
 /* Logo: conserva transparencia (PNG/WebP), recorta bordes vacíos o del
-   color de fondo, y limita a 600x240 px para que se vea nítido en el header. */
+   color de fondo, y limita a 700x280 px para que se vea nítido en el header. */
 function procesarLogo(dataURL){
   return new Promise(function(resolve, reject){
     const img = new Image();
@@ -3672,14 +3672,39 @@ function procesarLogo(dataURL){
       const W = img.width, H = img.height;
       const c0 = document.createElement("canvas"); c0.width = W; c0.height = H;
       const x0 = c0.getContext("2d"); x0.drawImage(img, 0, 0);
-      let px; try { px = x0.getImageData(0, 0, W, H).data; } catch(e){ px = null; }
+      let datos = null; try { datos = x0.getImageData(0, 0, W, H); } catch(e){ datos = null; }
       let minX = 0, minY = 0, maxX = W - 1, maxY = H - 1;
-      if (px){
-        const r0 = px[0], g0 = px[1], b0 = px[2], a0 = px[3];
-        const vacio = function(i){
-          if (a0 < 16) return px[i+3] < 16;
-          return px[i+3] < 16 || (Math.abs(px[i]-r0) + Math.abs(px[i+1]-g0) + Math.abs(px[i+2]-b0) < 40);
-        };
+      if (datos){
+        const px = datos.data;
+        const dif = function(i, r, g, b){ return Math.abs(px[i]-r) + Math.abs(px[i+1]-g) + Math.abs(px[i+2]-b); };
+        /* Fondo liso (las 4 esquinas del mismo color): se vuelve transparente,
+           rellenando solo desde los bordes para no borrar partes internas del logo. */
+        const esq = [0, (W-1)*4, (H-1)*W*4, ((H-1)*W + W-1)*4];
+        const r0 = px[0], g0 = px[1], b0 = px[2];
+        const opaco = esq.every(function(i){ return px[i+3] > 240; });
+        const liso = opaco && esq.every(function(i){ return dif(i, r0, g0, b0) < 30; });
+        if (liso){
+          const TOL = 70, visto = new Uint8Array(W * H), pila = [];
+          const empujar = function(x, y){ const k = y*W + x; if (!visto[k] && dif(k*4, r0, g0, b0) < TOL){ visto[k] = 1; pila.push(k); } };
+          for (let x = 0; x < W; x++){ empujar(x, 0); empujar(x, H-1); }
+          for (let y = 0; y < H; y++){ empujar(0, y); empujar(W-1, y); }
+          while (pila.length){
+            const k = pila.pop(), x = k % W, y = (k - x) / W;
+            if (x > 0) empujar(x-1, y); if (x < W-1) empujar(x+1, y);
+            if (y > 0) empujar(x, y-1); if (y < H-1) empujar(x, y+1);
+          }
+          for (let k = 0; k < W*H; k++){
+            if (visto[k]){ px[k*4+3] = 0; continue; }
+            /* borde suave: píxeles vecinos al fondo, parecidos a él, quedan semitransparentes */
+            const x = k % W, y = (k - x) / W;
+            const vecino = (x > 0 && visto[k-1]) || (x < W-1 && visto[k+1]) || (y > 0 && visto[k-W]) || (y < H-1 && visto[k+W]);
+            if (vecino){ const d = dif(k*4, r0, g0, b0); if (d < 180) px[k*4+3] = Math.round(px[k*4+3] * d / 180); }
+          }
+          x0.putImageData(datos, 0, 0);
+        }
+        /* Recorte: todo lo transparente (o del color de fondo) alrededor del logo */
+        const a0 = px[3];
+        const vacio = function(i){ return px[i+3] < 16 || (a0 >= 16 && dif(i, r0, g0, b0) < 40); };
         minX = W; minY = H; maxX = -1; maxY = -1;
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
           if (!vacio((y*W + x) * 4)){ if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
@@ -3689,12 +3714,12 @@ function procesarLogo(dataURL){
         minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
         maxX = Math.min(W - 1, maxX + pad); maxY = Math.min(H - 1, maxY + pad);
       }
-      let w = maxX - minX + 1, h = maxY - minY + 1;
-      const esc = Math.min(1, 600 / w, 240 / h);
+      const w = maxX - minX + 1, h = maxY - minY + 1;
+      const esc = Math.min(1, 700 / w, 280 / h);
       const c = document.createElement("canvas");
       c.width = Math.max(1, Math.round(w * esc)); c.height = Math.max(1, Math.round(h * esc));
       const x = c.getContext("2d"); x.imageSmoothingQuality = "high";
-      x.drawImage(img, minX, minY, w, h, 0, 0, c.width, c.height);
+      x.drawImage(c0, minX, minY, w, h, 0, 0, c.width, c.height);
       let out = c.toDataURL("image/png");
       if (out.length > 250000){ const wp = c.toDataURL("image/webp", 0.9); if (wp.indexOf("data:image/webp") === 0 && wp.length < out.length) out = wp; }
       resolve(out);
