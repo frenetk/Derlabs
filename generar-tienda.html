@@ -205,6 +205,11 @@ header p{color:var(--txt2);font-size:14px}
 <div class="rubro-grid" id="subrubroGrid" style="margin-top:10px"></div>
     </div>
 
+    <div class="campo" id="campoCajaLocal">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="fCajaLocal" style="width:20px;height:20px"> 🧾 Incluir "Caja local"</label>
+      <div class="ayuda">Mesas, pedidos para llevar, cobro con vuelto, propina y cuenta dividida, y turnos de caja con arqueo. Se usa en tutienda.cl/caja. Solo para tiendas de comida.</div>
+    </div>
+
     <div class="campo">
       <label>Color de marca</label>
       <div class="color-row">
@@ -536,6 +541,9 @@ function renderRubros(){
   `).join("");
 }
 renderRubros();
+function syncCajaLocal(){ var c = qs("#campoCajaLocal"); if (c) c.style.display = rubroSeleccionado === "comida" ? "" : "none"; }
+syncCajaLocal();
+qs("#rubroGrid").addEventListener("click", function(){ setTimeout(syncCajaLocal, 0); });
 
 qs("#rubroGrid").addEventListener("click", e => {
   const chip = e.target.closest("[data-rubro]");
@@ -662,6 +670,7 @@ qs("#formTienda").addEventListener("submit", async (e) => {
         nombreNegocio,
         rubro: rubroActual().rubroMotor || rubroSeleccionado,
         plantilla: rubroActual().plantilla || undefined,
+        cajaLocal: (rubroSeleccionado === "comida" && qs("#fCajaLocal").checked) || undefined,
         subrubro: subrubroSeleccionado,
         hostname,
         colorPrimario: qs("#fColor").value,

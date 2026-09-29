@@ -32,6 +32,7 @@ import { guardarLead } from "./functions/guardarLead.js";
 import { gestionLeads } from "./functions/gestionLeads.js";
 import { seguimientoPedido } from "./functions/seguimientoPedido.js";
 import { gestionRepartidores, delivery } from "./functions/repartidores.js";
+import { cajaLocal } from "./functions/cajaLocal.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -56,7 +57,8 @@ const FUNCIONES = {
   gestionLeads,
   seguimientoPedido,
   gestionRepartidores,
-  delivery
+  delivery,
+  cajaLocal
 };
 
 
@@ -194,6 +196,11 @@ export default {
       return manifestTienda(request, env);
     }
 
+    /* ── Caja local (restaurante): tienda.cl/caja ── */
+    if (url.pathname === "/caja" || url.pathname === "/caja/") {
+      const urlCaja = new URL(request.url); urlCaja.pathname = "/caja.html";
+      return env.ASSETS.fetch(new Request(urlCaja, request));
+    }
     /* ── Gestor del repartidor: tienda.cl/delivery ── */
     if (url.pathname === "/delivery" || url.pathname === "/delivery/") {
       const urlDel = new URL(request.url); urlDel.pathname = "/delivery.html";

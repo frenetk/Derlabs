@@ -62,7 +62,7 @@ export async function crearTienda(request, env){
 
   try {
     const body = JSON.parse(await request.text() || "{}");
-    const { nombreNegocio, rubro, subrubro, hostname, colorPrimario, logoBase64, emailPropietario, passwordPropietario, plantilla } = body;
+    const { nombreNegocio, rubro, subrubro, hostname, colorPrimario, logoBase64, emailPropietario, passwordPropietario, plantilla, cajaLocal } = body;
 
     if (!nombreNegocio || !hostname) {
       return new Response(JSON.stringify({ ok: false, error: "Faltan nombreNegocio o hostname" }), { status: 400, headers });
@@ -130,6 +130,8 @@ export async function crearTienda(request, env){
       configGeneral.plantilla = "boutique";
       configGeneral.mostrarGPS = false;
     }
+    /* Caja local (mesas, para llevar y turnos): solo comida y solo si DerLabs lo activa */
+    if (cajaLocal === true && rubroValido === "comida") configGeneral.cajaLocal = true;
     const configPrivado = {
       mpToken: "CONFIGURAR_TOKEN",
       resendApiKey: "",
