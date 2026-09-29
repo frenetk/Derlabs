@@ -62,7 +62,7 @@ export async function crearTienda(request, env){
 
   try {
     const body = JSON.parse(await request.text() || "{}");
-    const { nombreNegocio, rubro, subrubro, hostname, colorPrimario, logoBase64, emailPropietario, passwordPropietario } = body;
+    const { nombreNegocio, rubro, subrubro, hostname, colorPrimario, logoBase64, emailPropietario, passwordPropietario, plantilla } = body;
 
     if (!nombreNegocio || !hostname) {
       return new Response(JSON.stringify({ ok: false, error: "Faltan nombreNegocio o hostname" }), { status: 400, headers });
@@ -125,6 +125,11 @@ export async function crearTienda(request, env){
       footerAno: String(new Date().getFullYear()),
       creadaEn: ahora
     };
+    /* Boutique: plantilla index-boutique.html + gestor de pedidos simple (sin GPS) */
+    if (plantilla === "boutique" && rubroValido === "retail"){
+      configGeneral.plantilla = "boutique";
+      configGeneral.mostrarGPS = false;
+    }
     const configPrivado = {
       mpToken: "CONFIGURAR_TOKEN",
       resendApiKey: "",

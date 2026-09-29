@@ -645,6 +645,9 @@ a{color:inherit;text-decoration:none}
 .chip-envio{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 11px;border-radius:999px;font-size:12.5px;font-weight:800;background:rgba(21,101,192,.18);color:#64B5F6}
 .chip-envio.propio{background:rgba(255,255,255,.08);color:var(--txt2)}
 .chip-envio.sin{background:rgba(245,124,0,.15);color:#FFB74D}
+/* Gestor simple (plantilla boutique o config.gestorSimple): sin repartidores propios, sin GPS ni caja */
+body.gestor-simple #btnCaja,body.gestor-simple #btnMapaRep,body.gestor-simple .solo-flota{display:none !important}
+body.gestor-simple .pya-sec{border-top:0;margin-top:0}
 .chip-envio.pya{background:rgba(234,0,75,.16);color:#FF6F9A}
 .pya-caja{background:var(--bg3);border-radius:12px;padding:14px;margin-bottom:10px;font-size:14px;line-height:1.5}
 .pya-caja b{font-size:22px;display:block;margin:2px 0}
@@ -876,17 +879,17 @@ a{color:inherit;text-decoration:none}
 <div id="repPanel" class="oculto" style="position:fixed;inset:0;z-index:500;display:flex;align-items:flex-end;justify-content:center">
   <div class="set-overlay" data-cerrar-rep></div>
   <div class="set-panel rep-panel">
-    <div class="set-tit">🛵 Mis repartidores</div>
-    <p class="set-row-sub" style="margin-bottom:10px;line-height:1.5">Cada repartidor tiene su usuario y clave. Entra desde <b id="repLink">/delivery</b> en su celular, ve solo los pedidos que le asignas y comparte su ubicación mientras reparte.</p>
-    <div id="repLista"></div>
-    <div class="set-tit" style="margin-top:18px">Agregar repartidor</div>
-    <div class="rep-form">
+    <div class="set-tit solo-flota">🛵 Mis repartidores</div>
+    <p class="set-row-sub solo-flota" style="margin-bottom:10px;line-height:1.5">Cada repartidor tiene su usuario y clave. Entra desde <b id="repLink">/delivery</b> en su celular, ve solo los pedidos que le asignas y comparte su ubicación mientras reparte.</p>
+    <div id="repLista" class="solo-flota"></div>
+    <div class="set-tit solo-flota" style="margin-top:18px">Agregar repartidor</div>
+    <div class="rep-form solo-flota">
       <input id="repNombre" placeholder="Nombre (ej: Pedro)" maxlength="40" autocomplete="off">
       <input id="repUsuario" placeholder="Usuario (ej: pedro)" maxlength="20" autocomplete="off" autocapitalize="none">
       <input id="repTel" placeholder="Teléfono (para enviarle su acceso)" inputmode="tel" maxlength="20" autocomplete="off">
       <button class="rep-btn" id="repCrear">Crear cuenta</button>
     </div>
-    <div id="repResultado"></div>
+    <div id="repResultado" class="solo-flota"></div>
     <div class="pya-sec">
       <div class="set-tit" style="margin-top:14px">🟥 PedidosYa Envíos</div>
       <p class="set-row-sub" style="margin-bottom:10px;line-height:1.5" id="pyaEstadoTxt">Envía pedidos con repartidores de PedidosYa. Pega el token de tu cuenta de PedidosYa Envíos (se guarda cifrado en el servidor y no se vuelve a mostrar).</p>
@@ -1449,6 +1452,8 @@ function cargarNombreTienda(){
       if(doc.exists){
         var d = doc.data();
         var nombre = d.nombreTienda || d.nombre || "Pedidos";
+        _gestorSimple = d.plantilla === "boutique" || d.gestorSimple === true;
+        document.body.classList.toggle("gestor-simple", _gestorSimple);
         qs("#hTiendaNombre").textContent = nombre;
         document.title = nombre + " — Pedidos";
         /* Prioridad: logo real del cliente > emoji del rubro > nada
@@ -2162,6 +2167,7 @@ qs("#btnLogout").addEventListener("click", function(){
 var _repartidores = [];
 var _envioPrev = {};
 var _envioPedido = null;
+var _gestorSimple = false; /* boutique: sin repartidores propios (ver cargarNombreTienda) */
 
 async function apiRep(accion, datos){
   var u = auth.currentUser;
@@ -2239,12 +2245,12 @@ function renderEnvioOps(){
     return;
   }
   var actual = (ped.envio && ped.envio.repartidorUid) || "";
-  var ops = _repartidores.filter(function(r){ return r.activo; }).map(function(r){
+  var ops = _repartidores.filter(function(r){ return r.activo && !_gestorSimple; }).map(function(r){
     var e = estadoRep(r);
     return '<button class="env-op" data-rep="' + esc(r.id) + '">🛵<span style="flex:1">' + esc(r.nombre) +
       (r.id === actual ? ' ✓' : '') + '<small>' + e.t + '</small></span></button>';
   });
-  if(!ops.length) ops.push('<p class="rep-vacio">Todavía no tienes repartidores activos. Agrégalos en el botón 🛵 de arriba.</p>');
+  if(!ops.length && !_gestorSimple) ops.push('<p class="rep-vacio">Todavía no tienes repartidores activos. Agrégalos en el botón 🛵 de arriba.</p>');
   ops.push('<button class="env-op" data-rep="__propio">🙋<span style="flex:1">Lo llevo yo / el local<small>Sin GPS — marcas los estados desde aquí</small></span></button>');
   if(_pya && _pya.configurado) ops.push('<button class="env-op" data-pya="cotizar">🟥<span style="flex:1">PedidosYa Envíos<small>' + (_pya.prueba ? 'Modo prueba · ' : '') + 'Cotiza y pide un repartidor de PedidosYa</small></span></button>');
   else ops.push('<button class="env-op" data-pya="config">🟥<span style="flex:1">PedidosYa Envíos<small>Configúralo con tu token (una sola vez)</small></span></button>');

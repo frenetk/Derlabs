@@ -91,7 +91,8 @@ async function leerConfigTenant(hostname, env, ctx) {
     const config = {
       nombre: data.nombre || "",
       logoBase64: data.logoBase64 || "",
-      rubro: data.rubro || "comida"
+      rubro: data.rubro || "comida",
+      plantilla: data.plantilla || ""
     };
 
     const respCache = new Response(JSON.stringify(config), {
@@ -103,6 +104,12 @@ async function leerConfigTenant(hostname, env, ctx) {
     console.error("leerConfigTenant:", e.message);
     return null;
   }
+}
+
+/* Plantilla de la tienda: config.plantilla manda ("boutique"); si no, el rubro */
+function archivoPlantilla(cfg){
+  if (cfg && cfg.plantilla === "boutique") return "/index-boutique.html";
+  return (cfg && cfg.rubro === "retail") ? "/index-retail.html" : "/index.html";
 }
 
 async function inyectarNombreReal(html, hostname, env, ctx) {
@@ -131,7 +138,8 @@ async function inyectarNombreReal(html, hostname, env, ctx) {
       config = {
         nombre: data.nombre || "",
         logoBase64: data.logoBase64 || "",
-        rubro: data.rubro || "comida"
+        rubro: data.rubro || "comida",
+        plantilla: data.plantilla || ""
       };
 
       /* Guardar en caché del edge 5 min */
@@ -228,8 +236,7 @@ export default {
            automáticamente, así que hay que reescribir la URL acá. */
         /* Elegir template segun rubro */
         const cfgTpl = await leerConfigTenant(url.hostname, env, ctx);
-        const rubroTpl = (cfgTpl && cfgTpl.rubro) || "comida";
-        const archivoTpl = (rubroTpl === "retail") ? "/index-retail.html" : "/index.html";
+        const archivoTpl = archivoPlantilla(cfgTpl);
 
         const urlIndex = new URL(request.url);
         urlIndex.pathname = archivoTpl;
@@ -258,9 +265,8 @@ export default {
        index.html automáticamente. Hay que reescribir explícitamente. ── */
     if (url.pathname === "/" || url.pathname === "") {
         const cfgFb = await leerConfigTenant(url.hostname, env, ctx);
-        const rubroFb = (cfgFb && cfgFb.rubro) || "comida";
         const urlIndex = new URL(request.url);
-        urlIndex.pathname = (rubroFb === "retail") ? "/index-retail.html" : "/index.html";
+        urlIndex.pathname = archivoPlantilla(cfgFb);
         return env.ASSETS.fetch(new Request(urlIndex, request));
     }
 

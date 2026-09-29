@@ -305,6 +305,14 @@ const RUBROS = [
       { id:"limpieza",       nombre:"Productos de limpieza", ico:"🧴", color:"#00A88A" },
       { id:"hogar",          nombre:"Hogar y deco",          ico:"🛋️", color:"#8B6914" },
   ]},
+  /* Boutique: mismo rubro "retail" para el motor, pero con la plantilla
+     index-boutique.html (worker.js la elige por config.plantilla) y el
+     gestor de pedidos simple, sin repartidores propios ni GPS. */
+  { id:"boutique", nombre:"Boutique ✨", ico:"✨", rubroMotor:"retail", plantilla:"boutique", subrubros:[
+      { id:"ropa",           nombre:"Moda y accesorios",     ico:"👗", color:"#8F553A" },
+      { id:"belleza",        nombre:"Cosmética y belleza",   ico:"💄", color:"#B0607A" },
+      { id:"hogar",          nombre:"Deco y hogar",          ico:"🛋️", color:"#6B6B4E" },
+  ]},
 ];
 
 /* ── Utilidades de color — mismas fórmulas que index.html (HSL,
@@ -650,7 +658,8 @@ qs("#formTienda").addEventListener("submit", async (e) => {
       },
       body: JSON.stringify({
         nombreNegocio,
-        rubro: rubroSeleccionado,
+        rubro: rubroActual().rubroMotor || rubroSeleccionado,
+        plantilla: rubroActual().plantilla || undefined,
         subrubro: subrubroSeleccionado,
         hostname,
         colorPrimario: qs("#fColor").value,
