@@ -16,9 +16,8 @@
    salto de red innecesario entre dos funciones del mismo Worker. */
 
 import { MercadoPagoConfig, Payment } from "mercadopago";
-import { Resend } from "resend";
 import { admin, getDb, corsHeaders, getStoreConfig } from "./_firebase.js";
-import { plantillaCliente, plantillaVendedor } from "./enviarEmails.js";
+import { enviarCorreosPedido } from "./enviarEmails.js";
 import { notificar } from "./notificar.js";
 
 export async function webhookPago(request, env){
@@ -173,29 +172,8 @@ export async function webhookPago(request, env){
     const config = await getStoreConfig(db, storeId);
     const origin = config.url || url.origin;
 
-    if (config.resendApiKey && config.emailEmisor) {
-      try {
-        const resend = new Resend(config.resendApiKey);
-        if (ped.cliente && ped.cliente.email) {
-          await resend.emails.send({
-            from: config.emailEmisor,
-            to: ped.cliente.email,
-            subject: "✅ Pedido #" + pedidoId + " confirmado — " + (config.nombreTienda || config.nombre || ""),
-            html: plantillaCliente(ped, config.nombreTienda || config.nombre || "Tu tienda", config.colorPrimario || config.colorHex || "#E53935")
-          });
-        }
-        if (config.emailVendedor) {
-          await resend.emails.send({
-            from: config.emailEmisor,
-            to: config.emailVendedor,
-            subject: "🛍️ Pedido pagado #" + pedidoId,
-            html: plantillaVendedor(ped, config.nombreTienda || config.nombre || "Tu tienda", config.colorPrimario || config.colorHex || "#E53935", origin)
-          });
-        }
-      } catch (e) {
-        console.warn("Error enviando emails desde webhook:", e.message);
-      }
-    }
+    /* Correos de compra (cuenta central DerLabs, o la propia de la tienda si la tiene) */
+    await enviarCorreosPedido(db, env, storeId, ped, origin);
 
     try {
       await notificar(new Request(origin + "/api/notificar", {

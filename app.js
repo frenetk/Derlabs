@@ -1611,6 +1611,8 @@ function setComunaSelect(sel, comuna){
 }
 function dirCompletaCheckout(){
   var d = qs("#fDireccion").value.trim();
+  var dp = qs("#fDepto"), cdir = qs("#campoDireccion");
+  if (dp && dp.value.trim() && (!cdir || cdir.style.display !== "none")) d += ", " + dp.value.trim();
   /* Solo agregar comuna si hay selector visible y tiene valor */
   if (comunasDeZonas().length > 0){
     var c = comunaSeleccionada(qs("#fComuna"));
@@ -2031,10 +2033,10 @@ function renderSelectorDirecciones(){
       else wrap.innerHTML = '<div class="dir-selector-title">📍 Tus direcciones guardadas</div>' +
         dirs.map(function(d){
           var ico = d.label && d.label.toLowerCase().includes("trabajo") ? "🏢" : (d.label && d.label.toLowerCase().includes("otro") ? "📌" : "🏠");
-          return '<div class="dir-option" data-dirid="' + d.id + '" data-dir="' + esc(d.direccion) + '" data-comuna="' + esc(d.comuna || "") + '" data-lat="' + (d.lat != null ? d.lat : "") + '" data-lng="' + (d.lng != null ? d.lng : "") + '" data-telefono="' + esc(d.telefono || "") + '">' +
+          return '<div class="dir-option" data-dirid="' + d.id + '" data-dir="' + esc(d.direccion + (d.depto ? ", " + d.depto : "")) + '" data-comuna="' + esc(d.comuna || "") + '" data-lat="' + (d.lat != null ? d.lat : "") + '" data-lng="' + (d.lng != null ? d.lng : "") + '" data-telefono="' + esc(d.telefono || "") + '">' +
             '<span class="dir-option-ico">' + ico + '</span>' +
             '<div class="dir-option-txt"><div class="dir-option-label">' + esc(d.label || "Casa") + (d.favorita ? ' ⭐' : '') + '</div>' +
-            '<div class="dir-option-addr">' + esc(d.direccion) + '</div></div></div>';
+            '<div class="dir-option-addr">' + esc(d.direccion + (d.depto ? ", " + d.depto : "")) + '</div></div></div>';
         }).join("") +
         '<div class="dir-option" id="dirNueva"><span class="dir-option-ico">➕</span><div class="dir-option-txt"><div class="dir-option-nueva">Usar otra dirección</div></div></div>';
       /* Marcar como pintado ANTES de los listeners para evitar loops */
@@ -2281,6 +2283,7 @@ function _direccionLista(){
 }
 
 function renderCheckout(){
+  if (window._syncDepto) setTimeout(window._syncDepto, 0);
   const delOn = state.config.deliveryActivo !== false;
   const retOn = state.config.retiroActivo !== false;
   qs("#btnTipoDelivery").style.display = delOn ? "block" : "none";
@@ -2772,12 +2775,7 @@ function _dispararEmails(ped){
     fetch(functionsURL() + "/enviarEmails", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        storeId: STORE_ID,
-        pedido: ped,
-        nombreTienda: (state.config || {}).nombre || "TEST BURGERS",
-        urlTienda: location.origin
-      })
+      body: JSON.stringify({ storeId: STORE_ID, pedidoId: ped && ped.id, t: ped && ped.seguimiento })
     }).catch(function(e){ console.warn("Email no enviado:", e); });
   } catch(e){}
 }
@@ -4884,6 +4882,44 @@ function _doCerrarPanel(){
   _desactivarModoBorrador();
 }
 
+/* La tienda ya no configura Resend: DerLabs envía los correos con el nombre
+   de la tienda. Solo queda "Correo donde recibes los pedidos". */
+function simplificarTabEmails(){
+  try {
+    var tab = qs("#pt-emails"); if (!tab) return;
+    ["pResendKey", "pEmailEmisor"].forEach(function(id){
+      var el = qs("#" + id); if (!el) return;
+      var c = el.closest(".ffield, .campo, .field, .set-row, .form-group, .fila-token") || el.parentNode;
+      c.style.display = "none";
+    });
+    var eye = qs("#btnEyeResend"); if (eye) eye.style.display = "none";
+    /* Textos de instrucciones sobre Resend / API key */
+    /* Se ocultan los bloques de texto más externos que hablan de Resend/API key y no contienen campos */
+    var cand = Array.prototype.slice.call(tab.querySelectorAll("p, li, div, span, small, ol, ul")).filter(function(el){
+      return !el.querySelector("input, button, select, textarea") && /resend|api key|onboarding@/i.test(el.textContent || "");
+    });
+    cand.filter(function(el){ return !cand.some(function(o){ return o !== el && o.contains(el); }); })
+      .forEach(function(el){ el.style.display = "none"; });
+    var ev = qs("#pEmailVendedor");
+    if (ev){
+      var c2 = ev.closest(".ffield, .campo, .field, .form-group") || ev.parentNode;
+      var lb = c2.querySelector("label"); if (lb) lb.textContent = "Correo donde recibes los pedidos";
+      ev.placeholder = "tucorreo@gmail.com";
+      if (!qs("#emailsInfoDerLabs")){
+        var info = document.createElement("p");
+        info.id = "emailsInfoDerLabs";
+        info.style.cssText = "margin:8px 0 4px;font-size:13px;line-height:1.5;opacity:.75";
+        info.textContent = "Cada pedido te llega a este correo. A tus clientes les enviamos la confirmación automáticamente con el nombre de tu tienda, sin que tengas que configurar nada más.";
+        c2.appendChild(info);
+      }
+    }
+    Array.prototype.forEach.call(tab.querySelectorAll("h2, h3, h4, .acard-title, .psec-title, .card-title"), function(h){
+      Array.prototype.forEach.call(h.childNodes, function(n){ if (n.nodeType === 3) n.textContent = n.textContent.replace(/\s*\(Resend\)/i, ""); });
+    });
+    var titulo = tab.querySelector(".psec-title, h3, h2"); if (titulo && /transaccional/i.test(titulo.textContent)) titulo.lastChild && (titulo.lastChild.textContent = " Correos de pedidos");
+  } catch(e){ console.warn("tab emails:", e); }
+}
+
 function initPanel(){
   on("btnPanel", "click", () => {
     qs("#adminPanel").classList.add("open");
@@ -5465,12 +5501,12 @@ function initPanel(){
     t.style.webkitTextSecurity = oculto ? "none" : "disc";
     t.style.textSecurity        = oculto ? "none" : "disc";
   });
+  simplificarTabEmails();
   const _btnGE = qs("#btnGuardarEmails");
   if (_btnGE) _btnGE.addEventListener("click", async function(){
     const est = qs("#emailEstado");
-    await saveConfigPrivado("resendApiKey", (qs("#pResendKey").value || "").trim());
-    await saveConfigPrivado("emailEmisor", (qs("#pEmailEmisor").value || "").trim());
     const vend = (qs("#pEmailVendedor").value || "").trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(vend)){ if (est) est.textContent = "⚠️ Escribe un correo válido"; return; }
     await saveConfigPrivado("emailVendedor", vend);
     await saveConfigPrivado("emailNotif", vend); /* espejo legacy */
     if (est) est.textContent = "✅ Configuración guardada";
@@ -5479,39 +5515,20 @@ function initPanel(){
   const _btnEP = qs("#btnEmailPrueba");
   if (_btnEP) _btnEP.addEventListener("click", async function(){
     const est = qs("#emailEstado");
-    const cfg  = state.config || {};
-    const cfgP = state.configPrivado || {};
-    if (!functionsListas()){ if (est) est.textContent = "⚠️ Configura FUNCTIONS_URL en el tab Pagos"; return; }
-    if (!cfgP.resendApiKey){ if (est) est.textContent = "⚠️ Guarda primero tu Resend API Key"; return; }
-    if (est) est.textContent = "⏳ Enviando email de prueba…";
-    const pedidoDemo = {
-      id: "TB00000",
-      fecha: new Date().toISOString(),
-      estado: "nuevo",
-      total: 12980, subtotal: 10990, descuento: 0, costoDelivery: 1990,
-      cuponAplicado: null, tipo: "delivery", metodoPago: "efectivo",
-      items: [{ id: "demo", nombre: "Pedido de prueba", cantidad: 1, precio: 10990 }],
-      cliente: { nombre: "Cliente de prueba", telefono: "+56912345678",
-        email: cfgP.emailVendedor || cfgP.emailNotif || "", direccion: "Dirección de prueba 123",
-        comuna: "", referencias: "", notas: "Email de prueba desde devmode", uid: null },
-      estadoTimeline: { nuevo: new Date().toISOString(), preparacion: null, camino: null, listo: null }
-    };
+    if (!functionsListas()){ if (est) est.textContent = "⚠️ El servidor no está disponible"; return; }
+    if (est) est.textContent = "⏳ Enviando correo de prueba…";
     try {
-      /* Ya NO se manda resendApiKey/emailEmisor/emailVendedor en el body —
-         enviarEmails.js los resuelve internamente con getStoreConfig(). */
+      const u = auth && auth.currentUser;
+      const tk = u ? await u.getIdToken() : "";
       const r = await fetch(functionsURL() + "/enviarEmails", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storeId: STORE_ID, pedido: pedidoDemo,
-          nombreTienda: cfg.nombre || "TEST BURGERS",
-          urlTienda: location.origin
-        })
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tk },
+        body: JSON.stringify({ accion: "prueba", storeId: STORE_ID })
       });
-      if (est) est.textContent = r.ok ? "✅ Email de prueba enviado — revisa tu bandeja"
-                                      : "❌ El backend respondió HTTP " + r.status;
+      const j = await r.json().catch(function(){ return {}; });
+      if (est) est.textContent = j.ok ? "✅ Correo de prueba enviado — revisa tu bandeja (y spam la primera vez)" : "❌ " + (j.error || ("Error " + r.status));
     } catch(e){
-      if (est) est.textContent = "❌ No se pudo enviar — revisa FUNCTIONS_URL y la API key";
+      if (est) est.textContent = "❌ No se pudo enviar — revisa tu conexión";
     }
   });
 
@@ -6251,6 +6268,7 @@ function abrirDirModal(dir){
   var inp = document.getElementById("dirInput");
   inp.value=(dir&&dir.direccion)||"";
   document.getElementById("dirRefInput").value=(dir&&dir.referencias)||"";
+  var _dd=document.getElementById("dirDepto"); if(_dd) _dd.value=(dir&&dir.depto)||"";
   document.getElementById("dirTelInput").value=(dir&&dir.telefono)||(clienteUser&&clienteUser.telefono)||"";
   document.getElementById("dirFavCheck").checked=!!(dir&&dir.favorita);
   document.getElementById("dirEditId").value=(dir&&dir.id)||"";
@@ -6276,7 +6294,72 @@ function abrirDirModal(dir){
   },100);
 }
 
+/* ══ Campos comunes a todas las plantillas (se agregan desde el motor) ══
+   - "Depto / casa / block" bajo la calle (checkout y "Mis direcciones")
+   - Aviso discreto para revisar los datos antes de confirmar */
+const AVISO_DATOS = "Revisa que tus datos estén correctos: ahí te enviaremos la confirmación y el seguimiento de tu pedido.";
+function _campoDepto(refCampo, inputRef, id, idWrap){
+  if (!refCampo || !inputRef || document.getElementById(id)) return document.getElementById(id);
+  var w = document.createElement(refCampo.tagName === "LABEL" ? "div" : refCampo.tagName);
+  w.className = refCampo.className; w.id = idWrap;
+  var lblRef = refCampo.querySelector("label");
+  var lbl = document.createElement("label");
+  if (lblRef) lbl.className = lblRef.className;
+  lbl.setAttribute("for", id);
+  lbl.textContent = "Depto / casa / block (opcional)";
+  var inp = document.createElement("input");
+  inp.type = "text"; inp.id = id; inp.className = inputRef.className; inp.maxLength = 60;
+  inp.autocomplete = "address-line2";
+  inp.placeholder = "Ej: Depto 1203, Torre B · Casa 5 · Condominio Los Robles";
+  w.appendChild(lbl); w.appendChild(inp);
+  refCampo.parentNode.insertBefore(w, refCampo.nextSibling);
+  return inp;
+}
+function _avisoDatos(antesDe, id){
+  if (!antesDe || document.getElementById(id)) return;
+  var p = document.createElement("p");
+  p.id = id; p.className = "aviso-datos";
+  p.textContent = AVISO_DATOS;
+  p.style.cssText = "margin:10px 2px 10px;font-size:12.5px;line-height:1.45;opacity:.72;text-align:center";
+  antesDe.parentNode.insertBefore(p, antesDe);
+}
+function instalarCamposComunes(){
+  try {
+    var cd = qs("#campoDireccion"), fd = qs("#fDireccion");
+    if (cd && fd){
+      _campoDepto(cd, fd, "fDepto", "campoDepto");
+      var sync = function(){
+        var w = qs("#campoDepto"); if (!w) return;
+        var visible = tipoEntrega === "delivery" && cd.style.display !== "none" && getComputedStyle(cd).display !== "none" && !!fd.value.trim();
+        w.style.display = visible ? "" : "none";
+      };
+      fd.addEventListener("input", sync); fd.addEventListener("change", sync); fd.addEventListener("blur", function(){ setTimeout(sync, 250); });
+      window._syncDepto = sync; sync();
+    }
+    /* "Referencias" queda para indicaciones al repartidor (el depto ya tiene su casilla) */
+    var fr = qs("#fReferencias");
+    if (fr){
+      var cr = fr.closest(".ffield, .campo, .field, .form-group") || fr.parentNode;
+      var lr = cr && cr.querySelector("label[for='fReferencias'], label");
+      if (lr){
+        var opc = lr.querySelector(".opt, span");
+        lr.textContent = "Referencias para el repartidor ";
+        if (opc){ opc.textContent = "(opcional)"; lr.appendChild(opc); } else lr.textContent += "(opcional)";
+      }
+      fr.placeholder = "Ej: portón negro, timbre 2, dejar en conserjería";
+    }
+    _avisoDatos(qs("#btnConfirmar"), "avisoDatosCk");
+    var di = qs("#dirInput");
+    if (di){
+      var campoDi = di.closest(".ffield, .campo, .field, .form-group") || di.parentNode;
+      _campoDepto(campoDi, di, "dirDepto", "campoDirDepto");
+    }
+    _avisoDatos(qs("#dirModalGuardar"), "avisoDatosDir");
+  } catch(e){ console.warn("campos comunes:", e); }
+}
+
 function initDirModal(){
+  instalarCamposComunes();
   var _dc = document.getElementById("dirComuna");
   if (_dc) _dc.addEventListener("change", function(){
     _dc.classList.toggle("lleno", !!_dc.value);
@@ -6316,6 +6399,7 @@ function initDirModal(){
       lat: (sel && sel.lat != null) ? sel.lat : null,
       lng: (sel && sel.lng != null) ? sel.lng : null,
       referencias:document.getElementById("dirRefInput").value.trim(),
+      depto:(document.getElementById("dirDepto")||{value:""}).value.trim(),
       favorita:document.getElementById("dirFavCheck").checked,
       creadoEn:new Date().toISOString()
     };

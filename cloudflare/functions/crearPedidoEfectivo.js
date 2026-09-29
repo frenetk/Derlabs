@@ -4,6 +4,7 @@
    de bajo riesgo real, mismo patrón que las anteriores. */
 
 import { getDb, corsHeaders, validarPedidoCompleto, admin } from "./_firebase.js";
+import { enviarCorreosPedido } from "./enviarEmails.js";
 
 export async function crearPedidoEfectivo(request, env){
   const headers = corsHeaders();
@@ -94,6 +95,9 @@ export async function crearPedidoEfectivo(request, env){
         console.warn("No se pudo registrar el cupón usado:", e.message);
       }
     }
+
+    /* Correos de compra (cuenta central DerLabs): una sola vez por pedido */
+    await enviarCorreosPedido(db, env, storeId, pedidoObj, new URL(request.url).origin);
 
     return new Response(
       JSON.stringify({ ok: true, pedidoId: id, pedido: pedidoObj }),
