@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  DerLabs Boutique - index-boutique.html
+  DerLabs Store - index-boutique.html
   Plantilla boutique (moda, cosmética, decoración y accesorios) para el
   mismo motor /app.js que usan index.html e index-retail.html: compras,
   carrito, checkout con Mercado Pago o efectivo, cupones, zonas de
@@ -50,7 +50,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DerLabs Boutique</title>
+<title>DerLabs Store</title>
 <meta name="description" content="Tienda online de moda, cosmética, decoración y accesorios, con despacho a domicilio o retiro en tienda.">
 <meta name="theme-color" content="#FBFAF7">
 <meta name="color-scheme" content="light dark">
@@ -63,7 +63,8 @@
     var t = localStorage.getItem("dl_boutique_tema");
     if (t !== "light" && t !== "dark") t = localStorage.getItem("dl_boutique_tema_tienda") || "auto";
     d.setAttribute("data-theme", t);
-  } catch(e){}
+    d.setAttribute("data-estilo", localStorage.getItem("dl_boutique_estilo") || "clasico");
+  } catch(e){ d.setAttribute("data-estilo", "clasico"); }
   document.addEventListener("load", function(e){
     var i = e.target; if (i && i.tagName === "IMG" && i.classList.contains("prod-img")) i.classList.add("ld");
   }, true);
@@ -78,7 +79,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://images.unsplash.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700;800&family=Archivo:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* =====================================================================
    1. TOKENS
@@ -143,6 +144,55 @@
   --chev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23716B63' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   color-scheme:light;
 }
+
+/* =====================================================================
+   ESTILOS DE TIENDA (config.estiloTienda, se elige en el panel)
+   clasico  → look de los temas más usados de Shopify (Dawn / Horizon)
+   impacto  → bold, para promos y moda urbana (tipo Impulse)
+   premium  → editorial elegante (tipo Prestige) = diseño original
+   ===================================================================== */
+:root[data-estilo="clasico"]{
+  --bg:#FFFFFF;--bg-2:#F4F4F4;--bg-3:#E9E9E9;--surface:#FFFFFF;
+  --ink:#121212;--ink-hover:#000;--ink-2:#4A4A4A;--ink-3:#6A6A6A;
+  --line:#E6E6E6;--line-2:#CFCFCF;--on-ink:#FFFFFF;
+  --foot-bg:#F4F4F4;--foot-ink:#121212;--foot-ink-2:#5A5A5A;--foot-line:#E0E0E0;
+  --r-xs:6px;--r-sm:8px;--r-md:10px;--r-lg:14px;
+  --font-display:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+}
+:root[data-estilo="impacto"]{
+  --bg:#FFFFFF;--bg-2:#F2F2F2;--bg-3:#E6E6E6;--surface:#FFFFFF;
+  --ink:#0A0A0A;--ink-hover:#000;--ink-2:#3F3F3F;--ink-3:#5F5F5F;
+  --line:#E3E3E3;--line-2:#C9C9C9;--on-ink:#FFFFFF;
+  --foot-bg:#0A0A0A;--foot-ink:#F5F5F5;--foot-ink-2:#A8A8A8;--foot-line:#262626;
+  --r-xs:0px;--r-sm:0px;--r-md:0px;--r-lg:0px;
+  --font-display:"Archivo","Inter",ui-sans-serif,system-ui,sans-serif;
+}
+/* Clásico: títulos sans en negrita, sin "eyebrows" editoriales, botones redondeados */
+:root[data-estilo="clasico"] :is(.serif,.splash-logo,#logoTexto,.md-brand,.md-item,.page-title,.sec-title,#heroTitulo,.cat-ini,.coll-title,.promo h3,.t-quote,#puntosTitulo,#nlTitle,.foot-logo,.menu-cat,#prodDetNombre,.sheet-title,.ck-sec-title,#ckGate h2,#confTitulo,.cupon-val strong,.local-name,#cuentaLoggedOut h2,#cuentaNombre,#cuentaPuntos,.modal-title,.cart-empty strong,.promo-titulo){font-weight:700;letter-spacing:-.02em}
+:root[data-estilo="clasico"] #heroTitulo{font-size:clamp(38px,9vw,84px);line-height:1.02;letter-spacing:-.035em}
+:root[data-estilo="clasico"] .sec-title,:root[data-estilo="clasico"] .page-title{font-size:28px}
+:root[data-estilo="clasico"] #logoTexto{font-size:22px;font-weight:800;letter-spacing:-.02em}
+:root[data-estilo="clasico"] body:not(.dev-on) .sec-kicker{display:none}
+:root[data-estilo="clasico"] .btn{border-radius:999px;letter-spacing:.02em;text-transform:none;font-size:15px;font-weight:600}
+:root[data-estilo="clasico"] .badge{border-radius:999px;letter-spacing:.02em;text-transform:none;font-size:12px;height:24px;padding:0 10px}
+:root[data-estilo="clasico"] .badge-sale{background:var(--ink);color:var(--on-ink)}
+:root[data-estilo="clasico"] .prod-media{aspect-ratio:1/1;border-radius:var(--r-md)}
+:root[data-estilo="clasico"] .prod-name{font-size:15px;font-weight:500}
+:root[data-estilo="clasico"] .prod-price{font-weight:600}
+:root[data-estilo="clasico"] .eyebrow{letter-spacing:.06em}
+/* Impacto: todo en mayúsculas gruesas, acento de marca protagonista */
+:root[data-estilo="impacto"] :is(.serif,.splash-logo,#logoTexto,.md-brand,.md-item,.page-title,.sec-title,#heroTitulo,.cat-ini,.coll-title,.promo h3,.t-quote,#puntosTitulo,#nlTitle,.foot-logo,.menu-cat,#prodDetNombre,.sheet-title,.ck-sec-title,#ckGate h2,#confTitulo,.cupon-val strong,.local-name,#cuentaLoggedOut h2,#cuentaNombre,#cuentaPuntos,.modal-title,.cart-empty strong,.promo-titulo){font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:.95}
+:root[data-estilo="impacto"] #heroTitulo{font-size:clamp(48px,14vw,150px);line-height:.88}
+:root[data-estilo="impacto"] .sec-title,:root[data-estilo="impacto"] .page-title{font-size:34px}
+:root[data-estilo="impacto"] #logoTexto{font-size:24px}
+:root[data-estilo="impacto"] .ann{background:var(--accent);color:var(--on-accent);font-weight:700}
+:root[data-estilo="impacto"] .btn-primary{background:var(--accent);color:var(--on-accent)}
+:root[data-estilo="impacto"] .btn-primary:hover{background:var(--accent-hover)}
+:root[data-estilo="impacto"] .btn{font-weight:800;letter-spacing:.1em}
+:root[data-estilo="impacto"] .badge{font-weight:800;height:26px}
+:root[data-estilo="impacto"] .badge-sale{background:#E11D2E;color:#fff}
+:root[data-estilo="impacto"] .prod-name{font-weight:700;text-transform:uppercase;font-size:13px;letter-spacing:.02em}
+:root[data-estilo="impacto"] .prod-price{font-weight:800}
 @supports (color:color-mix(in srgb,red,blue)){
   :root{
     --accent-hover:color-mix(in srgb,var(--accent) 80%,#000);
@@ -1732,7 +1782,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
 <!-- Pantalla de carga: el motor la oculta con .oculto al terminar de leer la tienda -->
 <div id="splashScreen" aria-hidden="true">
   <div class="splash-in">
-    <span class="splash-logo" id="splashLogo" data-bind="nombre">DerLabs Boutique</span>
+    <span class="splash-logo" id="splashLogo" data-bind="nombre">DerLabs Store</span>
     <span class="splash-bar"></span>
   </div>
 </div>
@@ -1766,7 +1816,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
       </div>
       <a id="logoTop" href="#inicio" aria-label="Ir al inicio">
         <img id="logoImg" alt="" style="display:none">
-        <span id="logoTexto">DerLabs Boutique</span>
+        <span id="logoTexto">DerLabs Store</span>
       </a>
       <div class="nav-r">
         <button class="icon-btn nav-acc mlink" type="button" data-go="menu" aria-label="Buscar en la tienda" data-buscar="1"><svg class="i i-lg" aria-hidden="true"><use href="#i-search"/></svg></button>
@@ -2325,7 +2375,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
       <div class="container">
         <div class="foot-top">
           <div class="foot-brand">
-            <p class="foot-logo" data-bind="nombre">DerLabs Boutique</p>
+            <p class="foot-logo" data-bind="nombre">DerLabs Store</p>
             <p id="footTagline" data-ecol="config" data-edoc="general" data-efield="tagline" data-etype="text"></p>
             <div class="social" id="footSocial" aria-label="Redes sociales"></div>
           </div>
@@ -2354,7 +2404,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
           </div>
         </div>
         <div class="foot-in">
-          <p><strong data-bind="nombre" data-ecol="config" data-edoc="general" data-efield="nombre" data-etype="text">DerLabs Boutique</strong> · <span id="crTexto" data-ecol="config" data-edoc="general" data-efield="footerTexto" data-etype="text">Todos los derechos reservados.</span> © <span id="crAnno" data-ecol="config" data-edoc="general" data-efield="footerAno" data-etype="text">2026</span></p>
+          <p><strong data-bind="nombre" data-ecol="config" data-edoc="general" data-efield="nombre" data-etype="text">DerLabs Store</strong> · <span id="crTexto" data-ecol="config" data-edoc="general" data-efield="footerTexto" data-etype="text">Todos los derechos reservados.</span> © <span id="crAnno" data-ecol="config" data-edoc="general" data-efield="footerAno" data-etype="text">2026</span></p>
           <p class="derlabs">Tienda online creada con <a href="https://derlabs.cl" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><b>DerLabs</b></a></p>
         </div>
       </div>
@@ -2366,7 +2416,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
 <!-- Menú lateral (fuera del navbar: el blur del navbar rompería el position:fixed) -->
 <nav id="menuDrop" aria-label="Menú">
   <div class="md-top">
-    <span class="md-brand" data-bind="nombre">DerLabs Boutique</span>
+    <span class="md-brand" data-bind="nombre">DerLabs Store</span>
     <button class="icon-btn" type="button" data-md-cerrar aria-label="Cerrar menú"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
   </div>
   <button class="md-item mlink" type="button" data-go="inicio"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg>Inicio</button>
@@ -2682,7 +2732,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
     <div class="admin-top">
       <div class="admin-id">
         <h2 id="adminTitle" class="admin-title">Panel de la tienda</h2>
-        <p class="admin-store" data-bind="nombre">DerLabs Boutique</p>
+        <p class="admin-store" data-bind="nombre">DerLabs Store</p>
       </div>
       <button id="panelMin" class="btn btn-soft btn-sm" type="button" title="Ver los cambios en la tienda"><svg class="i i-sm" aria-hidden="true"><use href="#i-eye"/></svg>Ver cambios</button>
       <button id="panelClose" class="icon-btn" type="button" aria-label="Cerrar panel"><svg class="i i-lg" aria-hidden="true"><use href="#i-close"/></svg></button>
@@ -2799,6 +2849,15 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
             <option value="oscuro">Siempre oscuro</option>
           </select>
           <p class="hint">El cliente igual puede cambiarlo desde el menú; su elección queda en su navegador.</p>
+        </div>
+        <div class="ffield">
+          <label for="bqEstilo">Estilo de la tienda</label>
+          <select id="bqEstilo" data-cfg="estiloTienda">
+            <option value="clasico">Clásico — el look de Shopify que todos conocen</option>
+            <option value="impacto">Impacto — bold, para promos y moda urbana</option>
+            <option value="premium">Premium — editorial y elegante</option>
+          </select>
+          <p class="hint">Cambia tipografías, colores base, botones y tarjetas. Tu color de marca se mantiene.</p>
         </div>
         <div class="set-row">
           <div class="arow-main"><p class="arow-title">Mostrar newsletter en el inicio</p><p class="arow-sub">Los correos quedan en Firestore: tiendas/{tienda}/suscriptores.</p></div>
@@ -3160,7 +3219,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
 
 <script>
 /* ════════════════════════════════════════════════════════════════
-   DerLabs Boutique: plantilla del motor /app.js
+   DerLabs Store: plantilla del motor /app.js
    El motor (compras, carrito, checkout, pedidos, cuenta, modo edición y
    panel) es el mismo de index.html e index-retail.html. Aquí solo va
    lo que cambia de aspecto: cómo se arman tarjetas y listas con el
@@ -3320,7 +3379,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
      Firestore) y como textos por defecto. Precios de ejemplo. */
   var DEMO = {
     config: {
-      nombre: "DerLabs Boutique",
+      nombre: "DerLabs Store",
       tagline: "Moda, cosmética y objetos para la casa, elegidos con calma.",
       rubro: "retail", subrubro: "ropa", plantilla: "boutique", colorPrimario: "#8F553A",
       heroImagen: IMG("1490481651871-ab68de25d43d", 1800),
@@ -3977,6 +4036,9 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
   function aplicarTema(){
     var loc = lsG(TEMA_KEY), tienda = { claro: "light", oscuro: "dark" }[cfg().temaTienda] || "auto";
     lsS("dl_boutique_tema_tienda", tienda);
+    var estilo = { impacto: "impacto", premium: "premium" }[cfg().estiloTienda] || "clasico";
+    lsS("dl_boutique_estilo", estilo);
+    document.documentElement.setAttribute("data-estilo", estilo);
     document.documentElement.setAttribute("data-theme", (loc === "light" || loc === "dark") ? loc : tienda);
     var oscuro = temaEfectivoOscuro();
     Array.prototype.forEach.call(document.querySelectorAll(".tema-txt"), function(s){ s.textContent = oscuro ? "Modo claro" : "Modo oscuro"; });

@@ -308,10 +308,12 @@ const RUBROS = [
   /* Boutique: mismo rubro "retail" para el motor, pero con la plantilla
      index-boutique.html (worker.js la elige por config.plantilla) y el
      gestor de pedidos simple, sin repartidores propios ni GPS. */
-  { id:"boutique", nombre:"Boutique ✨", ico:"✨", rubroMotor:"retail", plantilla:"boutique", subrubros:[
-      { id:"ropa",           nombre:"Moda y accesorios",     ico:"👗", color:"#8F553A" },
+  { id:"boutique", nombre:"Tienda Pro (estilo Shopify)", ico:"🛒", rubroMotor:"retail", plantilla:"boutique", subrubros:[
+      { id:"ropa",           nombre:"Moda y accesorios",     ico:"👗", color:"#121212" },
+      { id:"tecnologia",     nombre:"Tecnología",            ico:"📱", color:"#1F4FD8" },
       { id:"belleza",        nombre:"Cosmética y belleza",   ico:"💄", color:"#B0607A" },
-      { id:"hogar",          nombre:"Deco y hogar",          ico:"🛋️", color:"#6B6B4E" },
+      { id:"hogar",          nombre:"Hogar y deco",          ico:"🛋️", color:"#6B6B4E" },
+      { id:"limpieza",       nombre:"Otros productos",       ico:"📦", color:"#0F766E" },
   ]},
 ];
 
