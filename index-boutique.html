@@ -63,8 +63,8 @@
     var t = localStorage.getItem("dl_boutique_tema");
     if (t !== "light" && t !== "dark") t = localStorage.getItem("dl_boutique_tema_tienda") || "auto";
     d.setAttribute("data-theme", t);
-    d.setAttribute("data-estilo", localStorage.getItem("dl_boutique_estilo") || "clasico");
-  } catch(e){ d.setAttribute("data-estilo", "clasico"); }
+    d.setAttribute("data-estilo", localStorage.getItem("dl_boutique_estilo") || "mercado");
+  } catch(e){ d.setAttribute("data-estilo", "mercado"); }
   document.addEventListener("load", function(e){
     var i = e.target; if (i && i.tagName === "IMG" && i.classList.contains("prod-img")) i.classList.add("ld");
   }, true);
@@ -79,7 +79,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://images.unsplash.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700;800&family=Archivo:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700;800&family=Archivo:wght@600;700;800;900&family=Figtree:wght@400;500;600;700;800;900&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 /* =====================================================================
    1. TOKENS
@@ -193,6 +193,202 @@
 :root[data-estilo="impacto"] .badge-sale{background:#E11D2E;color:#fff}
 :root[data-estilo="impacto"] .prod-name{font-weight:700;text-transform:uppercase;font-size:13px;letter-spacing:.02em}
 :root[data-estilo="impacto"] .prod-price{font-weight:800}
+
+/* ── Estructura por estilo (no solo tipografía) ── */
+/* CLÁSICO (Dawn / Horizon): header blanco fijo, banner con texto centrado,
+   categorías y colecciones en grilla con el título bajo la foto, más vendidos en grilla */
+:root[data-estilo="clasico"] body[data-page="inicio"] .navbar:not(.solid){background:var(--bg)!important;color:var(--ink)!important;box-shadow:inset 0 -1px 0 var(--line)!important}
+:root[data-estilo="clasico"] body[data-page="inicio"] .navbar:not(.solid) .tabbar .tab{color:var(--ink-2)!important}
+:root[data-estilo="clasico"] body[data-page="inicio"] .navbar:not(.solid) .tabbar .tab.active{color:var(--ink)!important;box-shadow:inset 0 -2px 0 var(--ink)!important}
+:root[data-estilo="clasico"] body[data-page="inicio"] .navbar:not(.solid) #logoImg{filter:none!important}
+:root[data-estilo="clasico"] body[data-page="inicio"] .navbar:not(.solid) #cartBadge{background:var(--ink)!important;color:var(--on-ink)!important}
+:root[data-estilo="clasico"] .nav-in{grid-template-columns:auto 1fr auto}
+@media (min-width:1024px){:root[data-estilo="clasico"] #logoTop{order:-1;justify-self:start;margin-right:24px}}
+:root[data-estilo="clasico"] .hero{margin-top:0;min-height:min(72svh,640px);align-items:center;justify-content:center}
+:root[data-estilo="clasico"] .hero-shade{background:rgba(0,0,0,.34)}
+:root[data-estilo="clasico"] .hero-copy{align-items:center;text-align:center;padding:48px var(--gutter)}
+:root[data-estilo="clasico"] #heroTitulo{max-width:18ch}
+:root[data-estilo="clasico"] .hero-cta{justify-content:center}
+:root[data-estilo="clasico"] .hero-scroll{display:none!important}
+:root[data-estilo="clasico"] .sec-head-c{align-items:flex-start;text-align:left}
+:root[data-estilo="clasico"] #catsTitle{font-family:var(--font);font-size:24px;font-weight:700;letter-spacing:-.02em;text-transform:none;color:var(--ink)}
+:root[data-estilo="clasico"] #catGrid{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-columns:auto;gap:16px 12px;overflow:visible;margin:0;padding:0}
+@media (min-width:768px){:root[data-estilo="clasico"] #catGrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:24px 16px}}
+:root[data-estilo="clasico"] .cat-tile{align-items:flex-start;text-align:left;gap:10px}
+:root[data-estilo="clasico"] .cat-ico{width:100%;height:auto;aspect-ratio:1/1;border-radius:var(--r-md);box-shadow:none}
+:root[data-estilo="clasico"] .cat-name{font-size:15px;font-weight:600;letter-spacing:0}
+:root[data-estilo="clasico"] .cat-name::after{content:" →"}
+:root[data-estilo="clasico"] #collGrid{grid-auto-flow:row;grid-template-columns:1fr;grid-auto-columns:auto;gap:28px 16px;overflow:visible;margin:0;padding:0}
+@media (min-width:768px){:root[data-estilo="clasico"] #collGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+:root[data-estilo="clasico"] .coll{aspect-ratio:auto;padding:0;background:none;color:var(--ink);justify-content:flex-start}
+:root[data-estilo="clasico"] .coll::before{display:none}
+:root[data-estilo="clasico"] .coll-media{position:relative;inset:auto;z-index:0;aspect-ratio:4/3;border-radius:var(--r-md);overflow:hidden;background:var(--bg-2)}
+:root[data-estilo="clasico"] .coll-body{padding-top:14px}
+:root[data-estilo="clasico"] .coll-kicker{color:var(--ink-2);letter-spacing:.04em}
+:root[data-estilo="clasico"] .coll-title{font-size:22px;margin-top:4px}
+:root[data-estilo="clasico"] .coll .link-arrow{color:var(--ink);margin-top:8px}
+:root[data-estilo="clasico"] #popularesList{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-columns:auto;gap:32px 10px;overflow:visible;margin:0;padding:0}
+@media (min-width:1024px){:root[data-estilo="clasico"] #popularesList{grid-template-columns:repeat(4,minmax(0,1fr));gap:56px 20px}}
+:root[data-estilo="clasico"] .car-nav,:root[data-estilo="clasico"] .car-progress{display:none!important}
+:root[data-estilo="clasico"] .puntos{border-radius:var(--r-lg)}
+
+/* IMPACTO (Impulse): portada gigante, colecciones como "promo grid" de mosaicos,
+   categorías como chips gruesos, carruseles grandes */
+:root[data-estilo="impacto"] .hero-shade{background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.15) 40%,rgba(0,0,0,.7))}
+:root[data-estilo="impacto"] #catsTitle{display:none}
+:root[data-estilo="impacto"] .cats{padding-top:28px}
+:root[data-estilo="impacto"] #catGrid{grid-auto-columns:max-content;gap:8px}
+:root[data-estilo="impacto"] .cat-ico{display:none}
+:root[data-estilo="impacto"] .cat-tile{padding:12px 18px;border:2px solid var(--ink);background:var(--bg)}
+:root[data-estilo="impacto"] .cat-tile:hover{background:var(--ink);color:var(--on-ink)}
+:root[data-estilo="impacto"] .cat-name{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+:root[data-estilo="impacto"] #collGrid{grid-auto-flow:row;grid-template-columns:1fr 1fr;grid-auto-columns:auto;gap:8px;overflow:visible;margin:0 calc(var(--gutter)*-1);padding:0}
+@media (min-width:768px){:root[data-estilo="impacto"] #collGrid{margin:0;grid-template-columns:2fr 1fr 1fr}}
+:root[data-estilo="impacto"] .coll{aspect-ratio:1/1;align-items:center;justify-content:center;text-align:center;padding:16px}
+:root[data-estilo="impacto"] .coll:first-child{grid-column:1/-1;aspect-ratio:16/11}
+@media (min-width:768px){:root[data-estilo="impacto"] .coll:first-child{grid-column:auto;grid-row:span 1;aspect-ratio:auto}}
+:root[data-estilo="impacto"] .coll::before{background:rgba(0,0,0,.38)}
+:root[data-estilo="impacto"] .coll-title{font-size:clamp(26px,7vw,48px)}
+:root[data-estilo="impacto"] .coll .link-arrow{display:inline-flex;margin-top:14px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:12px}
+:root[data-estilo="impacto"] #popularesList{grid-auto-columns:78%}
+@media (min-width:768px){:root[data-estilo="impacto"] #popularesList{grid-auto-columns:32%}}
+:root[data-estilo="impacto"] .sec-title{border-left:6px solid var(--accent);padding-left:12px}
+:root[data-estilo="impacto"] .puntos{background:var(--ink);color:var(--on-ink)}
+:root[data-estilo="impacto"] .puntos :is(p,h2){color:inherit}
+
+/* ══════════ ESTILO MERCADO (tipo Xtra) ══════════ */
+:root{--hdr:#0A0A9E;--promo1:#F3A93B;--promo2:#E7488F;--cta:#F7E04B;--okc:#22A06B;--salec:#D9313A;--mint:#D4F0EE}
+.usp,.hdr-search,.to-top,.prod-del,.prod-cta{display:none}
+:root[data-estilo="mercado"]{
+  --bg:#FFFFFF;--bg-2:#F6F6F6;--bg-3:#ECECEC;--surface:#FFFFFF;--ink:#111111;--ink-hover:#000;--ink-2:#5E5E5E;--ink-3:#6E6E6E;
+  --line:#E7E7E7;--line-2:#D0D0D0;--on-ink:#fff;--foot-bg:#111;--foot-ink:#F2F2F2;--foot-ink-2:#A9A9A9;--foot-line:#2A2A2A;
+  --r-xs:4px;--r-sm:6px;--r-md:8px;--r-lg:10px;
+  --font:"Figtree","Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--font-display:var(--font)}
+:root[data-estilo="mercado"] :is(.serif,.splash-logo,#logoTexto,.md-brand,.md-item,.page-title,.sec-title,#heroTitulo,.cat-ini,.coll-title,.promo h3,.t-quote,#puntosTitulo,#nlTitle,.foot-logo,.menu-cat,#prodDetNombre,.sheet-title,.ck-sec-title,#ckGate h2,#confTitulo,.cupon-val strong,.local-name,#cuentaLoggedOut h2,#cuentaNombre,#cuentaPuntos,.modal-title,.cart-empty strong,.promo-titulo){font-weight:900;letter-spacing:-.02em}
+:root[data-estilo="mercado"] .ann{background:linear-gradient(90deg,var(--promo1),var(--promo2));color:#fff;font-weight:800;font-size:13.5px;letter-spacing:.01em}
+:root[data-estilo="mercado"] .usp{display:block;padding:10px 16px;text-align:center;font-size:13.5px;background:var(--bg);color:var(--ink)}
+:root[data-estilo="mercado"] .navbar,:root[data-estilo="mercado"] body[data-page] .navbar:not(.solid){background:var(--hdr)!important;color:#fff!important;box-shadow:none!important}
+:root[data-estilo="mercado"] body[data-page] .navbar .tabbar .tab{color:rgba(255,255,255,.85)!important;box-shadow:none!important}
+:root[data-estilo="mercado"] body[data-page] .navbar .tabbar .tab.active{color:#fff!important;box-shadow:inset 0 -2px 0 var(--cta)!important}
+:root[data-estilo="mercado"] #logoImg{filter:none!important}
+:root[data-estilo="mercado"] #logoTexto{font-size:26px;font-weight:900;letter-spacing:-.03em}
+:root[data-estilo="mercado"] #cartBadge{background:var(--cta)!important;color:#111!important;font-weight:800}
+:root[data-estilo="mercado"] .hdr-search{display:block;max-width:var(--maxw);margin:0 auto;padding:0 var(--gutter) 12px}
+:root[data-estilo="mercado"] .hdr-search button{width:100%;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 16px;border-radius:6px;background:#fff;color:#444;font-size:15px}
+:root[data-estilo="mercado"] .hdr-search .i{color:#111}
+:root[data-estilo="mercado"] .nav-r [data-buscar]{display:none}
+:root[data-estilo="mercado"] .hero{margin:18px var(--gutter) 0;min-height:320px;border-radius:var(--r-md);align-items:center}
+@media (min-width:768px){:root[data-estilo="mercado"] .hero{min-height:440px;max-width:calc(var(--maxw) - 2*var(--gutter));margin-inline:auto}}
+:root[data-estilo="mercado"] .hero-shade{background:linear-gradient(90deg,rgba(0,0,0,.45),rgba(0,0,0,.05) 70%)}
+:root[data-estilo="mercado"] .hero-copy{padding:24px 20px;gap:10px}
+:root[data-estilo="mercado"] #heroBadge{font-weight:800}
+:root[data-estilo="mercado"] #heroTitulo{font-size:clamp(28px,7vw,56px);line-height:1.05;max-width:16ch}
+:root[data-estilo="mercado"] #heroSub{font-size:15px}
+:root[data-estilo="mercado"] .hero .btn-light{background:var(--cta);color:#111;border-radius:999px;text-transform:none;letter-spacing:0;font-size:15px;font-weight:800;box-shadow:0 4px 0 rgba(0,0,0,.14)}
+:root[data-estilo="mercado"] .hero .link-arrow{color:var(--cta);text-transform:none;letter-spacing:0;font-size:15px;font-weight:800}
+:root[data-estilo="mercado"] .hero-scroll{display:none!important}
+:root[data-estilo="mercado"] #page-inicio>.container{display:flex;flex-direction:column}
+:root[data-estilo="mercado"] #bannerPedidoActivo{order:-3}
+:root[data-estilo="mercado"] #colecciones{order:-2;padding-top:18px}
+:root[data-estilo="mercado"] #colecciones .sec-head{display:none}
+:root[data-estilo="mercado"] .cats{order:-1}
+:root[data-estilo="mercado"] body:not(.dev-on) .sec-kicker{display:none}
+:root[data-estilo="mercado"] .sec{padding-top:40px}
+:root[data-estilo="mercado"] .sec-head,:root[data-estilo="mercado"] .sec-head-c{flex-direction:row;align-items:flex-end;text-align:left;margin-bottom:14px}
+:root[data-estilo="mercado"] :is(.sec-title,#catsTitle){font-family:var(--font);font-size:23px;font-weight:900;letter-spacing:-.02em;text-transform:none;color:var(--ink)}
+:root[data-estilo="mercado"] .sec-link{border:0;text-transform:none;letter-spacing:0;font-size:15px;font-weight:800;color:var(--hdr)}
+:root[data-estilo="mercado"] .sec-link::after{content:" ›"}
+:root[data-estilo="mercado"] #collGrid{grid-auto-columns:80%;gap:14px}
+@media (min-width:768px){:root[data-estilo="mercado"] #collGrid{grid-auto-columns:calc((100% - 28px)/3)}}
+:root[data-estilo="mercado"] .coll{aspect-ratio:auto;height:300px;border-radius:var(--r-md);justify-content:center;padding:20px}
+:root[data-estilo="mercado"] .coll::before{background:linear-gradient(90deg,rgba(0,0,0,.4),rgba(0,0,0,0) 75%)}
+:root[data-estilo="mercado"] .coll-kicker{font-weight:800;letter-spacing:0;text-transform:none;font-size:15px}
+:root[data-estilo="mercado"] .coll-title{font-size:28px;font-weight:900}
+:root[data-estilo="mercado"] .coll .link-arrow{margin-top:14px;padding:12px 24px;border-radius:999px;background:var(--cta);color:#111;text-transform:none;letter-spacing:0;font-size:14px;font-weight:800;width:max-content;box-shadow:0 4px 0 rgba(0,0,0,.14)}
+:root[data-estilo="mercado"] .cats{padding-top:34px}
+:root[data-estilo="mercado"] #catGrid{grid-auto-columns:42%;gap:12px;justify-content:start}
+@media (min-width:768px){:root[data-estilo="mercado"] #catGrid{grid-auto-columns:calc((100% - 60px)/6)}}
+:root[data-estilo="mercado"] .cat-tile{align-items:flex-start;text-align:left}
+:root[data-estilo="mercado"] .cat-ico{width:100%;height:auto;aspect-ratio:4/3;border-radius:var(--r-xs);box-shadow:none}
+:root[data-estilo="mercado"] .cat-name{font-size:14px;font-weight:700;letter-spacing:0}
+:root[data-estilo="mercado"] .prod-media{aspect-ratio:1/1;border-radius:var(--r-xs);background:#F6F6F6}
+:root[data-estilo="mercado"] .prod-add{display:none!important}
+:root[data-estilo="mercado"] .badge{border-radius:4px;letter-spacing:0;text-transform:none;font-size:12px;font-weight:800;height:24px;background:var(--hdr);color:#fff}
+:root[data-estilo="mercado"] .badge-sale{background:var(--salec)}
+:root[data-estilo="mercado"] .badge-off::before{content:"Oferta\00a0"}
+:root[data-estilo="mercado"] .prod-price{color:var(--ink)!important}
+:root[data-estilo="mercado"] .badge-out{background:#111}
+:root[data-estilo="mercado"] .prod-brand{font-size:13px;font-weight:400;letter-spacing:0;text-transform:none}
+:root[data-estilo="mercado"] .prod-name{font-size:15px;font-weight:800;margin-top:4px}
+:root[data-estilo="mercado"] .prod-price{font-size:17px;font-weight:900;color:var(--ink)}
+:root[data-estilo="mercado"] .prod-pricing{flex-direction:row-reverse;justify-content:flex-end}
+:root[data-estilo="mercado"] .prod-del{display:block;margin-top:6px;font-size:13px}
+:root[data-estilo="mercado"] .prod-del.ok{color:var(--okc)}
+:root[data-estilo="mercado"] .prod-del.no{color:var(--salec)}
+:root[data-estilo="mercado"] .prod-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;margin-top:12px;border-radius:999px;background:var(--okc);color:#fff;font-weight:800;font-size:14px;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+:root[data-estilo="mercado"] .prod-cta:hover{filter:brightness(1.06)}
+:root[data-estilo="mercado"] .prod-info{display:flex;flex-direction:column;justify-content:space-between}
+:root[data-estilo="mercado"] #popularesList{grid-auto-columns:47%}
+@media (min-width:768px){:root[data-estilo="mercado"] #popularesList{grid-auto-columns:calc((100% - 36px)/4)}}
+:root[data-estilo="mercado"] .t-card{background:var(--mint);box-shadow:none;text-align:center;align-items:center}
+:root[data-estilo="mercado"] .t-quote{font-family:var(--font);font-weight:900;font-size:21px;line-height:1.25}
+:root[data-estilo="mercado"] .t-card :is(.t-stars,.stars){color:#F5B301}
+:root[data-estilo="mercado"] .puntos{border-radius:var(--r-md)}
+:root[data-estilo="mercado"] .btn-primary{background:var(--hdr);border-radius:999px;text-transform:none;letter-spacing:0;font-size:15px}
+:root[data-estilo="mercado"] .md-top{background:var(--hdr);color:#fff;margin:calc(-12px - var(--safe-t)) 0 0;padding:calc(12px + var(--safe-t)) 12px 12px 20px}
+:root[data-estilo="mercado"] .md-brand{font-family:var(--font);font-weight:900}
+:root[data-estilo="mercado"] .md-item{font-family:var(--font);font-size:18px;font-weight:800;border-bottom:1px solid var(--line);min-height:58px}
+:root[data-estilo="mercado"] .to-top{display:grid;place-items:center;position:fixed;right:14px;bottom:calc(84px + var(--safe-b));z-index:40;width:52px;height:52px;border-radius:50%;background:var(--hdr);color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+body.dev-on .to-top{display:none!important}
+
+/* ══════════ ESTILO PRESTIGE (lujo) ══════════ */
+:root[data-estilo="prestige"]{
+  --bg:#FFFFFF;--bg-2:#F5F4F2;--bg-3:#EAE8E4;--surface:#FFFFFF;--ink:#1C1C1C;--ink-hover:#000;--ink-2:#6E6E6E;--ink-3:#7A7A7A;
+  --line:#E8E8E8;--line-2:#D4D4D4;--on-ink:#fff;--foot-bg:#1C1C1C;--foot-ink:#F2F2F2;--foot-ink-2:#A8A8A8;--foot-line:#303030;
+  --r-xs:0px;--r-sm:0px;--r-md:0px;--r-lg:0px;
+  --font:"Jost","Futura","Century Gothic",ui-sans-serif,system-ui,sans-serif;--font-display:var(--font)}
+:root[data-estilo="prestige"] :is(.serif,.splash-logo,#logoTexto,.md-brand,.md-item,.page-title,.sec-title,#heroTitulo,.cat-ini,.coll-title,.promo h3,.t-quote,#puntosTitulo,#nlTitle,.foot-logo,.menu-cat,#prodDetNombre,.sheet-title,.ck-sec-title,#ckGate h2,#confTitulo,.cupon-val strong,.local-name,#cuentaLoggedOut h2,#cuentaNombre,#cuentaPuntos,.modal-title,.cart-empty strong,.promo-titulo){font-weight:400;text-transform:uppercase;letter-spacing:.2em;line-height:1.3}
+:root[data-estilo="prestige"] #logoTexto{font-size:17px;letter-spacing:.18em}
+:root[data-estilo="prestige"] .tabbar .tab{text-transform:uppercase;letter-spacing:.2em;font-size:12px}
+:root[data-estilo="prestige"] .ann{background:#1C1C1C;letter-spacing:.2em;text-transform:uppercase;font-size:11px}
+:root[data-estilo="prestige"] .hero{align-items:center;justify-content:center}
+:root[data-estilo="prestige"] .hero-shade{background:rgba(0,0,0,.3)}
+:root[data-estilo="prestige"] .hero-copy{align-items:center;text-align:center;padding:0 var(--gutter)}
+:root[data-estilo="prestige"] #heroTitulo{font-size:clamp(28px,8vw,64px);font-weight:300;letter-spacing:.16em;max-width:22ch}
+:root[data-estilo="prestige"] #heroSub{letter-spacing:.04em}
+:root[data-estilo="prestige"] .hero-cta{justify-content:center}
+:root[data-estilo="prestige"] .btn{border-radius:0;letter-spacing:.24em;font-size:11.5px;font-weight:500}
+:root[data-estilo="prestige"] .hero .btn-light{background:#fff;color:#1C1C1C}
+:root[data-estilo="prestige"] .hero-scroll{display:none!important}
+:root[data-estilo="prestige"] .sec{padding-top:80px}
+:root[data-estilo="prestige"] body:not(.dev-on) .sec-kicker{display:none}
+:root[data-estilo="prestige"] .sec-head{flex-direction:column;align-items:center;text-align:center;gap:14px;margin-bottom:34px}
+:root[data-estilo="prestige"] .sec-title{font-size:18px}
+:root[data-estilo="prestige"] .sec-link{letter-spacing:.2em;font-size:11px}
+:root[data-estilo="prestige"] #catsTitle{letter-spacing:.24em}
+:root[data-estilo="prestige"] .cat-ico{filter:grayscale(.15)}
+:root[data-estilo="prestige"] .cat-name{text-transform:uppercase;letter-spacing:.16em;font-size:10.5px}
+:root[data-estilo="prestige"] #collGrid{grid-auto-flow:row;grid-template-columns:1fr;grid-auto-columns:auto;gap:4px;overflow:visible;margin:0 calc(var(--gutter)*-1);padding:0}
+@media (min-width:768px){:root[data-estilo="prestige"] #collGrid{grid-template-columns:1fr 1fr}}
+:root[data-estilo="prestige"] .coll{aspect-ratio:4/5;align-items:center;justify-content:center;text-align:center;padding:28px}
+:root[data-estilo="prestige"] .coll::before{background:rgba(0,0,0,.28)}
+:root[data-estilo="prestige"] .coll-kicker{letter-spacing:.28em;font-weight:400}
+:root[data-estilo="prestige"] .coll-title{font-size:24px;font-weight:300}
+:root[data-estilo="prestige"] .coll .link-arrow{margin-top:18px;padding:12px 22px;border:1px solid #fff;letter-spacing:.24em;font-size:11px;font-weight:500}
+:root[data-estilo="prestige"] .coll .link-arrow .i{display:none}
+:root[data-estilo="prestige"] .prod-media{aspect-ratio:3/4}
+:root[data-estilo="prestige"] .prod-info{text-align:center;align-items:center}
+:root[data-estilo="prestige"] .prod-brand{letter-spacing:.2em;font-weight:400}
+:root[data-estilo="prestige"] .prod-name{text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:400;margin-top:6px}
+:root[data-estilo="prestige"] .prod-pricing{justify-content:center}
+:root[data-estilo="prestige"] .prod-price{font-size:13px;letter-spacing:.06em}
+:root[data-estilo="prestige"] :is(.prod-cuotas,.prod-stock){display:none}
+:root[data-estilo="prestige"] .prod-swatches{justify-content:center}
+:root[data-estilo="prestige"] .badge{letter-spacing:.2em;font-weight:500;background:#fff;color:#1C1C1C}
+:root[data-estilo="prestige"] .badge-sale{background:#1C1C1C;color:#fff}
+:root[data-estilo="prestige"] .t-card{box-shadow:none;text-align:center;align-items:center}
+:root[data-estilo="prestige"] #testiList .t-quote{font-weight:300;font-size:20px;text-transform:none;letter-spacing:.02em;line-height:1.5}
+:root[data-estilo="prestige"] .puntos{background:var(--bg-2)}
 @supports (color:color-mix(in srgb,red,blue)){
   :root{
     --accent-hover:color-mix(in srgb,var(--accent) 80%,#000);
@@ -1800,6 +1996,8 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
     </div>
   </div>
 
+  <div class="usp" id="uspBar"><span id="uspTexto" data-ecol="config" data-edoc="general" data-efield="uspTexto" data-etype="text"></span></div>
+
   <header class="navbar" id="siteHeader">
     <div class="nav-in">
       <div class="nav-l">
@@ -1827,6 +2025,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
         </button>
       </div>
     </div>
+    <div class="hdr-search"><button class="mlink" type="button" data-go="menu" data-buscar="1"><span>¿Qué estás buscando?</span><svg class="i i-lg" aria-hidden="true"><use href="#i-search"/></svg></button></div>
   </header>
 
   <div id="bannerCerrada" role="status" style="display:none">
@@ -2414,6 +2613,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
 </div><!-- /.wrapper -->
 
 <!-- Menú lateral (fuera del navbar: el blur del navbar rompería el position:fixed) -->
+<button class="to-top" type="button" aria-label="Volver arriba" onclick="window.scrollTo({top:0,behavior:'smooth'})"><svg class="i i-lg" aria-hidden="true" style="transform:rotate(-90deg)"><use href="#i-chev-r"/></svg></button>
 <nav id="menuDrop" aria-label="Menú">
   <div class="md-top">
     <span class="md-brand" data-bind="nombre">DerLabs Store</span>
@@ -2853,12 +3053,20 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
         <div class="ffield">
           <label for="bqEstilo">Estilo de la tienda</label>
           <select id="bqEstilo" data-cfg="estiloTienda">
-            <option value="clasico">Clásico — el look de Shopify que todos conocen</option>
+            <option value="mercado">Mercado — tienda de ofertas, header de color con buscador (tipo Xtra)</option>
+            <option value="prestige">Prestige — lujo, minimalista y elegante</option>
+            <option value="clasico">Clásico — el look Dawn de Shopify</option>
             <option value="impacto">Impacto — bold, para promos y moda urbana</option>
-            <option value="premium">Premium — editorial y elegante</option>
           </select>
-          <p class="hint">Cambia tipografías, colores base, botones y tarjetas. Tu color de marca se mantiene.</p>
+          <p class="hint">Cambia la estructura, tipografías, botones y tarjetas. Tu color de marca se mantiene.</p>
         </div>
+        <div class="set-grid">
+          <div class="ffield"><label for="bqColHdr">Color del header (Mercado)</label><input id="bqColHdr" type="text" data-cfg="colorHeader" placeholder="#0A0A9E" spellcheck="false"></div>
+          <div class="ffield"><label for="bqColBtn">Color de botones destacados</label><input id="bqColBtn" type="text" data-cfg="colorBoton" placeholder="#F7E04B" spellcheck="false"></div>
+          <div class="ffield"><label for="bqColP1">Barra de promo: color 1</label><input id="bqColP1" type="text" data-cfg="colorPromo1" placeholder="#F3A93B" spellcheck="false"></div>
+          <div class="ffield"><label for="bqColP2">Barra de promo: color 2</label><input id="bqColP2" type="text" data-cfg="colorPromo2" placeholder="#E7488F" spellcheck="false"></div>
+        </div>
+        <div class="ffield"><label for="bqUsp">Franja bajo la promo (Mercado)</label><input id="bqUsp" type="text" data-cfg="uspTexto" placeholder="✓ Cambio gratis de productos hasta 30 días"></div>
         <div class="set-row">
           <div class="arow-main"><p class="arow-title">Mostrar newsletter en el inicio</p><p class="arow-sub">Los correos quedan en Firestore: tiendas/{tienda}/suscriptores.</p></div>
           <label class="switch"><input type="checkbox" data-cfg="newsletterActivo" data-cfgtipo="bool1" aria-label="Mostrar newsletter"><span></span></label>
@@ -3335,7 +3543,7 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
     if (st.agotado) badges.push('<span class="badge badge-out">Agotado</span>');
     else {
       if (p.etiqueta) badges.push('<span class="badge ' + claseEtiqueta(p.etiqueta) + '">' + esc(p.etiqueta) + '</span>');
-      if (pr.off && !/oferta|sale|%|descuento|liquid/i.test(p.etiqueta || "")) badges.push('<span class="badge badge-sale">−' + pr.off + '%</span>');
+      if (pr.off && !/oferta|sale|%|descuento|liquid/i.test(p.etiqueta || "")) badges.push('<span class="badge badge-sale badge-off">−' + pr.off + '%</span>');
     }
     var sw = "";
     if (p.variantesActivas && Array.isArray(p.variantes)){
@@ -3369,7 +3577,9 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
           (cuotas ? '<p class="prod-cuotas">' + cuotas + '</p>' : "") +
           ((st.txt && st.cls === "low") ? '<p class="prod-stock low">' + st.txt + '</p>' : "") +
           sw +
+          '<p class="prod-del ' + (st.agotado ? "no" : "ok") + '">' + (st.agotado ? "Agotado por ahora" : "✓ En stock · despacho rápido") + '</p>' +
         '</div>' +
+        (st.agotado ? "" : '<button class="prod-cta" type="button" data-add="' + id + '" aria-label="' + (opciones ? "Elegir opciones de " : "Agregar al carrito: ") + esc(p.nombre) + '">' + ICO("bag", "i-sm") + '<span>' + (opciones ? "Elegir" : "Agregar") + '</span></button>') +
       '</div>' +
     '</article>';
   }
@@ -4036,7 +4246,10 @@ select.field{padding-right:38px;background-image:var(--chev);background-repeat:n
   function aplicarTema(){
     var loc = lsG(TEMA_KEY), tienda = { claro: "light", oscuro: "dark" }[cfg().temaTienda] || "auto";
     lsS("dl_boutique_tema_tienda", tienda);
-    var estilo = { impacto: "impacto", premium: "premium" }[cfg().estiloTienda] || "clasico";
+    var estilo = { impacto: "impacto", prestige: "prestige", clasico: "clasico", premium: "prestige" }[cfg().estiloTienda] || "mercado";
+    var rs = document.documentElement.style, hx = function(v){ return /^#[0-9a-f]{6}$/i.test(String(v || "")) ? v : ""; };
+    [["--hdr", cfg().colorHeader], ["--promo1", cfg().colorPromo1], ["--promo2", cfg().colorPromo2], ["--cta", cfg().colorBoton]].forEach(function(x){ var v = hx(x[1]); if (v) rs.setProperty(x[0], v); else rs.removeProperty(x[0]); });
+    var u = document.getElementById("uspTexto"); if (u && !document.body.classList.contains("dev-on")) u.textContent = cfg().uspTexto || "✓ Cambio gratis de productos hasta 30 días";
     lsS("dl_boutique_estilo", estilo);
     document.documentElement.setAttribute("data-estilo", estilo);
     document.documentElement.setAttribute("data-theme", (loc === "light" || loc === "dark") ? loc : tienda);
