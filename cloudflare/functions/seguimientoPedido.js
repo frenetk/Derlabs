@@ -7,6 +7,7 @@
    función los lee con la cuenta de servicio y devuelve solo lo que el
    cliente necesita ver (sin teléfono, email ni datos de pago). */
 import { getDb, corsHeaders } from "./_firebase.js";
+import { sincronizarPya, estadoLegiblePya } from "./pedidosya.js";
 
 const TOKEN_OK = /^[A-Za-z0-9]{20,64}$/;
 
@@ -32,8 +33,13 @@ export async function seguimientoPedido(request, env){
       }
       return json({ ok:false, error:"No encontrado" }, 404);
     }
-    const p = doc.data();
+    let p = doc.data();
     if (!p.seguimiento || p.seguimiento !== t) return json({ ok:false, error:"No encontrado" }, 404);
+    /* PedidosYa: trae el estado real del envío (máx. 1 consulta cada 45 s) */
+    if (p.envio && p.envio.metodo === "pedidosya"){
+      try { p = await sincronizarPya(db, storeId, doc.ref || db.doc("tiendas/" + storeId + "/pedidos/" + id), p, env); }
+      catch(e){ console.warn("seguimiento pya:", e.message); }
+    }
     const c = p.cliente || {};
     /* Delivery propio: nombre del repartidor y, mientras va en camino, su ubicación */
     let repartidor = null;
@@ -56,7 +62,9 @@ export async function seguimientoPedido(request, env){
       subtotal: p.subtotal || 0, descuento: p.descuento || 0, costoDelivery: p.costoDelivery || 0, total: p.total || 0,
       cuponAplicado: p.cuponAplicado || null,
       cliente: { nombre: c.nombre || "", direccion: c.direccion || "", comuna: c.comuna || "", local: c.local || "", tipo: c.tipo || "", lat: c.lat != null ? c.lat : null, lng: c.lng != null ? c.lng : null },
-      envio: p.envio ? { metodo: p.envio.metodo || "", salioEn: p.envio.salioEn || "", entregadoEn: p.envio.entregadoEn || "" } : null,
+      envio: p.envio ? { metodo: p.envio.metodo || "", salioEn: p.envio.salioEn || "", entregadoEn: p.envio.entregadoEn || "",
+        trackingUrl: p.envio.metodo === "pedidosya" && /^https:\/\//.test(p.envio.trackingUrl || "") ? p.envio.trackingUrl : "",
+        estadoPya: p.envio.metodo === "pedidosya" ? estadoLegiblePya(p.envio.estadoPya) : "" } : null,
       repartidor
     }});
   } catch(e){

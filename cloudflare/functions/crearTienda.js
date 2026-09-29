@@ -9,7 +9,7 @@
    que no hace falta comprobar las dos variantes de mayúscula/minúscula
    como sí hacía el original de Netlify). */
 
-import { admin, getDb, corsHeaders, autorizarDominio } from "./_firebase.js";
+import { admin, getDb, corsHeaders, autorizarDominio, authRest } from "./_firebase.js";
 
 const RUBROS = {
   "comida": {
@@ -140,16 +140,18 @@ export async function crearTienda(request, env){
     catch (e) { avisoDominio = "Tienda creada, pero no se pudo autorizar el dominio para el login con Google (" + e.message + "). Agrégalo a mano en Firebase → Authentication → Dominios autorizados."; }
 
     let propietario = null;
-    if (emailPropietario && passwordPropietario) {
+    if (emailPropietario) {
+      const claveTemporal = !passwordPropietario;
       try {
         const userRecord = await admin.auth().createUser({
           email: emailPropietario,
-          password: passwordPropietario
+          password: passwordPropietario || claveTemporalPropietario()
         });
         await db.doc("usuarios/" + userRecord.uid).set({
           roles: { [storeId]: "propietario" }
         }, { merge: true });
         propietario = { uid: userRecord.uid, email: emailPropietario };
+        if (claveTemporal){ propietario.claveTemporal = true; propietario.correoClave = await enviarBienvenida(emailPropietario, nombreNegocio, hostnameLimpio, env); }
       } catch (e) {
         return new Response(JSON.stringify({
           ok: true, storeId, hostname: hostnameLimpio,
@@ -167,4 +169,52 @@ export async function crearTienda(request, env){
     console.error("crearTienda error:", e.message);
     return new Response(JSON.stringify({ ok: false, error: e.message || "Error desconocido" }), { status: 500, headers });
   }
+}
+
+
+/* Clave aleatoria que nadie conoce: el dueño crea la suya con el correo de Firebase */
+function claveTemporalPropietario(){
+  const b = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(b, function(x){ return ("0" + x.toString(16)).slice(-2); }).join("") + "Aa1!";
+}
+/* Bienvenida DerLabs (Resend, hola@derlabs.cl) con link seguro de Firebase
+   para crear la clave. Si Resend falla, cae al correo estándar de Firebase. */
+async function enviarBienvenida(email, nombre, dominio, env){
+  try {
+    if (!env.RESEND_API_KEY) throw new Error("sin RESEND_API_KEY");
+    const r0 = await authRest(":sendOobCode", { requestType: "PASSWORD_RESET", email, returnOobLink: true });
+    const link = r0.oobLink; if (!link) throw new Error("sin link");
+    const e = function(t){ return String(t || "").replace(/[&<>"']/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]; }); };
+    const url = "https://" + dominio;
+    const html = '<div style="font-family:Arial,Helvetica,sans-serif;background:#f4f4f5;padding:28px 12px"><div style="max-width:520px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden">' +
+      '<div style="background:#111;color:#fff;padding:22px 26px;font-size:22px;font-weight:800;letter-spacing:.5px">DerLabs</div>' +
+      '<div style="padding:26px;color:#222;font-size:15px;line-height:1.6">' +
+      '<h1 style="font-size:21px;margin:0 0 12px">🎉 Tu tienda "' + e(nombre) + '" ya está lista</h1>' +
+      '<p>Hola, bienvenido a DerLabs. Tu tienda ya está en línea en <a href="' + e(url) + '" style="color:#111;font-weight:bold">' + e(dominio) + '</a>.</p>' +
+      '<p>Para entrar a tu panel de administración, crea tu contraseña:</p>' +
+      '<p style="text-align:center;margin:26px 0"><a href="' + e(link) + '" style="display:inline-block;background:#111;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:bold">Crear mi contraseña</a></p>' +
+      '<p style="background:#f4f4f5;border-radius:10px;padding:14px 16px;font-size:14px">👤 Usuario: <b>' + e(email) + '</b><br>🛠️ Panel: toca 7 veces seguidas el logo de tu tienda<br>📦 Pedidos: <a href="' + e(url) + '/pedidos.html" style="color:#111">' + e(dominio) + '/pedidos.html</a></p>' +
+      '<p style="font-size:13px;color:#666">El enlace vence en 1 hora. Si vence, usa "¿Olvidaste tu contraseña?" en el acceso de administrador.</p>' +
+      '</div><div style="padding:16px 26px;border-top:1px solid #eee;font-size:12px;color:#888">DerLabs · derlabs.cl · Este correo se envió porque se creó una tienda con tu dirección.</div></div></div>';
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: "DerLabs <hola@derlabs.cl>", to: [email], subject: "🎉 Tu tienda «" + nombre + "» ya está lista", html })
+    });
+    if (!r.ok) throw new Error("resend " + r.status + " " + (await r.text()).slice(0, 150));
+    return true;
+  } catch(err){
+    console.warn("bienvenida:", err.message);
+    return enviarCorreoClave(email, env);
+  }
+}
+/* Correo de Firebase "crear/restablecer contraseña" (en español) */
+async function enviarCorreoClave(email, env){
+  try {
+    const key = env.FIREBASE_API_KEY || "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM";
+    const r = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=" + key, {
+      method: "POST", headers: { "Content-Type": "application/json", "X-Firebase-Locale": "es" },
+      body: JSON.stringify({ requestType: "PASSWORD_RESET", email })
+    });
+    return r.ok;
+  } catch(e){ return false; }
 }

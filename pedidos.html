@@ -645,6 +645,19 @@ a{color:inherit;text-decoration:none}
 .chip-envio{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 11px;border-radius:999px;font-size:12.5px;font-weight:800;background:rgba(21,101,192,.18);color:#64B5F6}
 .chip-envio.propio{background:rgba(255,255,255,.08);color:var(--txt2)}
 .chip-envio.sin{background:rgba(245,124,0,.15);color:#FFB74D}
+.chip-envio.pya{background:rgba(234,0,75,.16);color:#FF6F9A}
+.pya-caja{background:var(--bg3);border-radius:12px;padding:14px;margin-bottom:10px;font-size:14px;line-height:1.5}
+.pya-caja b{font-size:22px;display:block;margin:2px 0}
+.pya-aviso{font-size:12.5px;color:#FFB74D;margin-top:6px}
+.pya-btn{width:100%;padding:13px;border-radius:12px;background:#EA004B;color:#fff;font-weight:900;font-size:14.5px;margin-bottom:8px}
+.pya-btn[disabled]{opacity:.5}
+.pya-sec{border-top:1px solid var(--borde);margin-top:18px;padding-top:4px}
+.pya-fila{display:flex;gap:8px}
+.pya-fila input{flex:1}
+.pya-fila button{padding:0 14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--borde);font-weight:800;font-size:13px;white-space:nowrap}
+.pya-check{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700}
+.pya-check input{width:20px;height:20px}
+#pyaDirOk{font-size:12.5px;color:var(--txt2)}
 .btn-enviar{width:46px;height:46px;border-radius:12px;flex-shrink:0;background:#1565C0;display:flex;align-items:center;justify-content:center;color:#fff}
 .btn-enviar svg{width:22px;height:22px}
 .rep-panel{max-height:88vh;overflow-y:auto}
@@ -742,6 +755,7 @@ a{color:inherit;text-decoration:none}
       <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
     </div>
     <button class="btn-login" id="btnLogin">Entrar</button>
+    <button type="button" id="btnOlvido" style="display:block;margin:14px auto 0;background:none;border:0;color:var(--txt2);font-size:14px;text-decoration:underline">¿Olvidaste tu contraseña?</button>
   </div>
 </div>
 
@@ -873,6 +887,22 @@ a{color:inherit;text-decoration:none}
       <button class="rep-btn" id="repCrear">Crear cuenta</button>
     </div>
     <div id="repResultado"></div>
+    <div class="pya-sec">
+      <div class="set-tit" style="margin-top:14px">🟥 PedidosYa Envíos</div>
+      <p class="set-row-sub" style="margin-bottom:10px;line-height:1.5" id="pyaEstadoTxt">Envía pedidos con repartidores de PedidosYa. Pega el token de tu cuenta de PedidosYa Envíos (se guarda cifrado en el servidor y no se vuelve a mostrar).</p>
+      <div class="rep-form">
+        <input id="pyaToken" type="password" placeholder="Token de PedidosYa" autocomplete="off" autocapitalize="none">
+        <div class="pya-fila"><input id="pyaDir" placeholder="Dirección de tu local (retiro)" maxlength="120" autocomplete="off"><button id="pyaBuscar" type="button">Buscar</button></div>
+        <div class="pya-fila"><span id="pyaDirOk" style="flex:1;align-self:center">Sin ubicación</span><button id="pyaAqui" type="button">📍 Estoy en el local</button></div>
+        <input id="pyaAdic" placeholder="Depto / local / piso (opcional)" maxlength="80" autocomplete="off">
+        <input id="pyaNom" placeholder="Nombre del local para el repartidor" maxlength="60" autocomplete="off">
+        <input id="pyaTel" placeholder="Teléfono del local (569XXXXXXXX)" inputmode="tel" maxlength="20" autocomplete="off">
+        <input id="pyaInst" placeholder="Instrucciones de retiro (opcional)" maxlength="120" autocomplete="off">
+        <input id="pyaMin" type="number" inputmode="numeric" placeholder="Minutos de preparación (ej: 10)" min="0" max="120">
+        <label class="pya-check"><input type="checkbox" id="pyaPrueba" checked> Modo prueba (no manda repartidores reales)</label>
+        <button class="rep-btn" id="pyaGuardar" style="background:#EA004B">Guardar PedidosYa</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1303,6 +1333,16 @@ function limpiarPendientesVencidos(){
 }
 
 /* Login */
+/* Recuperar clave: Firebase manda el correo; el mensaje no revela si la cuenta existe */
+qs("#btnOlvido").addEventListener("click", function(){
+  var email = qs("#loginEmail").value.trim(), err = qs("#loginErr"), b = this;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent = "Escribe tu correo arriba y vuelve a tocar aquí."; return; }
+  b.disabled = true; auth.languageCode = "es";
+  auth.sendPasswordResetEmail(email).catch(function(e){ console.warn("reset clave:", e.code || e); }).then(function(){
+    err.textContent = "Si " + email + " tiene cuenta, te llegó un correo para crear una clave nueva (revisa también spam).";
+    setTimeout(function(){ b.disabled = false; }, 30000);
+  });
+});
 qs("#btnLogin").addEventListener("click", function(){
   var email = qs("#loginEmail").value.trim();
   var pass  = qs("#loginPass").value;
@@ -1881,6 +1921,11 @@ function renderDetalle(){
     if(p.estado === "nuevo" || p.estado === "preparacion"){
       body.push('<button class="rep-btn" id="detBtnEnviar" style="margin-top:10px">🛵 Enviar con…</button>');
     }
+    if(ev.metodo === "pedidosya"){
+      if(ev.codigoPya) body.push(detalleRow(iconSVG("clock"), "Código PedidosYa", esc(ev.codigoPya)));
+      if(ev.repartidorNombre) body.push(detalleRow(iconSVG("clock"), "Repartidor", esc(ev.repartidorNombre)));
+      if(/^https:\/\//.test(ev.trackingUrl || "") && !/COMPLET|CANCEL/i.test(ev.estadoPya || "")) body.push('<a class="pya-btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px" href="' + esc(ev.trackingUrl) + '" target="_blank" rel="noopener">🟥 Ver seguimiento en PedidosYa</a>');
+    }
     if(p.estado === "camino" && ev.metodo === "repartidor"){
       body.push('<button class="rep-btn" id="detBtnMapa" style="margin-top:10px">📍 Ver a ' + esc(ev.repartidorNombre || "el repartidor") + ' en el mapa</button>');
     }
@@ -2150,6 +2195,7 @@ function chipEnvio(p){
   var ev = p && p.envio;
   if(!ev || !ev.metodo) return "";
   if(ev.metodo === "propio") return '<div class="chip-envio propio">🙋 Lo lleva el local</div>';
+  if(ev.metodo === "pedidosya") return '<div class="chip-envio pya">🟥 PedidosYa · ' + esc(pyaLegible(ev.estadoPya)) + (ev.prueba ? ' · prueba' : '') + '</div>';
   if(ev.metodo === "repartidor"){
     var txt = (p.estado === "listo" || ev.entregadoEn) ? " · entregado" : (p.estado === "camino" || ev.salioEn) ? " · en camino" : " · asignado";
     return '<div class="chip-envio">🛵 ' + esc(ev.repartidorNombre || "Repartidor") + txt + '</div>';
@@ -2165,10 +2211,29 @@ function abrirSelectorEnvio(ped){
   renderEnvioOps();
   qs("#envioSel").classList.remove("oculto");
   cargarRepartidores();
+  cargarPya();
 }
 function cerrarSelectorEnvio(){ qs("#envioSel").classList.add("oculto"); _envioPedido = null; }
+var _pya = null, _pyaCot = null;
+var PYA_TXT = { CONFIRMED: "buscando repartidor", PREORDER: "programado", IN_PROGRESS: "en curso", NEAR_PICKUP: "llegando al local", PICKED_UP: "va en camino", NEAR_DROPOFF: "llegando al cliente", COMPLETED: "entregado", CANCELLED: "cancelado" };
+function pyaLegible(st){ st = String(st || "").toUpperCase(); return PYA_TXT[st] || (st ? st.replace(/_/g, " ").toLowerCase() : "enviado"); }
+function pyaActivo(ev){ return ev && ev.metodo === "pedidosya" && ev.pyaId && !/CANCEL/i.test(ev.estadoPya || ""); }
+function cargarPya(){
+  return apiRep("pyaConfig").then(function(j){ _pya = j; pintarPyaForm(); if(_envioPedido && !qs("#envioSel").classList.contains("oculto") && !_pyaCot) renderEnvioOps(); return j; })
+    .catch(function(e){ console.warn("pya:", e.message); });
+}
 function renderEnvioOps(){
   var ped = _envioPedido; if(!ped) return;
+  _pyaCot = null;
+  if(pyaActivo(ped.envio)){
+    var e0 = ped.envio;
+    qs("#envOps").innerHTML = '<div class="pya-caja">🟥 Va con PedidosYa' + (e0.prueba ? ' (prueba)' : '') + '<b>' + esc(pyaLegible(e0.estadoPya)) + '</b>' +
+      (e0.codigoPya ? 'Código: ' + esc(e0.codigoPya) + '<br>' : '') + (e0.repartidorNombre ? 'Repartidor: ' + esc(e0.repartidorNombre) : '') + '</div>' +
+      (/^https:\/\//.test(e0.trackingUrl || "") ? '<a class="pya-btn" style="display:block;text-align:center;text-decoration:none" href="' + esc(e0.trackingUrl) + '" target="_blank" rel="noopener">Ver seguimiento en PedidosYa</a>' : '') +
+      '<button class="env-op" data-pya="estado">🔄<span style="flex:1">Actualizar estado</span></button>' +
+      '<button class="env-op quitar" data-pya="cancelar">Cancelar envío PedidosYa</button>';
+    return;
+  }
   var actual = (ped.envio && ped.envio.repartidorUid) || "";
   var ops = _repartidores.filter(function(r){ return r.activo; }).map(function(r){
     var e = estadoRep(r);
@@ -2177,11 +2242,15 @@ function renderEnvioOps(){
   });
   if(!ops.length) ops.push('<p class="rep-vacio">Todavía no tienes repartidores activos. Agrégalos en el botón 🛵 de arriba.</p>');
   ops.push('<button class="env-op" data-rep="__propio">🙋<span style="flex:1">Lo llevo yo / el local<small>Sin GPS — marcas los estados desde aquí</small></span></button>');
+  if(_pya && _pya.configurado) ops.push('<button class="env-op" data-pya="cotizar">🟥<span style="flex:1">PedidosYa Envíos<small>' + (_pya.prueba ? 'Modo prueba · ' : '') + 'Cotiza y pide un repartidor de PedidosYa</small></span></button>');
+  else ops.push('<button class="env-op" data-pya="config">🟥<span style="flex:1">PedidosYa Envíos<small>Configúralo con tu token (una sola vez)</small></span></button>');
   if(ped.envio && ped.envio.metodo) ops.push('<button class="env-op quitar" data-rep="__quitar">Quitar asignación</button>');
   qs("#envOps").innerHTML = ops.join("");
   aplicarIconosGlobal(qs("#envOps"));
 }
 qs("#envOps").addEventListener("click", function(e){
+  var bp = e.target.closest("[data-pya]");
+  if(bp && _envioPedido){ accionPyaSel(bp.dataset.pya, bp); return; }
   var b = e.target.closest("[data-rep]"); if(!b || !_envioPedido) return;
   var ped = _envioPedido, v = b.dataset.rep, ahora = new Date().toISOString(), envio, msg;
   if(v === "__quitar"){ envio = firebase.firestore.FieldValue.delete(); msg = "Asignación quitada"; }
@@ -2196,6 +2265,117 @@ qs("#envOps").addEventListener("click", function(e){
     .then(function(){ mostrarToast(msg); cerrarSelectorEnvio(); })
     .catch(function(err){ mostrarToast("❌ No se pudo asignar"); console.error(err); });
 });
+function accionPyaSel(acc, btn){
+  var ped = _envioPedido; if(!ped) return;
+  if(acc === "config"){ cerrarSelectorEnvio(); qs("#btnRepartidores").click(); setTimeout(function(){ var s = qs(".pya-sec"); if(s) s.scrollIntoView({ behavior: "smooth" }); }, 300); return; }
+  if(acc === "volver"){ renderEnvioOps(); return; }
+  if(acc === "cotizar"){
+    qs("#envOps").innerHTML = '<div class="pya-caja">🟥 Cotizando con PedidosYa…</div>';
+    apiRep("pyaCotizar", { docId: ped._docId }).then(function(j){
+      if(_envioPedido !== ped) return;
+      _pyaCot = j.precio;
+      qs("#envOps").innerHTML = '<div class="pya-caja">🟥 PedidosYa cobra por este envío' + (j.prueba ? ' <span style="color:#FFB74D">(modo prueba)</span>' : '') +
+        '<b>' + fmtPrecio(j.precio.total) + '</b>' + 'Se descuenta de tu cuenta de PedidosYa. El cliente pagó ' + fmtPrecio(ped.costoDelivery || 0) + ' de delivery.' +
+        (ped.metodoPago === "efectivo" ? '<div class="pya-aviso">⚠️ Este pedido es en efectivo: el repartidor de PedidosYa no cobra al cliente. Cóbralo antes o usa otro envío.</div>' : '') + '</div>' +
+        '<button class="pya-btn" data-pya="enviar">Pedir repartidor PedidosYa</button>' +
+        '<button class="env-op" data-pya="volver">‹<span style="flex:1">Volver</span></button>';
+    }).catch(function(err){
+      qs("#envOps").innerHTML = '<div class="pya-caja">❌ ' + esc(err.message) + '</div><button class="env-op" data-pya="volver">‹<span style="flex:1">Volver</span></button>';
+    });
+    return;
+  }
+  if(acc === "enviar"){
+    btn.disabled = true; btn.textContent = "Pidiendo repartidor…";
+    apiRep("pyaEnviar", { docId: ped._docId, precio: _pyaCot ? _pyaCot.total : null }).then(function(j){
+      mostrarToast("🟥 " + ped.id + " enviado con PedidosYa" + (j.envio && j.envio.codigoPya ? " · código " + j.envio.codigoPya : ""), 5000);
+      cerrarSelectorEnvio();
+    }).catch(function(err){ mostrarToast("❌ " + err.message, 6000); btn.disabled = false; btn.textContent = "Pedir repartidor PedidosYa"; });
+    return;
+  }
+  if(acc === "estado"){
+    btn.disabled = true;
+    apiRep("pyaEstado", { docId: ped._docId, forzar: true }).then(function(j){
+      if(j.envio) ped.envio = j.envio; if(j.estado) ped.estado = j.estado;
+      mostrarToast("🟥 PedidosYa: " + pyaLegible(j.envio && j.envio.estadoPya)); renderEnvioOps();
+    }).catch(function(err){ mostrarToast("❌ " + err.message, 5000); btn.disabled = false; });
+    return;
+  }
+  if(acc === "cancelar"){
+    if(!confirm("¿Cancelar el envío de PedidosYa de " + ped.id + "?")) return;
+    btn.disabled = true;
+    apiRep("pyaCancelar", { docId: ped._docId }).then(function(){ mostrarToast("Envío PedidosYa cancelado"); cerrarSelectorEnvio(); })
+      .catch(function(err){ mostrarToast("❌ " + err.message, 7000); btn.disabled = false; });
+  }
+}
+/* Estado de los envíos PedidosYa abiertos: se consulta cada minuto con el gestor abierto */
+setInterval(function(){
+  if(!auth || !auth.currentUser || document.hidden) return;
+  _pedidos.forEach(function(p){
+    if(pyaActivo(p.envio) && !/COMPLET/i.test(p.envio.estadoPya || "") && p.estado !== "listo" && p.estado !== "cancelado")
+      apiRep("pyaEstado", { docId: p._docId }).catch(function(e){ console.warn("pya estado:", e.message); });
+  });
+}, 60000);
+
+/* ── Formulario PedidosYa (panel 🛵) ── */
+var _pyaPos = null;
+function pintarPyaForm(){
+  if(!_pya || !qs("#pyaDir")) return;
+  var r = _pya.retiro || {};
+  qs("#pyaToken").value = "";
+  qs("#pyaToken").placeholder = _pya.configurado ? "Token guardado (…" + _pya.token4 + ") — pega otro para cambiarlo" : "Token de PedidosYa";
+  if(!qs("#pyaDir").value) qs("#pyaDir").value = r.direccion || "";
+  if(!qs("#pyaAdic").value) qs("#pyaAdic").value = r.adicional || "";
+  if(!qs("#pyaNom").value) qs("#pyaNom").value = r.nombre || (qs("#hTiendaNombre") ? qs("#hTiendaNombre").textContent : "");
+  if(!qs("#pyaTel").value) qs("#pyaTel").value = r.telefono || "";
+  if(!qs("#pyaInst").value) qs("#pyaInst").value = r.instrucciones || "";
+  qs("#pyaMin").value = _pya.minutosPreparacion != null ? _pya.minutosPreparacion : 10;
+  qs("#pyaPrueba").checked = _pya.prueba !== false;
+  if(r.lat && r.lng && !_pyaPos){ _pyaPos = { lat: r.lat, lng: r.lng, ciudad: r.ciudad || "Santiago" }; }
+  qs("#pyaDirOk").textContent = _pyaPos ? "✅ Ubicación lista (" + Number(_pyaPos.lat).toFixed(4) + ", " + Number(_pyaPos.lng).toFixed(4) + ")" : "Sin ubicación";
+  qs("#pyaEstadoTxt").textContent = _pya.configurado
+    ? "✅ Conectado" + (_pya.prueba ? " en modo prueba" : "") + ". En cada pedido de delivery, toca 🛵 → PedidosYa Envíos."
+    : "Envía pedidos con repartidores de PedidosYa. Pega el token de tu cuenta de PedidosYa Envíos (queda guardado en el servidor y no se vuelve a mostrar).";
+  var bloq = !_pya.esPropietario;
+  ["#pyaToken","#pyaDir","#pyaAdic","#pyaNom","#pyaTel","#pyaInst","#pyaMin","#pyaPrueba","#pyaGuardar","#pyaBuscar","#pyaAqui"].forEach(function(id){ qs(id).disabled = bloq; });
+}
+qs("#pyaDir").addEventListener("input", function(){ _pyaPos = null; qs("#pyaDirOk").textContent = "Toca Buscar para ubicarla"; });
+qs("#pyaBuscar").addEventListener("click", function(){
+  var dir = qs("#pyaDir").value.trim(); if(!dir){ mostrarToast("Escribe la dirección del local"); return; }
+  qs("#pyaDirOk").textContent = "Buscando…";
+  cargarGMaps().then(function(){
+    new google.maps.Geocoder().geocode({ address: dir, region: "CL", componentRestrictions: { country: "CL" } }, function(res, st){
+      if(st !== "OK" || !res || !res[0]){ qs("#pyaDirOk").textContent = "❌ No la encontré. Prueba con comuna o usa 📍 Estoy en el local"; return; }
+      var loc = res[0].geometry.location, ciudad = "Santiago";
+      (res[0].address_components || []).forEach(function(c){ if(c.types.indexOf("locality") >= 0 || c.types.indexOf("administrative_area_level_3") >= 0) ciudad = c.long_name; });
+      _pyaPos = { lat: loc.lat(), lng: loc.lng(), ciudad: ciudad };
+      qs("#pyaDir").value = res[0].formatted_address.replace(/, Chile$/, "");
+      qs("#pyaDirOk").textContent = "✅ " + ciudad + " (" + _pyaPos.lat.toFixed(4) + ", " + _pyaPos.lng.toFixed(4) + ")";
+    });
+  }).catch(function(e){ qs("#pyaDirOk").textContent = "❌ " + e.message; });
+});
+qs("#pyaAqui").addEventListener("click", function(){
+  if(!navigator.geolocation){ mostrarToast("Tu navegador no da ubicación"); return; }
+  qs("#pyaDirOk").textContent = "Obteniendo ubicación…";
+  navigator.geolocation.getCurrentPosition(function(pos){
+    _pyaPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, ciudad: (_pyaPos && _pyaPos.ciudad) || "Santiago" };
+    qs("#pyaDirOk").textContent = "✅ Ubicación actual (" + _pyaPos.lat.toFixed(4) + ", " + _pyaPos.lng.toFixed(4) + ")";
+  }, function(){ qs("#pyaDirOk").textContent = "❌ No se pudo obtener tu ubicación"; }, { enableHighAccuracy: true, timeout: 15000 });
+});
+qs("#pyaGuardar").addEventListener("click", function(){
+  var btn = this;
+  if(!_pyaPos){ mostrarToast("Ubica la dirección del local (Buscar o 📍)"); return; }
+  var datos = {
+    token: qs("#pyaToken").value.trim(),
+    retiro: { direccion: qs("#pyaDir").value.trim(), adicional: qs("#pyaAdic").value.trim(), ciudad: _pyaPos.ciudad, lat: _pyaPos.lat, lng: _pyaPos.lng,
+              telefono: qs("#pyaTel").value.trim(), nombre: qs("#pyaNom").value.trim(), instrucciones: qs("#pyaInst").value.trim() },
+    prueba: qs("#pyaPrueba").checked, minutosPreparacion: Number(qs("#pyaMin").value) || 0
+  };
+  btn.disabled = true; btn.textContent = "Guardando…";
+  apiRep("pyaGuardar", datos).then(function(){ mostrarToast("✅ PedidosYa guardado"); return cargarPya(); })
+    .catch(function(e){ mostrarToast("❌ " + e.message, 5000); })
+    .then(function(){ btn.disabled = false; btn.textContent = "Guardar PedidosYa"; });
+});
+
 document.addEventListener("click", function(e){
   if(e.target.closest("[data-cerrar-env]")) cerrarSelectorEnvio();
   if(e.target.closest("[data-cerrar-rep]")) qs("#repPanel").classList.add("oculto");
@@ -2364,6 +2544,7 @@ qs("#btnRepartidores").addEventListener("click", function(){
   renderRepLista();
   qs("#repPanel").classList.remove("oculto");
   cargarRepartidores();
+  cargarPya();
 });
 function renderRepLista(){
   var w = qs("#repLista"); if(!w) return;

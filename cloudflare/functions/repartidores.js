@@ -13,6 +13,7 @@
    hacen pasa por estas funciones, que verifican su sesión y sus permisos. */
 import { getDb, corsHeaders, admin, authRest, uidDesdeToken } from "./_firebase.js";
 import { notificar } from "./notificar.js";
+import { accionPedidosYa } from "./pedidosya.js";
 
 /* Aviso push al dueño (mismos dispositivos que los pedidos nuevos) */
 async function avisarDueno(env, storeId, titulo, texto){
@@ -78,6 +79,13 @@ export async function gestionRepartidores(request, env){
     const u = await db.doc("usuarios/" + uid).get();
     const rol = u.exists && u.data().roles ? u.data().roles[storeId] : null;
     if (!rol || rol === "repartidor") return json({ ok:false, error:"Sin permiso en esta tienda" }, 403);
+
+    /* PedidosYa Envíos (pedidosya.js) */
+    if (/^pya[A-Z]/.test(String(b.accion || ""))){
+      const r = await accionPedidosYa(db, storeId, rol, uid, b, env);
+      const st = r.status || 200; delete r.status;
+      return json(r, st);
+    }
 
     const col = "tiendas/" + storeId + "/repartidores";
     const rid = idOk(b.id);

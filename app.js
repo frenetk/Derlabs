@@ -3003,6 +3003,14 @@ function _vivoCaja(){
 function pintarMapaVivo(p){
   const caja = _vivoCaja(); if (!caja) return;
   const r = p && p.repartidor;
+  /* PedidosYa Envíos: estado del envío + link al seguimiento en vivo de PedidosYa */
+  const ev = p && p.envio;
+  if (ev && ev.metodo === "pedidosya" && ev.trackingUrl && normEstado(p.estado) !== "listo" && normEstado(p.estado) !== "cancelado"){
+    caja.style.display = ""; _vivoMapa = null;
+    caja.innerHTML = '<div style="font-size:13px;font-weight:800;margin:0 0 8px;line-height:1.4">🛵 Tu pedido va con PedidosYa' + (ev.estadoPya ? ' · ' + esc(ev.estadoPya) : '') + '</div>' +
+      '<a href="' + esc(ev.trackingUrl) + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px;border-radius:12px;background:#EA004B;color:#fff;font-weight:800;text-decoration:none">Seguir al repartidor en vivo →</a>';
+    return;
+  }
   if (!p || normEstado(p.estado) !== "camino" || !r){ caja.innerHTML = ""; caja.style.display = "none"; _vivoMapa = null; return; }
   caja.style.display = "";
   if (!caja.querySelector(".vivo-mapa")){
@@ -3524,6 +3532,31 @@ function abrirLogin(){
   qs("#loginModal").classList.add("open");
   setTimeout(()=> qs("#loginEmail").focus(), 60);
 }
+/* "¿Olvidaste tu contraseña?" — Firebase le manda al dueño un correo para
+   crear una clave nueva. Nadie más (ni DerLabs) llega a conocer su clave.
+   El mensaje es siempre el mismo, exista o no la cuenta, para no revelar
+   qué correos están registrados. */
+function _agregarOlvideClave(){
+  const btn = qs("#loginBtn");
+  if (!btn || qs("#loginOlvido")) return;
+  const b = document.createElement("button");
+  b.id = "loginOlvido"; b.type = "button"; b.textContent = "¿Olvidaste tu contraseña?";
+  b.style.cssText = "display:block;margin:14px auto 0;background:none;border:0;color:inherit;opacity:.75;font-size:14px;text-decoration:underline;cursor:pointer";
+  btn.insertAdjacentElement("afterend", b);
+  b.addEventListener("click", async function(){
+    const email = qs("#loginEmail").value.trim();
+    const err = qs("#loginErr");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent = "Escribe tu correo arriba y vuelve a tocar aquí"; err.classList.add("show"); return; }
+    if (DEMO || !auth){ toast("Modo demo: no se envían correos"); return; }
+    b.disabled = true;
+    try { auth.languageCode = "es"; await auth.sendPasswordResetEmail(email); }
+    catch(e){ console.warn("reset clave:", e.code || e); }
+    err.textContent = "Si " + email + " tiene cuenta, te llegó un correo para crear una clave nueva (revisa también spam).";
+    err.classList.add("show");
+    setTimeout(function(){ b.disabled = false; }, 30000);
+  });
+}
+
 async function intentarLogin(){
   const email = qs("#loginEmail").value.trim();
   const pass  = qs("#loginPass").value;
@@ -3653,6 +3686,7 @@ function initDev(){
   });
 
   on("loginBtn", "click", intentarLogin);
+  _agregarOlvideClave();
   on("loginPass", "keydown", e => { if (e.key === "Enter") intentarLogin(); });
   on("loginModal", "click", e => { if (e.target === qs("#loginModal")) qs("#loginModal").classList.remove("open"); });
   on("btnSalirDev", "click", salirDev);

@@ -262,8 +262,9 @@ header p{color:var(--txt2);font-size:14px}
         <input type="email" id="fEmailProp" placeholder="dueño@sunegocio.cl">
       </div>
       <div class="campo">
-        <label for="fPassProp">Contraseña</label>
-        <input type="password" id="fPassProp" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+        <label for="fPassProp">Contraseña <span style="font-weight:400;opacity:.7">(recomendado: dejar vacía)</span></label>
+        <input type="password" id="fPassProp" placeholder="Vacía = el dueño crea su propia clave" autocomplete="new-password">
+        <div class="ayuda"><b>Déjala vacía:</b> le llega un correo al dueño para que él mismo cree su clave. Así tú nunca la conoces. Solo escribe una si el cliente no tiene acceso a su correo.</div>
         <div class="ayuda">Esta cuenta va a poder entrar al devmode de esta tienda y crear cupones, cambiar precios y ver la caja (ver LEEME.md, sección 8). <b>Si lo dejas en blanco, nadie va a poder entrar al devmode de esta tienda hasta que crees esta cuenta</b> — se puede hacer después a mano en Firebase Console, o volviendo a correr este formulario con el mismo dominio.</div>
       </div>
     </div>
@@ -631,7 +632,7 @@ qs("#formTienda").addEventListener("submit", async (e) => {
     estadoMsg.classList.add("error");
     return;
   }
-  if (emailPropietario && (!passwordPropietario || passwordPropietario.length < 6)){
+  if (emailPropietario && passwordPropietario && passwordPropietario.length < 6){
     estadoMsg.textContent = "Si vas a crear la cuenta de propietario, la contraseña debe tener al menos 6 caracteres.";
     estadoMsg.classList.add("error");
     return;
@@ -683,7 +684,9 @@ qs("#formTienda").addEventListener("submit", async (e) => {
     if (j.avisoPropietario){
       avisoProp = `<div class="estado-msg error" style="display:block;margin-top:10px">${j.avisoPropietario}</div>`;
     } else if (j.propietario){
-      avisoProp = `<p style="margin-top:8px">👤 Cuenta de propietario creada: <b>${j.propietario.email}</b></p>`;
+      avisoProp = `<p style="margin-top:8px">👤 Cuenta de propietario creada: <b>${j.propietario.email}</b></p>` +
+        (j.propietario.correoClave ? `<p style="margin-top:4px">📧 Le enviamos un correo para que cree su clave. Si no le llega, puede usar "¿Olvidaste tu contraseña?" en el acceso de administrador.</p>`
+          : (j.propietario.claveTemporal ? `<div class="estado-msg error" style="display:block;margin-top:10px">No se pudo enviar el correo para crear la clave. Pídele que use "¿Olvidaste tu contraseña?" en el acceso de administrador.</div>` : ""));
     }
 
     /* Suscripción mensual — opcional, solo si el vendedor completó el
