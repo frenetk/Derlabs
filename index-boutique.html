@@ -682,6 +682,12 @@ body:has(.ann.vacia) .hero{min-height:100svh}
 .hero-copy{position:relative;width:100%;max-width:var(--maxw);margin:0 auto;padding:0 var(--gutter) calc(48px + var(--safe-b));display:flex;flex-direction:column;align-items:flex-start;gap:16px}
 #heroBadge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;opacity:.95}
 #heroBadge:empty{display:none}
+/* Modo edición: un texto vacío NUNCA se oculta (si se oculta mientras se edita,
+   el navegador no avisa que se salió del campo y la edición queda trabada) */
+body.dev-on:not(.preview-cliente) [data-etype="text"]:empty,
+body.dev-on:not(.preview-cliente) [data-etype="text"].editing{display:inline-block!important;min-width:90px;min-height:1.2em}
+body.dev-on:not(.preview-cliente) [data-etype="text"]:empty:not(.editing)::before{content:"＋ Escribir texto";opacity:.6;font-style:italic;text-transform:none;letter-spacing:0}
+body.dev-on:not(.preview-cliente) .puntos:has(#puntosTitulo:empty){display:grid!important}
 #heroTitulo{max-width:14ch;font-family:var(--font-display);font-size:clamp(46px,13vw,128px);font-weight:400;line-height:.94;letter-spacing:-.015em;text-wrap:balance}
 #heroSub{max-width:40ch;font-size:16px;line-height:1.55;opacity:.92;text-wrap:pretty}
 #heroSub:empty{display:none}

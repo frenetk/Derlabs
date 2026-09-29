@@ -1038,6 +1038,7 @@ function renderAll(){
   renderCheckout();
   renderPanel();
   if (_sk("despuesRender")){ try { SKIN.despuesRender(); } catch(e){ console.warn("Plantilla:", e); } }
+  marcarTextosVacios();
   aplicarIconosGlobal(); // al final: cubre lo que todas las funciones de arriba acaban de generar
 }
 
@@ -3646,12 +3647,25 @@ function iniciarEdicion(el){
     const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
   } catch(e){}
 
+  /* Si se borra todo el texto, el campo no debe desaparecer (quedaba de ancho 0,
+     sin poder tocarlo y con la edición trabada): se marca como vacío y se ve un aviso */
+  el.classList.toggle("edit-vacio", !el.textContent.trim());
+  const onInput = () => el.classList.toggle("edit-vacio", !el.textContent.trim());
+  /* En celular, tocar fuera de un texto editable no siempre lo "suelta": se fuerza */
+  const onFuera = ev => {
+    if (el.contains(ev.target)) return;
+    if (document.activeElement === el) el.blur();
+    else { limpiar(); finalizar(); }
+  };
   const onKey = ev => {
     if (ev.key === "Enter"){ ev.preventDefault(); el.blur(); }
     else if (ev.key === "Escape"){ ev.preventDefault(); limpiar(); cancelar(); }
   };
   const onBlur = () => { limpiar(); finalizar(); };
-  function limpiar(){ el.removeEventListener("keydown", onKey); el.removeEventListener("blur", onBlur); }
+  function limpiar(){
+    el.removeEventListener("keydown", onKey); el.removeEventListener("blur", onBlur);
+    el.removeEventListener("input", onInput); document.removeEventListener("pointerdown", onFuera, true);
+  }
   function cancelar(){
     el.contentEditable = "false";
     el.classList.remove("editing");
@@ -3659,8 +3673,10 @@ function iniciarEdicion(el){
     renderAll();
   }
   async function finalizar(){
+    if (!editing) return;
     el.contentEditable = "false";
     const texto = el.textContent.trim();
+    if (!texto) el.textContent = "";
     const original = el.dataset.original;
     editing = false;
     if (texto === original){ el.classList.remove("editing"); pendingRender = false; renderAll(); return; }
@@ -3673,6 +3689,21 @@ function iniciarEdicion(el){
   }
   el.addEventListener("keydown", onKey);
   el.addEventListener("blur", onBlur);
+  el.addEventListener("input", onInput);
+  setTimeout(() => { if (editing) document.addEventListener("pointerdown", onFuera, true); }, 0);
+}
+/* Textos editables vacíos: en modo edición se ven con un aviso para poder volver a escribirlos */
+(function(){
+  try {
+    const st = document.createElement("style");
+    st.textContent = 'body.dev-on:not(.preview-cliente) .edit-vacio{display:inline-block!important;min-width:110px;min-height:1.2em;outline:1px dashed currentColor;outline-offset:3px}' +
+      'body.dev-on:not(.preview-cliente) .edit-vacio:not(.editing)::before{content:"＋ Escribir texto";opacity:.65;font-style:italic;text-transform:none;letter-spacing:0}';
+    document.head.appendChild(st);
+  } catch(e){}
+})();
+function marcarTextosVacios(){
+  if (!document.body.classList.contains("dev-on")) return;
+  qsa('[data-ecol][data-etype="text"]').forEach(function(x){ if (!x.classList.contains("editing")) x.classList.toggle("edit-vacio", !x.textContent.trim()); });
 }
 
 function initDev(){
