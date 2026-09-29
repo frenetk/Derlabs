@@ -14,6 +14,7 @@
    internamente, para las notification_url que arma MercadoPago). */
 
 import { ping } from "./functions/ping.js";
+import { recuperarClave } from "./functions/recuperarClave.js";
 import { manifestTienda } from "./functions/manifestTienda.js";
 import { crearTienda } from "./functions/crearTienda.js";
 import { listarSuscripciones } from "./functions/listarSuscripciones.js";
@@ -39,6 +40,7 @@ const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
    enrutamiento en dos lugares distintos (ruta vieja y ruta nueva). */
 const FUNCIONES = {
   ping,
+  recuperarClave,
   manifestTienda,
   crearTienda,
   listarSuscripciones,

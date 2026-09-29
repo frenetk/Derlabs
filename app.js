@@ -3549,8 +3549,14 @@ function _agregarOlvideClave(){
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent = "Escribe tu correo arriba y vuelve a tocar aquí"; err.classList.add("show"); return; }
     if (DEMO || !auth){ toast("Modo demo: no se envían correos"); return; }
     b.disabled = true;
-    try { auth.languageCode = "es"; await auth.sendPasswordResetEmail(email); }
-    catch(e){ console.warn("reset clave:", e.code || e); }
+    try {
+      const r = await fetch("/api/recuperarClave", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, tienda: (state.config && state.config.nombre) || "", dominio: location.hostname }) });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+    } catch(e){
+      console.warn("reset clave:", e.message || e);
+      try { auth.languageCode = "es"; await auth.sendPasswordResetEmail(email); } catch(e2){}
+    }
     err.textContent = "Si " + email + " tiene cuenta, te llegó un correo para crear una clave nueva (revisa también spam).";
     err.classList.add("show");
     setTimeout(function(){ b.disabled = false; }, 30000);

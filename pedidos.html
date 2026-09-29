@@ -1337,8 +1337,12 @@ function limpiarPendientesVencidos(){
 qs("#btnOlvido").addEventListener("click", function(){
   var email = qs("#loginEmail").value.trim(), err = qs("#loginErr"), b = this;
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent = "Escribe tu correo arriba y vuelve a tocar aquí."; return; }
-  b.disabled = true; auth.languageCode = "es";
-  auth.sendPasswordResetEmail(email).catch(function(e){ console.warn("reset clave:", e.code || e); }).then(function(){
+  b.disabled = true;
+  fetch("/api/recuperarClave", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email, tienda: (qs("#hTiendaNombre") && qs("#hTiendaNombre").textContent) || "", dominio: location.hostname }) })
+  .then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); })
+  .catch(function(e){ console.warn("reset clave:", e.message || e); auth.languageCode = "es"; return auth.sendPasswordResetEmail(email).catch(function(){}); })
+  .then(function(){
     err.textContent = "Si " + email + " tiene cuenta, te llegó un correo para crear una clave nueva (revisa también spam).";
     setTimeout(function(){ b.disabled = false; }, 30000);
   });
