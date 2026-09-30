@@ -224,6 +224,13 @@ async function servirEditorLanding(request, env){
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
+function tiendaNoEncontrada(){
+  const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Tienda no encontrada</title>'
+    + '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#F6F5FB;color:#1B1B21;text-align:center;padding:24px}a{color:#6C5CE7;font-weight:700}</style></head>'
+    + '<body><div><h1 style="font-size:24px">Esta tienda no existe</h1><p>Revisa que la dirección esté bien escrita.</p><p><a href="https://derlabs.cl">¿Quieres tu propia tienda? Conoce DerLabs →</a></p></div></body></html>';
+  return new Response(html, { status: 404, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -298,6 +305,8 @@ export default {
            automáticamente, así que hay que reescribir la URL acá. */
         /* Elegir template segun rubro */
         const cfgTpl = await leerConfigTenant(url.hostname, env, ctx);
+        /* Subdominio *.derlabs.store que no corresponde a ninguna tienda */
+        if (!cfgTpl && url.hostname.endsWith(".derlabs.store")) return tiendaNoEncontrada();
         const archivoTpl = archivoPlantilla(cfgTpl);
 
         const urlIndex = new URL(request.url);

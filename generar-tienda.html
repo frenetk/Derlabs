@@ -173,6 +173,10 @@ header p{color:var(--txt2);font-size:14px}
 .opcional-bloque{display:none}
 .opcional-bloque.abierto{display:block}
 </style>
+<style id="p20-dom">
+.modo-dom{flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
+.modo-dom.activo{background:#6C5CE7;border-color:#6C5CE7;color:#fff}
+</style>
 </head>
 <body>
 
@@ -256,8 +260,12 @@ header p{color:var(--txt2);font-size:14px}
 
     <div class="campo">
       <label for="fHostname">Dominio del cliente</label>
-      <input type="text" id="fHostname" placeholder="pizzeriajuan.cl" required>
-      <div class="ayuda">Sin "https://" ni barra final. El DNS y el alta en Netlify siguen siendo manuales (ver LEEME.md) — esto solo registra el mapeo dominio → tienda en la base de datos.</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <button type="button" id="btnModoSub" class="modo-dom activo">🌐 Subdominio gratis</button>
+        <button type="button" id="btnModoPropio" class="modo-dom">Dominio propio</button>
+      </div>
+      <input type="text" id="fHostname" placeholder="pizzeriajuan.derlabs.store" required>
+      <div class="ayuda" id="ayudaDom">Queda en <b>nombre.derlabs.store</b> y funciona al instante, sin configurar nada. Puedes editar la parte antes del punto.</div>
     </div>
 
     <button type="button" class="opcional-toggle" id="toggleOpcional">+ Crear también la cuenta de propietario ahora</button>
@@ -768,6 +776,45 @@ qs("#formTienda").addEventListener("submit", async (e) => {
     btn.disabled = false; btn.textContent = "Crear tienda";
   }
 });
+</script>
+<script id="p20-subdominio">
+/* P20: subdominio automático nombre.derlabs.store (el Worker atiende *.derlabs.store) */
+(function(){
+  var RES = ["www","api","app","admin","mail","derlabs","panel","static","cdn","ftp","delivery","caja","cocina"];
+  var campo = document.getElementById("fHostname"), nom = document.getElementById("fNombre");
+  var bSub = document.getElementById("btnModoSub"), bPro = document.getElementById("btnModoPropio"), ay = document.getElementById("ayudaDom");
+  if (!campo || !nom || !bSub) return;
+  var modo = "sub", tocado = false;
+  function slug(t){
+    var s = String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/&/g, "y").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+    if (RES.indexOf(s) > -1) s += "-tienda";
+    return s;
+  }
+  function sugerir(){ if (modo === "sub" && !tocado){ var s = slug(nom.value); campo.value = s ? s + ".derlabs.store" : ""; } }
+  function poner(m){
+    modo = m; tocado = false;
+    bSub.classList.toggle("activo", m === "sub"); bPro.classList.toggle("activo", m !== "sub");
+    if (m === "sub"){
+      campo.placeholder = "pizzeriajuan.derlabs.store";
+      ay.innerHTML = 'Queda en <b>nombre.derlabs.store</b> y funciona al instante, sin configurar nada. Puedes editar la parte antes del punto.';
+      sugerir();
+    } else {
+      campo.placeholder = "pizzeriajuan.cl"; campo.value = "";
+      ay.innerHTML = 'Sin "https://" ni barra final. El dominio del cliente se conecta en Cloudflare (Workers → derlabs-worker → Domains → Add custom domain).';
+    }
+  }
+  bSub.addEventListener("click", function(){ poner("sub"); });
+  bPro.addEventListener("click", function(){ poner("propio"); });
+  nom.addEventListener("input", sugerir);
+  campo.addEventListener("input", function(){ tocado = true; });
+  campo.addEventListener("blur", function(){
+    if (modo !== "sub") return;
+    var v = campo.value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/\.derlabs\.store$/, "");
+    v = slug(v); campo.value = v ? v + ".derlabs.store" : "";
+  });
+  sugerir();
+})();
 </script>
 </body>
 </html>
