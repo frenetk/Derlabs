@@ -1250,6 +1250,8 @@ function renderPromos(){
   const bloque = qs("#bloquePromos");
   const scroll = qs("#promoScroll");
   if (!bloque || !scroll) return;
+  /* P18: banners promocionales retirados (no aportaban) */
+  bloque.style.display = "none"; scroll.innerHTML = ""; return;
   const hoy = new Date().toISOString().slice(0, 10);
   const activos = (Array.isArray(state.config.banners) ? state.config.banners : [])
     .filter(b => b && (b.titulo || b.subtitulo))
@@ -4884,6 +4886,43 @@ function _doCerrarPanel(){
 
 /* La tienda ya no configura Resend: DerLabs envía los correos con el nombre
    de la tienda. Solo queda "Correo donde recibes los pedidos". */
+/* P18: quita del devmode lo que no se usa: Promos (banners), Backend Netlify
+   Functions y Mensajes automáticos. Funciona en las 3 plantillas. */
+function limpiarPanelDev(){
+  try {
+    function ocultar(el){ if (el) el.style.display = "none"; }
+    /* Oculta un título y sus hermanos hasta el siguiente título del mismo nivel */
+    function ocultarBloque(h){
+      if (!h) return; ocultar(h);
+      var n = h.nextElementSibling;
+      while (n && !/^H[1-4]$/.test(n.tagName)){ ocultar(n); n = n.nextElementSibling; }
+    }
+    function tituloCon(sel, re){
+      return Array.prototype.find.call(document.querySelectorAll(sel), function(h){ return re.test(h.textContent || ""); });
+    }
+    /* Promos */
+    ocultar(qs('.ptab[data-pt="promos"]'));
+    var pp = qs("#pt-promos"); if (pp){ pp.classList.remove("active"); ocultar(pp); }
+    /* Netlify Functions */
+    var fu = qs("#pFunctionsUrl");
+    if (fu){
+      var card = fu.closest(".acard");
+      if (card && !card.querySelector("#mpToken")) ocultar(card);
+      else ocultarBloque(tituloCon("#pt-pagos h4", /netlify|backend/i));
+    }
+    Array.prototype.forEach.call(document.querySelectorAll("#pt-pagos .pnota"), function(p){
+      if (/netlify/i.test(p.textContent || "")) p.textContent = "El token se usa solo en el servidor: nunca llega al navegador de tus clientes.";
+    });
+    /* Mensajes automáticos */
+    var mc = qs("#msjConf");
+    if (mc){
+      var c2 = mc.closest(".acard");
+      if (c2 && !c2.querySelector("#pWhats")) ocultar(c2);
+      else ocultarBloque(tituloCon("#pt-envio h4", /mensajes autom/i));
+    }
+  } catch(e){ console.warn("limpiarPanelDev:", e); }
+}
+
 function simplificarTabEmails(){
   try {
     var tab = qs("#pt-emails"); if (!tab) return;
@@ -5502,6 +5541,7 @@ function initPanel(){
     t.style.textSecurity        = oculto ? "none" : "disc";
   });
   simplificarTabEmails();
+  limpiarPanelDev();
   const _btnGE = qs("#btnGuardarEmails");
   if (_btnGE) _btnGE.addEventListener("click", async function(){
     const est = qs("#emailEstado");
