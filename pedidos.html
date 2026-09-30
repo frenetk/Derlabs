@@ -1488,7 +1488,7 @@ function iniciarListenerPedidos(){
         snap.docChanges().forEach(function(change){
           if(change.type === "added"){
             var d = change.doc.data();
-            if(d.estado === "nuevo") nuevosIds.push(d.id || change.doc.id);
+            if(d.estado === "nuevo" && d.canal !== "local") nuevosIds.push(d.id || change.doc.id);
           }
           if(change.type === "modified"){
             var dm = change.doc.data(), evm = dm.envio || {}, prev = _envioPrev[change.doc.id] || {};
@@ -1501,12 +1501,14 @@ function iniciarListenerPedidos(){
         });
       }
 
+      /* Los pedidos de la Caja local (mesas / para llevar en el local) se manejan
+         en /caja y /cocina: el gestor muestra solo la tienda online y su delivery */
       _pedidos = snap.docs.map(function(doc){
         var d = doc.data();
         d._docId = doc.id;
         if(!d.id) d.id = doc.id;
         return d;
-      });
+      }).filter(function(d){ return d.canal !== "local"; });
 
       _pedidos.forEach(function(p){ _envioPrev[p._docId] = p.envio || {}; });
       _primeraCarga = false;

@@ -19,7 +19,7 @@ self.addEventListener("activate", function(e){ e.waitUntil(clients.claim()); });
    dirección, teléfono ni email. */
 async function ultimoPedido(){
   try {
-    const r = await fetch("/.netlify/functions/ultimoPedido?hostname=" + encodeURIComponent(self.location.hostname));
+    const r = await fetch("/api/ultimoPedido?hostname=" + encodeURIComponent(self.location.hostname) + "&t=" + Date.now(), { cache: "no-store" });
     const j = await r.json();
     return (j && j.ok && j.pedido) ? j.pedido : null;
   } catch(e){

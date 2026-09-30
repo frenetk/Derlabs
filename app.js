@@ -5854,7 +5854,8 @@ function escucharPedidos(){
     .orderBy("fecha", "desc").limit(200)
     .onSnapshot(function(s){
       const arr = [];
-      s.forEach(function(d){ arr.push(Object.assign({ id: d.id }, d.data())); });
+      /* Los pedidos de la Caja local (mesas / para llevar) tienen su propio sistema */
+      s.forEach(function(d){ const x = d.data(); if (x.canal !== "local") arr.push(Object.assign({ id: d.id }, x)); });
       state.pedidos = arr;
       renderListaPedidos(arr.slice(0,50));
       if (window._renderFinanzas) window._renderFinanzas();
@@ -6310,8 +6311,13 @@ function _campoDepto(refCampo, inputRef, id, idWrap){
   var inp = document.createElement("input");
   inp.type = "text"; inp.id = id; inp.className = inputRef.className; inp.maxLength = 60;
   inp.autocomplete = "address-line2";
-  inp.placeholder = "Ej: Depto 1203, Torre B · Casa 5 · Condominio Los Robles";
-  w.appendChild(lbl); w.appendChild(inp);
+  /* Plantillas con "etiqueta flotante" (placeholder=" " y la etiqueta DESPUÉS del
+     campo): se respeta ese mismo formato, si no el texto de ejemplo se encima */
+  var phRef = inputRef.getAttribute("placeholder");
+  var flotante = phRef != null && phRef.trim() === "";
+  inp.placeholder = flotante ? phRef : "Ej: Depto 1203, Torre B · Casa 5 · Condominio Los Robles";
+  var inputPrimero = lblRef ? !!(inputRef.compareDocumentPosition(lblRef) & Node.DOCUMENT_POSITION_FOLLOWING) : false;
+  if (inputPrimero){ w.appendChild(inp); w.appendChild(lbl); } else { w.appendChild(lbl); w.appendChild(inp); }
   refCampo.parentNode.insertBefore(w, refCampo.nextSibling);
   return inp;
 }
@@ -6346,7 +6352,8 @@ function instalarCamposComunes(){
         lr.textContent = "Referencias para el repartidor ";
         if (opc){ opc.textContent = "(opcional)"; lr.appendChild(opc); } else lr.textContent += "(opcional)";
       }
-      fr.placeholder = "Ej: portón negro, timbre 2, dejar en conserjería";
+      var phR = fr.getAttribute("placeholder");
+      if (!(phR != null && phR.trim() === "")) fr.placeholder = "Ej: portón negro, timbre 2, dejar en conserjería";
     }
     _avisoDatos(qs("#btnConfirmar"), "avisoDatosCk");
     var di = qs("#dirInput");
