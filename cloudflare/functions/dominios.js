@@ -22,7 +22,9 @@ import { getDb, uidDesdeToken, autorizarDominio } from "./_firebase.js";
 
 const H = { "Content-Type": "application/json", "Cache-Control": "no-store" };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: H });
-const SERVICIO = "derlabs-worker";
+const SERVICIO_DEF = "derlabs-worker";
+/* Nombre real del Worker en Cloudflare: se detecta solo (no siempre coincide con wrangler.toml) */
+let SERVICIO = null, SERVICIO_ORIGEN = "";
 const CF = "https://api.cloudflare.com/client/v4";
 
 /* Dominios propios de DerLabs que siempre deben apuntar al Worker */
@@ -81,10 +83,34 @@ async function limpiarRegistrosWeb(env, zoneId, dominio){
 
 /* Lista todos los dominios personalizados de la cuenta y filtra los de este Worker
    (el filtro ?service= de la API no es confiable en Workers sin "environments"). */
+async function detectarServicio(env, todos){
+  if (SERVICIO) return SERVICIO;
+  if (env.WORKER_NAME){ SERVICIO = env.WORKER_NAME; SERVICIO_ORIGEN = "variable WORKER_NAME"; return SERVICIO; }
+  const base = (todos || []).find(d => BASE_DOMINIOS.includes(d.hostname) && d.service);
+  if (base){ SERVICIO = base.service; SERVICIO_ORIGEN = "dominio " + base.hostname; return SERVICIO; }
+  /* Rutas existentes en las zonas base (ej. *.derlabs.store/* creada por el deploy anterior) */
+  for (const zn of ["derlabs.store", "derlabs.online", "derlabs.cl"]){
+    const rz = await cf(env, "GET", "/zones?name=" + zn + "&account.id=" + env.CF_ACCOUNT_ID);
+    const zid = rz.ok && rz.j.result && rz.j.result[0] && rz.j.result[0].id;
+    if (!zid) continue;
+    const rr = await cf(env, "GET", "/zones/" + zid + "/workers/routes");
+    const conScript = ((rr.ok && rr.j.result) || []).find(x => x.script);
+    if (conScript){ SERVICIO = conScript.script; SERVICIO_ORIGEN = "ruta " + conScript.pattern; return SERVICIO; }
+  }
+  const rs = await cf(env, "GET", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/scripts");
+  const scripts = ((rs.ok && rs.j.result) || []).map(x => x.id).filter(Boolean);
+  const candidatos = scripts.filter(n => /derlabs/i.test(n));
+  if (candidatos.length === 1){ SERVICIO = candidatos[0]; SERVICIO_ORIGEN = "único Worker con 'derlabs'"; return SERVICIO; }
+  if (scripts.length === 1){ SERVICIO = scripts[0]; SERVICIO_ORIGEN = "único Worker de la cuenta"; return SERVICIO; }
+  if (scripts.includes(SERVICIO_DEF)){ SERVICIO = SERVICIO_DEF; SERVICIO_ORIGEN = "wrangler.toml"; return SERVICIO; }
+  SERVICIO_ORIGEN = "no se pudo detectar (Workers en la cuenta: " + (scripts.join(", ") || "ninguno visible") + ")";
+  return null;
+}
 async function listarDominiosWorker(env){
   const r = await cf(env, "GET", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains");
   const todos = (r.ok && r.j.result) || [];
-  return { ok: r.ok, r, lista: todos.filter(d => !d.service || d.service === SERVICIO) };
+  const srv = await detectarServicio(env, todos);
+  return { ok: r.ok, r, todos, servicio: srv, lista: todos.filter(d => d.service === srv) };
 }
 async function dominiosDelWorker(env){
   const x = await listarDominiosWorker(env);
@@ -92,6 +118,8 @@ async function dominiosDelWorker(env){
 }
 
 async function conectarAlWorker(env, zoneId, hostname){
+  if (!SERVICIO) await detectarServicio(env, null);
+  if (!SERVICIO) throw new Error("No se pudo detectar el nombre del Worker: " + SERVICIO_ORIGEN);
   let r = await cf(env, "PUT", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains", { hostname, service: SERVICIO, zone_id: zoneId });
   if (!r.ok && /environment/i.test(errCF(r).message || ""))
     r = await cf(env, "PUT", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains", { hostname, service: SERVICIO, zone_id: zoneId, environment: "production" });
@@ -174,7 +202,9 @@ export async function asegurarDominios(env, db, inf){
   inf = inf || [];
   const ld = await listarDominiosWorker(env);
   const lista = { ok: ld.ok };
-  inf.push({ paso: "leer dominios del Worker", ok: ld.ok, detalle: ld.ok ? (ld.lista.length + " conectados: " + ld.lista.map(d => d.hostname).join(", ")) : (errCF(ld.r).message || ("HTTP " + ld.r.status)) });
+  inf.push({ paso: "Worker detectado", ok: !!ld.servicio, detalle: (ld.servicio || "—") + " (" + SERVICIO_ORIGEN + ")" });
+  if (!ld.servicio) return inf;
+  inf.push({ paso: "leer dominios del Worker", ok: ld.ok, detalle: ld.ok ? (ld.lista.length + " conectados: " + ld.lista.map(d => d.hostname).join(", ") + (ld.todos.length > ld.lista.length ? " · otros en la cuenta: " + ld.todos.filter(d => d.service !== ld.servicio).map(d => d.hostname + "→" + d.service).join(", ") : "")) : (errCF(ld.r).message || ("HTTP " + ld.r.status)) });
   const conectados = new Set(ld.lista.map(d => d.hostname));
   const zonas = {};
   const zonaId = async (nombre) => {
