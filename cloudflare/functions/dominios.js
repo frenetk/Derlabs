@@ -79,14 +79,22 @@ async function limpiarRegistrosWeb(env, zoneId, dominio){
   }
 }
 
+/* Lista todos los dominios personalizados de la cuenta y filtra los de este Worker
+   (el filtro ?service= de la API no es confiable en Workers sin "environments"). */
+async function listarDominiosWorker(env){
+  const r = await cf(env, "GET", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains");
+  const todos = (r.ok && r.j.result) || [];
+  return { ok: r.ok, r, lista: todos.filter(d => !d.service || d.service === SERVICIO) };
+}
 async function dominiosDelWorker(env){
-  const r = await cf(env, "GET", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains?service=" + SERVICIO);
-  return new Set(((r.ok && r.j.result) || []).map(d => d.hostname));
+  const x = await listarDominiosWorker(env);
+  return new Set(x.lista.map(d => d.hostname));
 }
 
 async function conectarAlWorker(env, zoneId, hostname){
-  const r = await cf(env, "PUT", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains",
-    { environment: "production", hostname, service: SERVICIO, zone_id: zoneId });
+  let r = await cf(env, "PUT", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains", { hostname, service: SERVICIO, zone_id: zoneId });
+  if (!r.ok && /environment/i.test(errCF(r).message || ""))
+    r = await cf(env, "PUT", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains", { hostname, service: SERVICIO, zone_id: zoneId, environment: "production" });
   if (!r.ok) throw new Error("No se pudo conectar " + hostname + ": " + (errCF(r).message || r.status));
 }
 
@@ -164,9 +172,10 @@ export async function revisarDominios(env){
 
 export async function asegurarDominios(env, db, inf){
   inf = inf || [];
-  const lista = await cf(env, "GET", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains?service=" + SERVICIO);
-  inf.push({ paso: "leer dominios del Worker", ok: lista.ok, detalle: lista.ok ? ((lista.j.result || []).length + " conectados") : (errCF(lista).message || ("HTTP " + lista.status)) });
-  const conectados = new Set(((lista.ok && lista.j.result) || []).map(d => d.hostname));
+  const ld = await listarDominiosWorker(env);
+  const lista = { ok: ld.ok };
+  inf.push({ paso: "leer dominios del Worker", ok: ld.ok, detalle: ld.ok ? (ld.lista.length + " conectados: " + ld.lista.map(d => d.hostname).join(", ")) : (errCF(ld.r).message || ("HTTP " + ld.r.status)) });
+  const conectados = new Set(ld.lista.map(d => d.hostname));
   const zonas = {};
   const zonaId = async (nombre) => {
     if (!(nombre in zonas)){
@@ -187,7 +196,7 @@ export async function asegurarDominios(env, db, inf){
   for (const r of BASE_RUTAS){
     const id = await zonaId(r.zona); if (!id) continue;
     const lr = await cf(env, "GET", "/zones/" + id + "/workers/routes");
-    if (!lr.ok){ inf.push({ paso: "ruta " + r.patron, ok: false, detalle: "no se pudo leer: " + (errCF(lr).message || ("HTTP " + lr.status)) }); continue; }
+    if (!lr.ok){ const m = errCF(lr).message || ("HTTP " + lr.status); inf.push({ paso: "ruta " + r.patron, ok: false, detalle: m + (/access|auth/i.test(m) ? " → al token le falta Zone · Workers Routes · Edit (en todas las zonas de la cuenta)" : "") }); continue; }
     const ex = (lr.j.result || []).find(x => x.pattern === r.patron);
     if (ex && ex.script === SERVICIO){ inf.push({ paso: "ruta " + r.patron, ok: true, detalle: "existe" }); continue; }
     const cr = ex
