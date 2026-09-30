@@ -1184,6 +1184,9 @@ function renderInicio(){
 
   /* 🛵 Banner de pedido en curso (2D) */
   renderBannerPedidoActivo();
+
+  /* P22: vitrina "App" (solo plantilla de comida; "Clásico" la desmonta) */
+  vitrinaApp();
 }
 
 /* Resuelve el producto de un slot destacado: id configurado o fallback por orden */
@@ -5551,6 +5554,7 @@ function initPanel(){
   });
   simplificarTabEmails();
   limpiarPanelDev();
+  instalarPanelVitrina();
   const _btnGE = qs("#btnGuardarEmails");
   if (_btnGE) _btnGE.addEventListener("click", async function(){
     const est = qs("#emailEstado");
@@ -6926,3 +6930,399 @@ window.addEventListener("pageshow", function(e){
      5. En devmode → Pagos, guardar el Access Token de MercadoPago
      6. En devmode → Emails, guardar la Resend API Key
    ════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════
+   P22 — VITRINA "App" para la plantilla de comida (index.html)
+   Estilos: config.estiloComida = "app" (por defecto) | "clasico"
+   (el diseño anterior, intacto). Todo se monta/desmonta desde aquí,
+   sin tocar index.html. No aplica a retail ni Tienda Pro.
+   ════════════════════════════════════════════════════════════════ */
+var _vt = { montada: false, heroPadre: null, heroSig: null, timer: null, pausaHasta: 0, dirSel: null };
+function _vtEsComida(){ return !window.DERLABS_SKIN && !!qs("#page-inicio") && !!qs(".hero"); }
+function _vtEstilo(){ return (state.config && state.config.estiloComida) === "clasico" ? "clasico" : "app"; }
+function _vtKey(k){ return "dl_" + k + "_" + (typeof STORE_ID !== "undefined" ? STORE_ID : ""); }
+function _vtLS(k, v){ try { if (v === undefined) return JSON.parse(localStorage.getItem(_vtKey(k)) || "null"); localStorage.setItem(_vtKey(k), JSON.stringify(v)); } catch(e){ return null; } }
+var _VT_IC = {
+  scooter: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h6l2-7h3"/><path d="M5 11h6l2 3"/><path d="M14 6h3"/>',
+  store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>',
+  share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>',
+  star: '<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+  headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/><path d="M19 20c0 1-2 2-5 2"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+  phone: '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+  bag: '<path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  flame: '<path d="M12 3c3 4 5 6.5 5 10a5 5 0 0 1-10 0c0-2.2 1.2-3.8 2.5-5.2.3 1.6 1 2.4 2 2.7C11 8 11 5.5 12 3z"/>'
+};
+function _vtI(n, s, w){ return '<svg viewBox="0 0 24 24" width="' + (s||18) + '" height="' + (s||18) + '" fill="none" stroke="currentColor" stroke-width="' + (w||2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + _VT_IC[n] + '</svg>'; }
+
+function _vtCss(){
+  if (qs("#vtCss")) return;
+  var st = document.createElement("style"); st.id = "vtCss";
+  st.textContent = [
+    "body.v-app .wrapper{position:relative}",
+    "body.v-app[data-page='inicio'] .navbar{position:absolute;left:0;right:0;top:0;background:transparent;box-shadow:none;z-index:40;pointer-events:none}",
+    "body.v-app[data-page='inicio'] .navbar .nav-icon{pointer-events:auto;background:rgba(255,255,255,.95);width:40px;height:40px;color:#1A1A1A;box-shadow:0 6px 18px rgba(0,0,0,.2)}",
+    "body.v-app[data-page='inicio'] #logoTop, body.v-app[data-page='inicio'] #btnBack{visibility:hidden}",
+    "body:not(.v-app) #vtCab, body:not(.v-app) #vtCarrWrap, body:not(.v-app) #vtAyuda, body:not(.v-app) .vt-firma{display:none!important}",
+    "body.v-app .puntos-banner, body.v-app .vt-oculto-app{display:none!important}",
+    "#vtCab{position:relative;margin:0 0 4px}",
+    ".vt-portada{position:relative;height:196px;overflow:hidden;background:#E8E4E1}",
+    ".vt-portada img{width:100%;height:100%;object-fit:cover;display:block}",
+    ".vt-corte{position:absolute;left:0;bottom:-1px;width:100%;height:60px;fill:#fff}",
+    ".vt-ficha{position:relative;display:flex;align-items:flex-start;gap:10px;margin-top:-22px;padding:0 16px 0 114px;min-height:52px}",
+    ".vt-icono{position:absolute;left:16px;top:-38px;width:84px;height:84px;border-radius:24px;background:#fff;border:1px solid #F0E8E3;box-shadow:0 10px 24px rgba(0,0,0,.16);display:flex;align-items:center;justify-content:center;overflow:hidden}",
+    ".vt-icono img{width:100%;height:100%;object-fit:contain;padding:10px;box-sizing:border-box}",
+    ".vt-icono .vt-inicial{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:40px;color:var(--rojo)}",
+    ".vt-idn{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}",
+    ".vt-nombre{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;font-size:29px;line-height:.95;color:var(--rojo);letter-spacing:.2px;overflow-wrap:anywhere}",
+    ".vt-estado{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#E9F5EC;color:var(--verde,#1E7B3C)}",
+    ".vt-estado::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}",
+    ".vt-estado.cerr{background:#FDECEC;color:#B42318}",
+    ".vt-share{flex:none;margin-top:2px;width:38px;height:38px;border-radius:50%;border:1.5px solid #EEE;background:#fff;display:flex;align-items:center;justify-content:center;color:#1A1A1A;cursor:pointer}",
+    ".vt-bloque{padding:12px 16px 0;display:flex;flex-direction:column;gap:10px}",
+    ".vt-pts{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#1A1A1A}",
+    ".vt-pts svg{color:#B8860B;flex:none}.vt-pts b{color:var(--rojo)}",
+    ".vt-ctrl{display:flex;gap:8px}",
+    ".vt-seg{flex:1;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;background:var(--crema,#FBF7F5);border-radius:999px;padding:3px}",
+    ".vt-seg button{height:40px;border:0;border-radius:999px;background:transparent;color:#1A1A1A;font:inherit;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}",
+    ".vt-seg button.on{background:var(--rojo);color:var(--rojo-texto,#fff);font-weight:800}",
+    ".vt-tiempo{flex:none;height:46px;padding:0 14px;border-radius:999px;background:var(--crema,#FBF7F5);display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:800;color:#1A1A1A}",
+    ".vt-tiempo svg{color:var(--rojo)}",
+    ".vt-dir{display:flex;align-items:center;gap:10px;width:100%;height:48px;padding:0 12px 0 5px;border-radius:999px;border:1.5px solid #EFE6E0;background:#fff;color:#1A1A1A;font:inherit;cursor:pointer;text-align:left}",
+    ".vt-dir-ico{flex:none;width:38px;height:38px;border-radius:50%;background:var(--rojo);color:#fff;display:flex;align-items:center;justify-content:center}",
+    ".vt-dir-txt{flex:1;min-width:0;display:flex;flex-direction:column}",
+    ".vt-dir-txt b{font-size:14.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".vt-dir-txt small{font-size:11.5px;color:var(--muted);font-weight:600}",
+    ".vt-dir > svg{color:#999;flex:none}",
+    "#vtCarrWrap{padding:18px 0 0}",
+    ".vt-tit{display:flex;align-items:flex-end;justify-content:space-between;padding:0 20px 10px}",
+    ".vt-tit h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;font-size:26px}",
+    ".vt-tit button{border:0;background:none;color:var(--rojo);font:inherit;font-size:13px;font-weight:800;cursor:pointer}",
+    ".vt-carr{position:relative}",
+    ".vt-track{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 16px;scrollbar-width:none;-webkit-overflow-scrolling:touch}",
+    ".vt-track::-webkit-scrollbar{display:none}",
+    ".vt-track > *{flex:0 0 calc(100% - 44px);scroll-snap-align:center;margin:0!important;height:200px!important;border-radius:22px!important}",
+    ".vt-segs{position:absolute;left:30px;right:58px;top:12px;display:flex;gap:5px;z-index:5;pointer-events:none}",
+    ".vt-segs span{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.4)}",
+    ".vt-segs span.on{background:rgba(255,255,255,.95)}",
+    ".vt-dots{display:flex;justify-content:center;gap:6px;padding-top:12px}",
+    ".vt-dots span{width:6px;height:6px;border-radius:6px;background:#E4D9D3;transition:width .25s}",
+    ".vt-dots span.on{width:20px;background:var(--rojo)}",
+    ".vt-slide{position:relative;overflow:hidden;background:#2A2320;cursor:pointer}",
+    ".vt-slide img{width:100%;height:100%;object-fit:cover;display:block}",
+    ".vt-slide::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 28%,rgba(0,0,0,.74) 100%)}",
+    ".vt-sl-txt{position:absolute;left:16px;right:16px;bottom:14px;z-index:2;display:flex;flex-direction:column;gap:6px;align-items:flex-start}",
+    ".vt-sl-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:var(--crema,#FBF7F5);color:var(--rojo);font-size:11.5px;font-weight:800}",
+    ".vt-sl-tit{font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;font-size:32px;line-height:.95;color:#fff}",
+    ".vt-sl-row{align-self:stretch;display:flex;align-items:center;justify-content:space-between;gap:10px}",
+    ".vt-sl-desc{font-size:12.5px;font-weight:600;color:rgba(255,255,255,.88);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+    ".vt-sl-add{flex:none;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:0;border-radius:999px;background:#fff;color:var(--rojo);font:inherit;font-size:13.5px;font-weight:800;cursor:pointer}",
+    "#vtAyuda{position:fixed;left:max(16px, calc(50% - 240px + 16px));bottom:calc(var(--tab-h) + 14px);z-index:138;height:48px;padding:0 16px 0 6px;border-radius:999px;border:0;background:#fff;display:flex;align-items:center;gap:8px;color:#1A1A1A;font:inherit;font-size:14px;font-weight:800;box-shadow:0 10px 26px rgba(0,0,0,.16);cursor:pointer}",
+    "body:not([data-page='inicio']):not([data-page='menu']) #vtAyuda{display:none}",
+    "#vtAyuda .vt-ay-ic{position:relative;width:36px;height:36px;border-radius:50%;background:var(--crema,#FBF7F5);color:var(--rojo);display:flex;align-items:center;justify-content:center}",
+    "#vtAyuda .vt-ay-ic::after{content:'';position:absolute;right:1px;top:1px;width:9px;height:9px;border-radius:50%;background:#22C55E;border:2px solid #fff}",
+    ".vt-velo{position:fixed;inset:0;z-index:300;background:rgba(26,26,26,.5);display:none}",
+    ".vt-velo.open{display:block}",
+    ".vt-hoja{position:fixed;left:50%;transform:translate(-50%,105%);bottom:0;width:100%;max-width:480px;z-index:301;background:#fff;border-radius:28px 28px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom));box-sizing:border-box;transition:transform .28s ease;max-height:88vh;overflow:auto}",
+    ".vt-hoja.open{transform:translate(-50%,0)}",
+    ".vt-asa{width:46px;height:5px;border-radius:5px;background:#E2D8D2;margin:0 auto 12px}",
+    ".vt-hhead{display:flex;align-items:center;gap:10px;margin-bottom:12px}",
+    ".vt-hhead h3{flex:1;margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;font-size:28px;line-height:1}",
+    ".vt-x{flex:none;width:40px;height:40px;border-radius:50%;border:0;background:var(--crema,#FBF7F5);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1A1A1A}",
+    ".vt-op{display:flex;align-items:center;gap:12px;width:100%;padding:12px;margin-bottom:8px;border-radius:18px;border:0;background:var(--crema,#FBF7F5);color:#1A1A1A;font:inherit;text-align:left;text-decoration:none;cursor:pointer;box-sizing:border-box}",
+    ".vt-op .vt-op-ic{flex:none;width:40px;height:40px;border-radius:50%;background:#fff;color:var(--rojo);display:flex;align-items:center;justify-content:center}",
+    ".vt-op span.t{flex:1;display:flex;flex-direction:column}.vt-op b{font-size:15px}.vt-op small{font-size:12.5px;color:var(--muted)}",
+    ".vt-op.dest{background:var(--rojo);color:#fff}.vt-op.dest .vt-op-ic{background:rgba(255,255,255,.16);color:#fff}.vt-op.dest small{color:rgba(255,255,255,.85)}",
+    ".vt-inp{display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:999px;border:2px solid var(--rojo);background:#fff}",
+    ".vt-inp input{flex:1;border:0;outline:0;font:inherit;font-size:16px;font-weight:600;background:transparent;color:#1A1A1A;min-width:0}",
+    ".vt-inp svg{color:var(--rojo);flex:none}",
+    "#vtMapa{margin-top:12px}",
+    ".vt-res{margin-top:12px;padding:14px;border-radius:18px;font-size:14px;line-height:1.45;display:none}",
+    ".vt-res.ok{display:block;background:#E9F5EC;color:#14532D}.vt-res.no{display:block;background:#FDF3E7;color:#7C2D12}",
+    ".vt-btn{display:flex;align-items:center;justify-content:center;width:100%;height:54px;margin-top:12px;border-radius:999px;border:0;background:var(--rojo);color:var(--rojo-texto,#fff);font:inherit;font-size:16px;font-weight:800;cursor:pointer}",
+    ".vt-btn.sec{background:#fff;color:var(--rojo);border:1.5px solid var(--rojo)}",
+    ".vt-btn:disabled{opacity:.45}",
+    ".vt-firma{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(0,0,0,.08);text-decoration:none;color:var(--muted)}",
+    ".vt-firma span{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}",
+    ".vt-firma img{height:30px;width:auto}"
+  ].join("\n");
+  document.head.appendChild(st);
+}
+
+function _vtCabHTML(){
+  return '<div class="vt-portada" data-ecol="config" data-edoc="general" data-efield="portadaImagen" data-etype="img">' +
+      '<img id="vtPortadaImg" alt="">' +
+      '<svg class="vt-corte" viewBox="0 0 390 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60 L0 46 L390 4 L390 60 Z"/></svg>' +
+    '</div>' +
+    '<div class="vt-ficha">' +
+      '<div class="vt-icono" id="vtIcono"></div>' +
+      '<div class="vt-idn"><h2 class="vt-nombre" id="vtNombre"></h2><span class="vt-estado" id="vtEstado"></span></div>' +
+      '<button class="vt-share" id="vtShare" aria-label="Compartir tienda">' + _vtI("share", 16) + '</button>' +
+    '</div>' +
+    '<div class="vt-bloque">' +
+      '<div class="vt-pts" id="vtPts">' + _vtI("star", 15, 2.2) + '<span>Regístrate y suma <b>puntos</b> en cada pedido</span></div>' +
+      '<div class="vt-ctrl"><div class="vt-seg" id="vtSeg">' +
+        '<button type="button" data-vtipo="delivery">' + _vtI("scooter", 17) + 'Delivery</button>' +
+        '<button type="button" data-vtipo="retiro">' + _vtI("store", 17) + 'Retiro</button>' +
+      '</div><span class="vt-tiempo" id="vtTiempo">' + _vtI("clock", 16) + '<span></span></span></div>' +
+      '<button type="button" class="vt-dir" id="vtDir"><span class="vt-dir-ico">' + _vtI("pin", 17) + '</span><span class="vt-dir-txt" id="vtDirTxt"></span>' + _vtI("chev", 16) + '</button>' +
+    '</div>';
+}
+
+function _vtHojas(){
+  if (qs("#vtVelo")) return;
+  var d = document.createElement("div");
+  d.innerHTML =
+    '<div class="vt-velo" id="vtVelo"></div>' +
+    '<div class="vt-hoja" id="vtHojaAyuda" role="dialog" aria-label="Ayuda"><div class="vt-asa"></div>' +
+      '<div class="vt-hhead"><h3>¿Te ayudamos?</h3><button class="vt-x" data-vtcerrar aria-label="Cerrar">' + _vtI("x", 18) + '</button></div>' +
+      '<div id="vtAyudaOps"></div></div>' +
+    '<div class="vt-hoja" id="vtHojaDir" role="dialog" aria-label="Dirección de entrega"><div class="vt-asa"></div>' +
+      '<div class="vt-hhead"><h3>¿Dónde te lo llevamos?</h3><button class="vt-x" data-vtcerrar aria-label="Cerrar">' + _vtI("x", 18) + '</button></div>' +
+      '<label class="vt-inp" for="vtDirInp">' + _vtI("pin", 19) + '<input id="vtDirInp" autocomplete="off" placeholder="Calle y número, comuna"></label>' +
+      '<div id="vtMapa" class="mini-mapa"></div>' +
+      '<div class="vt-res" id="vtDirRes"></div>' +
+      '<button class="vt-btn" id="vtDirOk" disabled>Confirmar dirección</button>' +
+      '<button class="vt-btn sec" id="vtDirRetiro" style="display:none">Mejor retiro en el local</button>' +
+    '</div>' +
+    '<button id="vtAyuda" type="button" aria-label="Ayuda"><span class="vt-ay-ic">' + _vtI("headset", 18) + '</span>Ayuda</button>';
+  while (d.firstChild) document.body.appendChild(d.firstChild);
+
+  function cerrar(){ qsa(".vt-hoja.open").forEach(function(h){ h.classList.remove("open"); }); qs("#vtVelo").classList.remove("open"); }
+  window._vtCerrarHojas = cerrar;
+  qs("#vtVelo").addEventListener("click", cerrar);
+  qsa("[data-vtcerrar]").forEach(function(b){ b.addEventListener("click", cerrar); });
+  qs("#vtAyuda").addEventListener("click", function(){ _vtRenderAyuda(); _vtAbrir("#vtHojaAyuda"); });
+
+  /* Dirección: autocomplete de Google ya existente en el motor */
+  var inp = qs("#vtDirInp");
+  if (typeof instalarAutocomplete === "function") instalarAutocomplete(inp, function(r){
+    _vt.dirSel = r;
+    if (typeof mostrarMiniMapa === "function") mostrarMiniMapa("vtMapa", r.lat, r.lng);
+    _vtEvaluarDir();
+  });
+  qs("#vtDirOk").addEventListener("click", function(){
+    if (!_vt.dirSel) return;
+    _vtLS("dir", _vt.dirSel);
+    _vtAplicarDirCheckout(_vt.dirSel);
+    _vtPintarDir();
+    cerrar();
+    if (typeof toast === "function") toast("📍 Dirección guardada");
+  });
+  qs("#vtDirRetiro").addEventListener("click", function(){ _vtSetTipo("retiro"); cerrar(); });
+}
+function _vtAbrir(sel){ qs("#vtVelo").classList.add("open"); qs(sel).classList.add("open"); }
+
+function _vtEvaluarDir(){
+  var r = _vt.dirSel, res = qs("#vtDirRes"), ok = qs("#vtDirOk"), ret = qs("#vtDirRetiro");
+  var c = state.config || {}, t = c.tiempoEntrega ? " · " + esc(c.tiempoEntrega) : "";
+  res.className = "vt-res"; ret.style.display = "none"; ok.disabled = !r;
+  if (!r) return;
+  if (typeof _tieneZonas === "function" && _tieneZonas()){
+    if (typeof _detectarZona === "function") _detectarZona(r.comuna);
+    var z = (typeof _zonaActual !== "undefined") ? _zonaActual : null;
+    if (!r.comuna){
+      res.className = "vt-res ok"; res.innerHTML = "✅ Dirección lista. El costo de envío se calcula al elegir tu comuna en el pedido.";
+    } else if (z && z.cobertura){
+      res.className = "vt-res ok";
+      res.innerHTML = "✅ <b>¡Sí llegamos!</b><br>Envío " + fmtPrecio(z.costo) + (z.minGratis ? " (gratis sobre " + fmtPrecio(z.minGratis) + ")" : "") + t;
+    } else {
+      res.className = "vt-res no";
+      res.innerHTML = "🚫 <b>Todavía no llegamos a " + esc(r.comuna) + ".</b><br>Puedes retirarlo en el local.";
+      ok.disabled = true;
+      if (c.retiroActivo !== false) ret.style.display = "flex";
+    }
+  } else {
+    var costo = Number(c.deliveryCosto) || 0, min = Number(c.deliveryMinimo) || 0;
+    res.className = "vt-res ok";
+    res.innerHTML = "✅ <b>¡Listo!</b><br>" + (costo ? "Envío " + fmtPrecio(costo) + (min ? " (gratis sobre " + fmtPrecio(min) + ")" : "") : "Envío a coordinar") + t;
+  }
+}
+function _vtAplicarDirCheckout(r){
+  try {
+    var f = qs("#fDireccion");
+    if (f && r && r.direccion){ f.value = r.direccion; f.classList.add("lleno"); }
+    if (typeof setComunaSelect === "function" && r && r.comuna) setComunaSelect(qs("#fComuna"), r.comuna);
+    if (typeof _detectarZona === "function" && r) _detectarZona(r.comuna || "");
+  } catch(e){}
+}
+function _vtPintarDir(){
+  var t = qs("#vtDirTxt"); if (!t) return;
+  var r = _vtLS("dir");
+  var ret = (typeof tipoEntrega !== "undefined" && tipoEntrega === "retiro");
+  if (ret){
+    var l = (state.locales || []).find(function(x){ return x.abierto !== false; }) || (state.locales || [])[0];
+    t.innerHTML = "<b>Retiro en " + esc(l ? l.nombre : "el local") + "</b><small>" + esc(l && l.direccion ? l.direccion : "Te avisamos cuando esté listo") + "</small>";
+  } else if (r && r.direccion){
+    t.innerHTML = "<b>" + esc(r.direccion) + "</b><small>Entregar aquí · tocar para cambiar</small>";
+  } else {
+    t.innerHTML = "<b>¿Dónde te lo llevamos?</b><small>Ve el costo de envío antes de pedir</small>";
+  }
+}
+function _vtSetTipo(tp){
+  try { tipoEntrega = tp; } catch(e){}
+  _vtLS("tipo", tp);
+  qsa("#vtSeg [data-vtipo]").forEach(function(b){ b.classList.toggle("on", b.dataset.vtipo === tp); });
+  _vtPintarDir();
+  try { if (typeof renderCheckout === "function" && document.body.dataset.page === "checkout") renderCheckout(); } catch(e){}
+}
+function _vtRenderAyuda(){
+  var c = state.config || {}, wa = String(c.whatsapp || "").replace(/\D/g, "");
+  var h = "";
+  var ult = (typeof ultimoPedido === "function") ? ultimoPedido() : null;
+  h += '<button class="vt-op dest" data-vtir="cuenta"><span class="vt-op-ic">' + _vtI("bag", 20) + '</span><span class="t"><b>Seguir mi pedido</b><small>' + (ult ? "Ver el estado de tu último pedido" : "Tus pedidos y su estado") + '</small></span>' + _vtI("chev", 18) + '</button>';
+  if (wa){
+    h += '<a class="vt-op" href="https://wa.me/' + wa + '" target="_blank" rel="noopener"><span class="vt-op-ic">' + _vtI("chat", 20) + '</span><span class="t"><b>Escríbenos por WhatsApp</b><small>Te responde el local</small></span>' + _vtI("chev", 18) + '</a>';
+    h += '<a class="vt-op" href="tel:+' + wa + '"><span class="vt-op-ic">' + _vtI("phone", 20) + '</span><span class="t"><b>Llamar</b><small>+' + esc(wa) + '</small></span>' + _vtI("chev", 18) + '</a>';
+  }
+  h += '<button class="vt-op" data-vtir="locales"><span class="vt-op-ic">' + _vtI("pin", 20) + '</span><span class="t"><b>Locales y horarios</b><small>Dónde estamos</small></span>' + _vtI("chev", 18) + '</button>';
+  var box = qs("#vtAyudaOps"); box.innerHTML = h;
+  qsa("#vtAyudaOps [data-vtir]").forEach(function(b){ b.addEventListener("click", function(){ window._vtCerrarHojas(); irPagina(b.dataset.vtir); }); });
+}
+
+function _vtSlideProd(p){
+  return '<div class="vt-slide" data-ver="' + esc(p.id) + '">' +
+    (p.imagen ? '<img src="' + esc(p.imagen) + '" alt="' + esc(p.nombre) + '" loading="lazy">' : "") +
+    '<div class="vt-sl-txt"><span class="vt-sl-badge">' + _vtI("flame", 12, 2.2) + 'Recomendado</span>' +
+    '<span class="vt-sl-tit">' + esc(p.nombre) + '</span>' +
+    '<span class="vt-sl-row"><span class="vt-sl-desc">' + esc(p.descripcion || "") + '</span>' +
+    '<button class="vt-sl-add" data-add="' + esc(p.id) + '" aria-label="Agregar ' + esc(p.nombre) + '">' + _vtI("plus", 15, 2.8) + fmtPrecio(p.precio) + '</button></span></div></div>';
+}
+
+function _vtMontar(){
+  _vtCss(); _vtHojas();
+  var ini = qs("#page-inicio"), hero = qs(".hero");
+  if (!_vt.montada){
+    var cab = document.createElement("div"); cab.id = "vtCab"; cab.innerHTML = _vtCabHTML();
+    var ancla = qs("#bannerPedidoActivo");
+    ini.insertBefore(cab, ancla ? ancla.nextSibling : ini.firstChild);
+    var wrap = document.createElement("div"); wrap.id = "vtCarrWrap";
+    wrap.innerHTML = '<div class="vt-tit"><h2>Destacados</h2><button type="button" id="vtVerMenu">Ver menú</button></div>' +
+      '<div class="vt-carr"><div class="vt-segs" id="vtSegs"></div><div class="vt-track" id="vtTrack"></div></div><div class="vt-dots" id="vtDots"></div>';
+    cab.parentNode.insertBefore(wrap, cab.nextSibling);
+    qs("#vtVerMenu").addEventListener("click", function(){ irPagina("menu"); });
+    qs("#vtShare").addEventListener("click", function(){
+      var d = { title: (state.config && state.config.nombre) || document.title, url: location.origin };
+      if (navigator.share) navigator.share(d).catch(function(){});
+      else if (navigator.clipboard){ navigator.clipboard.writeText(d.url); if (typeof toast === "function") toast("🔗 Enlace copiado"); }
+    });
+    qsa("#vtSeg [data-vtipo]").forEach(function(b){ b.addEventListener("click", function(){ _vtSetTipo(b.dataset.vtipo); }); });
+    qs("#vtDir").addEventListener("click", function(){
+      if (typeof tipoEntrega !== "undefined" && tipoEntrega === "retiro"){ irPagina("locales"); return; }
+      _vt.dirSel = _vtLS("dir"); qs("#vtDirInp").value = _vt.dirSel ? _vt.dirSel.direccion : "";
+      _vtEvaluarDir(); _vtAbrir("#vtHojaDir"); setTimeout(function(){ qs("#vtDirInp").focus(); }, 280);
+    });
+    var track = qs("#vtTrack");
+    track.addEventListener("scroll", function(){ _vtMarcar(); }, { passive: true });
+    track.addEventListener("pointerdown", function(){ _vt.pausaHasta = Date.now() + 10000; });
+    _vt.heroPadre = hero.parentNode; _vt.heroSig = hero.nextSibling;
+    _vt.montada = true;
+    /* firma DerLabs en el pie */
+    var pie = qs(".footer-cr");
+    if (pie && !qs(".vt-firma")){
+      Array.prototype.forEach.call(pie.querySelectorAll("p"), function(p){ if (/Desarrollado por/i.test(p.textContent)) p.classList.add("vt-oculto-app"); });
+      var f = document.createElement("a"); f.className = "vt-firma"; f.href = "https://derlabs.cl"; f.target = "_blank"; f.rel = "noopener";
+      f.innerHTML = '<span>Tienda creada con</span><img src="/derlabs-firma.png" alt="DerLabs">';
+      pie.appendChild(f);
+    }
+    /* preferencias guardadas */
+    var tp = _vtLS("tipo"); if (tp === "retiro" || tp === "delivery"){ try { tipoEntrega = tp; } catch(e){} }
+    var dg = _vtLS("dir"); if (dg && qs("#fDireccion") && !qs("#fDireccion").value) _vtAplicarDirCheckout(dg);
+    clearInterval(_vt.timer);
+    _vt.timer = setInterval(function(){
+      if (!document.body.classList.contains("v-app") || document.body.dataset.page !== "inicio" || Date.now() < _vt.pausaHasta) return;
+      var t = qs("#vtTrack"); if (!t || !t.children.length) return;
+      var i = _vtIndice(), n = t.children.length, sig = (i + 1) % n;
+      t.scrollTo({ left: t.children[sig].offsetLeft - 16, behavior: "smooth" });
+    }, 6000);
+  }
+  /* el hero original pasa a ser la primera slide (conserva edición inline) */
+  var trk = qs("#vtTrack");
+  if (hero.parentNode !== trk) trk.insertBefore(hero, trk.firstChild);
+  document.body.classList.add("v-app");
+}
+function _vtDesmontar(){
+  document.body.classList.remove("v-app");
+  var hero = qs(".hero");
+  if (_vt.montada && hero && _vt.heroPadre && hero.parentNode !== _vt.heroPadre) _vt.heroPadre.insertBefore(hero, _vt.heroSig);
+}
+function _vtIndice(){
+  var t = qs("#vtTrack"); if (!t || !t.children.length) return 0;
+  var w = t.children[0].getBoundingClientRect().width + 10;
+  return Math.max(0, Math.min(t.children.length - 1, Math.round(t.scrollLeft / w)));
+}
+function _vtMarcar(){
+  var i = _vtIndice();
+  qsa("#vtSegs span").forEach(function(s, k){ s.classList.toggle("on", k <= i); });
+  qsa("#vtDots span").forEach(function(s, k){ s.classList.toggle("on", k === i); });
+}
+
+/* Se llama al final de renderInicio() */
+function vitrinaApp(){
+  try {
+    if (!_vtEsComida()) return;
+    if (_vtEstilo() === "clasico"){ _vtDesmontar(); return; }
+    _vtMontar();
+    var c = state.config || {};
+    var portada = c.portadaImagen || c.heroImagen || (typeof DEMO_IMAGES !== "undefined" ? DEMO_IMAGES.banner : "");
+    var pi = qs("#vtPortadaImg"); if (pi && pi.getAttribute("src") !== portada) pi.src = portada;
+    var nom = c.nombre || ""; qs("#vtNombre").textContent = nom;
+    var ico = qs("#vtIcono");
+    var logo = c.logoBase64 || "";
+    var icoHTML = logo ? '<img src="' + esc(logo) + '" alt="' + esc(nom) + '">' : '<span class="vt-inicial">' + esc((nom || "?").trim().charAt(0).toUpperCase()) + '</span>';
+    if (ico.getAttribute("data-k") !== (logo ? logo.slice(-40) : nom)){ ico.innerHTML = icoHTML; ico.setAttribute("data-k", logo ? logo.slice(-40) : nom); }
+    var abierto = c.abierto !== false, est = qs("#vtEstado");
+    est.textContent = abierto ? "Abierto ahora" : "Cerrado por ahora"; est.classList.toggle("cerr", !abierto);
+    var tEl = qs("#vtTiempo"); tEl.style.display = c.tiempoEntrega ? "" : "none"; tEl.querySelector("span").textContent = c.tiempoEntrega || "";
+    qs("#vtPts").style.display = c.puntosActivo === false ? "none" : "";
+    var delOn = c.deliveryActivo !== false, retOn = c.retiroActivo !== false;
+    var bD = qs('#vtSeg [data-vtipo="delivery"]'), bR = qs('#vtSeg [data-vtipo="retiro"]');
+    bD.style.display = delOn ? "" : "none"; bR.style.display = retOn ? "" : "none";
+    var tp = (typeof tipoEntrega !== "undefined") ? tipoEntrega : "delivery";
+    if (tp === "delivery" && !delOn && retOn) tp = "retiro";
+    if (tp === "retiro" && !retOn && delOn) tp = "delivery";
+    _vtSetTipo(tp);
+    /* slides: hero + productos destacados configurados */
+    var trk = qs("#vtTrack");
+    Array.prototype.slice.call(trk.querySelectorAll(".vt-slide")).forEach(function(s){ s.remove(); });
+    var n = Math.max(1, Number(SKIN.slotsDestacados) || 2), usados = {};
+    for (var i = 0; i < n; i++){
+      var s = _productoDeSlot(c["productoDestacado" + (i + 1)], i);
+      if (s.producto && !usados[s.producto.id]){ usados[s.producto.id] = 1; trk.insertAdjacentHTML("beforeend", _vtSlideProd(s.producto)); }
+    }
+    var total = trk.children.length;
+    qs("#vtSegs").innerHTML = total > 1 ? new Array(total + 1).join("<span></span>") : "";
+    qs("#vtDots").innerHTML = total > 1 ? new Array(total + 1).join("<span></span>") : "";
+    _vtMarcar();
+  } catch(e){ console.warn("vitrinaApp:", e); }
+}
+
+/* Panel (pestaña Config): estilo de la tienda + portada. Solo plantilla de comida. */
+function instalarPanelVitrina(){
+  try {
+    if (!_vtEsComida()) return;
+    var cfgTab = qs("#pt-config"); if (!cfgTab || qs("#vtPanelEstilo")) return;
+    var box = document.createElement("div"); box.id = "vtPanelEstilo";
+    box.style.cssText = "margin:0 0 18px;padding:14px;border-radius:18px;background:var(--crema,#FBF7F5)";
+    box.innerHTML = '<h4 style="margin:0 0 4px">Estilo de la tienda</h4>' +
+      '<p class="pnota" style="margin:0 0 10px">“App” es el diseño nuevo; “Clásico” es el diseño anterior.</p>' +
+      '<div style="display:flex;gap:8px;margin-bottom:10px"><button type="button" class="pill pill-sm" data-vtest="app" style="flex:1">📱 App</button><button type="button" class="pill pill-sm" data-vtest="clasico" style="flex:1">Clásico</button></div>' +
+      '<button type="button" class="pill pill-outline pill-sm panel-full" id="vtBtnPortada">🖼 Cambiar imagen de portada</button>' +
+      '<p class="pnota" style="margin:6px 0 0">La portada es la foto de arriba con el corte diagonal (estilo App). El ícono usa tu logo.</p>';
+    var ref = qs("#btnMiDominio");
+    cfgTab.insertBefore(box, ref ? ref.nextSibling : cfgTab.firstChild);
+    function pintar(){ qsa("#vtPanelEstilo [data-vtest]").forEach(function(b){ var on = b.dataset.vtest === _vtEstilo(); b.className = "pill pill-sm " + (on ? "pill-solid" : "pill-outline"); }); }
+    pintar();
+    qsa("#vtPanelEstilo [data-vtest]").forEach(function(b){ b.addEventListener("click", async function(){
+      state.config.estiloComida = b.dataset.vtest; pintar(); vitrinaApp();
+      try { await saveConfig("estiloComida", b.dataset.vtest); if (typeof toast === "function") toast("✅ Estilo guardado"); } catch(e){ if (typeof toast === "function") toast("⚠️ No se pudo guardar"); }
+    }); });
+    qs("#vtBtnPortada").addEventListener("click", function(){ if (typeof abrirImgModal === "function") abrirImgModal({ col: "config", doc: "general", field: "portadaImagen" }); });
+  } catch(e){ console.warn("panel vitrina:", e); }
+}
