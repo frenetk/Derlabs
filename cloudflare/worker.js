@@ -235,9 +235,25 @@ function tiendaNoEncontrada(){
   return new Response(html, { status: 404, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
+/* Reparación automática de dominios también con visitas (máx. 1 vez cada 10 min por datacenter),
+   para no depender solo del cron. */
+function autoRepararDominios(env, ctx){
+  try {
+    if (!env.CF_API_TOKEN || !env.CF_ACCOUNT_ID || !ctx || typeof caches === "undefined") return;
+    ctx.waitUntil((async () => {
+      const key = new Request("https://cache.local/auto-dominios-v1");
+      const c = caches.default;
+      if (await c.match(key)) return;
+      await c.put(key, new Response("1", { headers: { "Cache-Control": "max-age=600" } }));
+      await revisarDominios(env);
+    })().catch(e => console.error("autoRepararDominios:", e.message)));
+  } catch(e){}
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    autoRepararDominios(env, ctx);
 
     /* ── Ruta especial: /manifest.json ── */
     if (url.pathname === "/manifest.json") {
@@ -319,9 +335,10 @@ export default {
         /* Elegir template segun rubro */
         const cfgTpl = await leerConfigTenant(url.hostname, env, ctx);
         /* Subdominio *.derlabs.store que no corresponde a ninguna tienda */
-        if (!cfgTpl && url.hostname.endsWith(".derlabs.store")) return tiendaNoEncontrada();
+        const esSubdominio = url.hostname.endsWith(".derlabs.store") || url.hostname.endsWith(".derlabs.online");
+        if (!cfgTpl && esSubdominio) return tiendaNoEncontrada();
         /* Subdominio de una tienda que ya conectó su dominio propio → lleva al dominio propio */
-        if (cfgTpl && cfgTpl.dominioPrincipal && url.hostname.endsWith(".derlabs.store") && cfgTpl.dominioPrincipal !== url.hostname) {
+        if (cfgTpl && cfgTpl.dominioPrincipal && esSubdominio && cfgTpl.dominioPrincipal !== url.hostname) {
           return Response.redirect("https://" + cfgTpl.dominioPrincipal + url.pathname + url.search, 301);
         }
         const archivoTpl = archivoPlantilla(cfgTpl);

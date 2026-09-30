@@ -785,19 +785,24 @@ qs("#formTienda").addEventListener("submit", async (e) => {
   var bSub = document.getElementById("btnModoSub"), bPro = document.getElementById("btnModoPropio"), ay = document.getElementById("ayudaDom");
   if (!campo || !nom || !bSub) return;
   var modo = "sub", tocado = false;
+  /* P21: comida → .derlabs.store · retail y Tienda Pro → .derlabs.online */
+  function base(){
+    try { var r = (typeof rubroActual === "function") ? rubroActual() : null; var m = r ? (r.rubroMotor || r.id) : "comida"; return m === "retail" ? "derlabs.online" : "derlabs.store"; }
+    catch(e){ return "derlabs.store"; }
+  }
   function slug(t){
     var s = String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
       .replace(/&/g, "y").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
     if (RES.indexOf(s) > -1) s += "-tienda";
     return s;
   }
-  function sugerir(){ if (modo === "sub" && !tocado){ var s = slug(nom.value); campo.value = s ? s + ".derlabs.store" : ""; } }
+  function sugerir(){ if (modo === "sub" && !tocado){ var s = slug(nom.value); campo.value = s ? s + "." + base() : ""; } }
   function poner(m){
     modo = m; tocado = false;
     bSub.classList.toggle("activo", m === "sub"); bPro.classList.toggle("activo", m !== "sub");
     if (m === "sub"){
-      campo.placeholder = "pizzeriajuan.derlabs.store";
-      ay.innerHTML = 'Queda en <b>nombre.derlabs.store</b> y funciona al instante, sin configurar nada. Puedes editar la parte antes del punto.';
+      campo.placeholder = "pizzeriajuan." + base();
+      ay.innerHTML = 'Queda en <b>nombre.' + base() + '</b> y funciona al instante, sin configurar nada. Puedes editar la parte antes del punto.';
       sugerir();
     } else {
       campo.placeholder = "pizzeriajuan.cl"; campo.value = "";
@@ -810,9 +815,17 @@ qs("#formTienda").addEventListener("submit", async (e) => {
   campo.addEventListener("input", function(){ tocado = true; });
   campo.addEventListener("blur", function(){
     if (modo !== "sub") return;
-    var v = campo.value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/\.derlabs\.store$/, "");
-    v = slug(v); campo.value = v ? v + ".derlabs.store" : "";
+    var v = campo.value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/\.derlabs\.(store|online)$/, "");
+    v = slug(v); campo.value = v ? v + "." + base() : "";
   });
+  var rg = document.getElementById("rubroGrid");
+  if (rg) rg.addEventListener("click", function(){ setTimeout(function(){
+    if (modo !== "sub") return;
+    if (tocado){ var v = campo.value.replace(/\.derlabs\.(store|online)$/, ""); campo.value = v ? v + "." + base() : ""; }
+    else sugerir();
+    ay.innerHTML = 'Queda en <b>nombre.' + base() + '</b> y funciona al instante, sin configurar nada. Puedes editar la parte antes del punto.';
+    campo.placeholder = "pizzeriajuan." + base();
+  }, 0); });
   sugerir();
 })();
 </script>

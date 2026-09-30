@@ -14,6 +14,7 @@
       los dominios base de DerLabs y todos los de clientes sigan conectados al
       Worker y los reconecta si faltan.
 
+   Subdominios base: *.derlabs.store (comida) y *.derlabs.online (retail/Tienda Pro).
    Secretos del Worker: CF_API_TOKEN, CF_ACCOUNT_ID.
    Firestore: dominios_conexion/{dominio} (solo servidor). */
 
@@ -26,7 +27,7 @@ const CF = "https://api.cloudflare.com/client/v4";
 
 /* Dominios propios de DerLabs que siempre deben apuntar al Worker */
 const BASE_DOMINIOS = ["derlabs.cl", "www.derlabs.cl", "derlabs.store", "derlabs.online"];
-const BASE_RUTAS = [{ zona: "derlabs.store", patron: "*.derlabs.store/*" }];
+const BASE_RUTAS = [{ zona: "derlabs.store", patron: "*.derlabs.store/*" }, { zona: "derlabs.online", patron: "*.derlabs.online/*" }];
 
 export function limpiarDominio(d){
   let s = String(d || "").trim().toLowerCase()
@@ -141,43 +142,71 @@ async function revisarUno(env, db, doc, forzarCheck){
   }
 }
 
-/* CRON: termina conexiones pendientes y reconecta dominios que un deploy haya soltado */
+/* CRON y visitas: repara dominios base primero (no depende de Firestore),
+   luego termina conexiones pendientes. Devuelve un informe paso a paso. */
 export async function revisarDominios(env){
-  if (!env.CF_API_TOKEN || !env.CF_ACCOUNT_ID) return;
-  try {
-    const db = getDb(env);
-    const snap = await db.collection("dominios_conexion").where("estado", "==", "pendiente").get();
-    for (const d of snap.docs) await revisarUno(env, db, d.data(), false);
-    await asegurarDominios(env, db);
-  } catch(e){ console.error("revisarDominios:", e.message); }
+  const inf = [];
+  if (!env.CF_API_TOKEN || !env.CF_ACCOUNT_ID){ inf.push({ paso: "secretos CF_API_TOKEN / CF_ACCOUNT_ID", ok: false, detalle: "faltan en el Worker" }); return inf; }
+  let db = null;
+  try { db = getDb(env); } catch(e){ inf.push({ paso: "Firestore", ok: false, detalle: e.message }); }
+  try { await asegurarDominios(env, db, inf); }
+  catch(e){ inf.push({ paso: "asegurar dominios", ok: false, detalle: e.message }); }
+  if (db){
+    try {
+      const snap = await db.collection("dominios_conexion").where("estado", "==", "pendiente").get();
+      for (const d of snap.docs) await revisarUno(env, db, d.data(), false);
+      inf.push({ paso: "conexiones pendientes", ok: true, detalle: snap.docs.length + " revisadas" });
+    } catch(e){ inf.push({ paso: "conexiones pendientes", ok: false, detalle: e.message }); }
+  }
+  inf.filter(x => !x.ok).forEach(x => console.error("dominios ✗", x.paso, "→", x.detalle));
+  return inf;
 }
 
-export async function asegurarDominios(env, db){
-  const conectados = await dominiosDelWorker(env);
+export async function asegurarDominios(env, db, inf){
+  inf = inf || [];
+  const lista = await cf(env, "GET", "/accounts/" + env.CF_ACCOUNT_ID + "/workers/domains?service=" + SERVICIO);
+  inf.push({ paso: "leer dominios del Worker", ok: lista.ok, detalle: lista.ok ? ((lista.j.result || []).length + " conectados") : (errCF(lista).message || ("HTTP " + lista.status)) });
+  const conectados = new Set(((lista.ok && lista.j.result) || []).map(d => d.hostname));
   const zonas = {};
   const zonaId = async (nombre) => {
-    if (!(nombre in zonas)){ const z = await zonaPorNombre(env, nombre); zonas[nombre] = z ? z.id : null; }
+    if (!(nombre in zonas)){
+      const r = await cf(env, "GET", "/zones?name=" + encodeURIComponent(nombre) + "&account.id=" + env.CF_ACCOUNT_ID);
+      const z = r.ok && r.j.result && r.j.result[0];
+      zonas[nombre] = z ? z.id : null;
+      if (!z) inf.push({ paso: "zona " + nombre, ok: false, detalle: r.ok ? "no está en esta cuenta" : (errCF(r).message || ("HTTP " + r.status)) });
+    }
     return zonas[nombre];
   };
   for (const h of BASE_DOMINIOS){
-    if (conectados.has(h)) continue;
-    const raiz = h.split(".").slice(-2).join(".");
-    const id = await zonaId(raiz);
-    if (id){ try { await conectarAlWorker(env, id, h); console.log("reconectado", h); } catch(e){ console.error(e.message); } }
+    if (lista.ok && conectados.has(h)){ inf.push({ paso: h, ok: true, detalle: "conectado" }); continue; }
+    const id = await zonaId(h.split(".").slice(-2).join("."));
+    if (!id) continue;
+    try { await conectarAlWorker(env, id, h); inf.push({ paso: h, ok: true, detalle: "reconectado" }); }
+    catch(e){ inf.push({ paso: h, ok: false, detalle: e.message }); }
   }
   for (const r of BASE_RUTAS){
     const id = await zonaId(r.zona); if (!id) continue;
     const lr = await cf(env, "GET", "/zones/" + id + "/workers/routes");
-    const hay = ((lr.ok && lr.j.result) || []).some(x => x.pattern === r.patron);
-    if (!hay) await cf(env, "POST", "/zones/" + id + "/workers/routes", { pattern: r.patron, script: SERVICIO });
+    if (!lr.ok){ inf.push({ paso: "ruta " + r.patron, ok: false, detalle: "no se pudo leer: " + (errCF(lr).message || ("HTTP " + lr.status)) }); continue; }
+    const ex = (lr.j.result || []).find(x => x.pattern === r.patron);
+    if (ex && ex.script === SERVICIO){ inf.push({ paso: "ruta " + r.patron, ok: true, detalle: "existe" }); continue; }
+    const cr = ex
+      ? await cf(env, "PUT", "/zones/" + id + "/workers/routes/" + ex.id, { pattern: r.patron, script: SERVICIO })
+      : await cf(env, "POST", "/zones/" + id + "/workers/routes", { pattern: r.patron, script: SERVICIO });
+    inf.push({ paso: "ruta " + r.patron, ok: cr.ok, detalle: cr.ok ? "creada" : (errCF(cr).message || ("HTTP " + cr.status)) });
   }
-  const act = await db.collection("dominios_conexion").where("estado", "==", "activo").get();
-  for (const d of act.docs){
-    const x = d.data();
-    for (const h of [x.dominio, "www." + x.dominio]){
-      if (!conectados.has(h)){ try { await conectarAlWorker(env, x.zoneId, h); console.log("reconectado", h); } catch(e){ console.error(e.message); } }
+  if (db){
+    const act = await db.collection("dominios_conexion").where("estado", "==", "activo").get();
+    for (const d of act.docs){
+      const x = d.data();
+      for (const h of [x.dominio, "www." + x.dominio]){
+        if (lista.ok && conectados.has(h)) continue;
+        try { await conectarAlWorker(env, x.zoneId, h); inf.push({ paso: h, ok: true, detalle: "reconectado" }); }
+        catch(e){ inf.push({ paso: h, ok: false, detalle: e.message }); }
+      }
     }
   }
+  return inf;
 }
 
 /* Endpoint /api/dominios */
@@ -207,7 +236,11 @@ export async function dominios(request, env){
     switch (b.accion){
       case "estado": {
         const cfg = await db.doc("tiendas/" + storeId + "/config/general").get();
-        return json({ ok: true, storeId, dominioPrincipal: (cfg.exists && cfg.data().dominioPrincipal) || null, conexiones: await deLaTienda() });
+        return json({ ok: true, storeId, esPlataforma: roles.plataforma === "propietario", dominioPrincipal: (cfg.exists && cfg.data().dominioPrincipal) || null, conexiones: await deLaTienda() });
+      }
+      case "sistema": {
+        if (roles.plataforma !== "propietario") return json({ ok: false, error: "Solo DerLabs" }, 403);
+        return json({ ok: true, informe: await revisarDominios(env) });
       }
       case "conectar": {
         const dominio = limpiarDominio(b.dominio);
