@@ -34,6 +34,7 @@ import { seguimientoPedido } from "./functions/seguimientoPedido.js";
 import { gestionRepartidores, delivery } from "./functions/repartidores.js";
 import { cajaLocal } from "./functions/cajaLocal.js";
 import { landingEditor, servirImagenLanding } from "./functions/landingEditor.js";
+import { dominios, revisarDominios } from "./functions/dominios.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -60,7 +61,8 @@ const FUNCIONES = {
   gestionRepartidores,
   delivery,
   cajaLocal,
-  landingEditor
+  landingEditor,
+  dominios
 };
 
 
@@ -96,7 +98,8 @@ async function leerConfigTenant(hostname, env, ctx) {
       nombre: data.nombre || "",
       logoBase64: data.logoBase64 || "",
       rubro: data.rubro || "comida",
-      plantilla: data.plantilla || ""
+      plantilla: data.plantilla || "",
+      dominioPrincipal: data.dominioPrincipal || ""
     };
 
     const respCache = new Response(JSON.stringify(config), {
@@ -143,7 +146,8 @@ async function inyectarNombreReal(html, hostname, env, ctx) {
         nombre: data.nombre || "",
         logoBase64: data.logoBase64 || "",
         rubro: data.rubro || "comida",
-        plantilla: data.plantilla || ""
+        plantilla: data.plantilla || "",
+      dominioPrincipal: data.dominioPrincipal || ""
       };
 
       /* Guardar en caché del edge 5 min */
@@ -240,6 +244,15 @@ export default {
       return manifestTienda(request, env);
     }
 
+    /* ── www.dominio-del-cliente → dominio sin www (los de DerLabs se manejan aparte) ── */
+    if (url.hostname.startsWith("www.") && !DOMINIOS_LANDING.includes(url.hostname)) {
+      return Response.redirect("https://" + url.hostname.slice(4) + url.pathname + url.search, 301);
+    }
+    /* ── Conectar mi dominio: tienda.cl/dominio ── */
+    if (url.pathname === "/dominio" || url.pathname === "/dominio/") {
+      const urlDom = new URL(request.url); urlDom.pathname = "/dominio.html";
+      return env.ASSETS.fetch(new Request(urlDom, request));
+    }
     /* ── Pantalla de cocina (comandas): tienda.cl/cocina ── */
     if (url.pathname === "/cocina" || url.pathname === "/cocina/") {
       const urlCo = new URL(request.url); urlCo.pathname = "/cocina.html";
@@ -307,6 +320,10 @@ export default {
         const cfgTpl = await leerConfigTenant(url.hostname, env, ctx);
         /* Subdominio *.derlabs.store que no corresponde a ninguna tienda */
         if (!cfgTpl && url.hostname.endsWith(".derlabs.store")) return tiendaNoEncontrada();
+        /* Subdominio de una tienda que ya conectó su dominio propio → lleva al dominio propio */
+        if (cfgTpl && cfgTpl.dominioPrincipal && url.hostname.endsWith(".derlabs.store") && cfgTpl.dominioPrincipal !== url.hostname) {
+          return Response.redirect("https://" + cfgTpl.dominioPrincipal + url.pathname + url.search, 301);
+        }
         const archivoTpl = archivoPlantilla(cfgTpl);
 
         const urlIndex = new URL(request.url);
@@ -348,5 +365,6 @@ export default {
   /* ── Cron Trigger. ── */
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(limpiarPendientes(env));
+    ctx.waitUntil(revisarDominios(env));
   }
 };

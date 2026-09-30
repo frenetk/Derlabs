@@ -4920,6 +4920,15 @@ function limpiarPanelDev(){
       if (c2 && !c2.querySelector("#pWhats")) ocultar(c2);
       else ocultarBloque(tituloCon("#pt-envio h4", /mensajes autom/i));
     }
+    /* P21: acceso a "Conectar mi dominio" */
+    var cfgTab = qs("#pt-config");
+    if (cfgTab && !qs("#btnMiDominio")){
+      var bd = document.createElement("a");
+      bd.id = "btnMiDominio"; bd.href = "/dominio"; bd.target = "_blank"; bd.rel = "noopener";
+      bd.textContent = "🌐 Conectar mi dominio (mitienda.cl)";
+      bd.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 0 16px;padding:12px 16px;border-radius:999px;border:1.5px solid currentColor;font-weight:800;font-size:14px;text-decoration:none;color:var(--rojo,#9B1B30)";
+      cfgTab.insertBefore(bd, cfgTab.firstChild);
+    }
   } catch(e){ console.warn("limpiarPanelDev:", e); }
 }
 

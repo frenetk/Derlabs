@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="only light">
+<title>Conectar mi dominio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+:root{--r:#9B1B30;--cr:#FBF7F5;--tx:#1A1A1A;--mu:#6B6B6B;--bo:#EEEEEE;--ok:#1E7B3C}
+*{box-sizing:border-box}
+body{margin:0;background:#F7F4F2;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--tx);-webkit-font-smoothing:antialiased}
+.wrap{max-width:520px;margin:0 auto;padding:18px 16px 60px}
+h1{font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;font-size:34px;line-height:1;margin:6px 0 4px;color:var(--r)}
+.sub{color:var(--mu);font-size:14px;margin:0 0 18px;line-height:1.5}
+.card{background:#fff;border:1px solid var(--bo);border-radius:22px;padding:18px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 6px}
+label{display:block;font-size:12.5px;font-weight:800;color:var(--mu);margin:10px 0 6px}
+input{width:100%;height:50px;border-radius:999px;border:1.5px solid #E7DDD6;padding:0 18px;font:inherit;font-size:16px;font-weight:600;outline:none;background:#fff;color:var(--tx)}
+input:focus{border-color:var(--r)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;border-radius:999px;border:0;background:var(--r);color:#fff;font:inherit;font-size:15.5px;font-weight:800;cursor:pointer;margin-top:12px}
+.btn.sec{background:#fff;color:var(--r);border:1.5px solid var(--r)}
+.btn:disabled{opacity:.55}
+.err{color:#B42318;font-size:13.5px;font-weight:600;min-height:18px;margin-top:8px}
+.ns{display:flex;align-items:center;gap:10px;background:var(--cr);border-radius:16px;padding:12px 12px 12px 16px;margin-top:8px}
+.ns code{flex:1;font-size:15px;font-weight:800;word-break:break-all;font-family:ui-monospace,Menlo,monospace}
+.ns button{flex:none;height:38px;padding:0 14px;border-radius:999px;border:0;background:var(--r);color:#fff;font:inherit;font-size:13px;font-weight:800}
+ol{margin:10px 0 0;padding-left:20px;font-size:14px;line-height:1.6}
+.estado{display:flex;gap:12px;align-items:center;padding:14px;border-radius:18px;margin-top:4px}
+.estado.esp{background:#FDF6E3;color:#7A5A00}
+.estado.act{background:#E9F5EC;color:#14532D}
+.punto{flex:none;width:12px;height:12px;border-radius:50%;background:#D4A017;box-shadow:0 0 0 0 rgba(212,160,23,.6);animation:lat 1.6s infinite}
+.act .punto{background:var(--ok);animation:none}
+@keyframes lat{0%{box-shadow:0 0 0 0 rgba(212,160,23,.55)}70%{box-shadow:0 0 0 12px rgba(212,160,23,0)}100%{box-shadow:0 0 0 0 rgba(212,160,23,0)}}
+.muted{color:var(--mu);font-size:13px;line-height:1.5}
+.lnk{color:var(--r);font-weight:800;text-decoration:none}
+.oculto{display:none}
+.chip{display:inline-block;padding:4px 10px;border-radius:999px;background:var(--cr);font-size:12.5px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Conectar mi dominio</h1>
+  <p class="sub">Haz que tu tienda abra en tu propio dominio, por ejemplo <b>mitienda.cl</b>. Tú solo cambias dos datos donde compraste el dominio; nosotros hacemos el resto.</p>
+
+  <!-- Login -->
+  <div class="card" id="vLogin">
+    <h2>Entra con tu cuenta de la tienda</h2>
+    <label for="email">Correo</label><input id="email" type="email" autocomplete="username">
+    <label for="pass">Contraseña</label><input id="pass" type="password" autocomplete="current-password">
+    <button class="btn" id="bEntrar">Entrar</button>
+    <div class="err" id="eLogin"></div>
+  </div>
+
+  <div id="vMain" class="oculto">
+    <div class="card" id="cActual">
+      <h2>Tu tienda hoy</h2>
+      <p class="muted" style="margin:0">Abre en <a class="lnk" id="hostActual" href="/"></a> <span id="chipPrincipal"></span></p>
+    </div>
+
+    <div id="lista"></div>
+
+    <div class="card" id="cNuevo">
+      <h2>Conectar un dominio</h2>
+      <p class="muted" style="margin:0">Escríbelo tal como lo compraste, sin <i>https</i> ni <i>www</i>.</p>
+      <label for="dom">Tu dominio</label><input id="dom" placeholder="mitienda.cl" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="btn" id="bConectar">Conectar</button>
+      <div class="err" id="eCon"></div>
+    </div>
+    <p class="muted" style="text-align:center">¿Dudas? Escríbenos y lo hacemos contigo.</p>
+  </div>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM",
+  authDomain: "tienda-test-burgers.firebaseapp.com",
+  projectId: "tienda-test-burgers",
+  appId: "1:406623629835:web:31152eac803ed8c679cd0e"
+});
+const auth = firebase.auth();
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let temporizador = null;
+
+async function api(accion, extra){
+  const t = await auth.currentUser.getIdToken();
+  const r = await fetch("/api/dominios", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + t },
+    body: JSON.stringify(Object.assign({ accion, hostname: location.hostname }, extra || {})) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
+  return j;
+}
+
+function tarjeta(c){
+  if (c.estado === "activo"){
+    return `<div class="card"><h2>${esc(c.dominio)}</h2>
+      <div class="estado act"><span class="punto"></span><div><b>¡Conectado!</b><div class="muted" style="color:#255C3B">Tu tienda ya abre en <a class="lnk" href="https://${esc(c.dominio)}" target="_blank" rel="noopener">${esc(c.dominio)}</a> con candado de seguridad.</div></div></div></div>`;
+  }
+  const ns = (c.ns || []).map(n => `<div class="ns"><code>${esc(n)}</code><button data-copiar="${esc(n)}">Copiar</button></div>`).join("");
+  return `<div class="card" data-dom="${esc(c.dominio)}"><h2>${esc(c.dominio)}</h2>
+    <div class="estado esp"><span class="punto"></span><div><b>Esperando el cambio de servidores</b><div class="muted" style="color:#7A5A00">Suele tardar entre 15 minutos y unas horas. Te avisaremos por correo.</div></div></div>
+    <p class="muted" style="margin:14px 0 0"><b style="color:#1A1A1A">Paso único:</b> reemplaza los servidores DNS de tu dominio por estos dos:</p>
+    ${ns}
+    <ol>
+      <li>Entra a <a class="lnk" href="https://www.nic.cl" target="_blank" rel="noopener">nic.cl</a> e inicia sesión.</li>
+      <li>Ve a <b>Mis dominios</b> y elige <b>${esc(c.dominio)}</b>.</li>
+      <li>Toca <b>Modificar</b> → <b>Servidores de nombre (DNS)</b>.</li>
+      <li>Borra los que aparecen, pega los dos de arriba y guarda.</li>
+    </ol>
+    <p class="muted">¿Compraste en otro lugar (GoDaddy, Hostinger, etc.)? Es igual: busca "Servidores DNS" o "Nameservers".</p>
+    ${c.ultimoError ? `<div class="err">${esc(c.ultimoError)}</div>` : ""}
+    <button class="btn sec" data-verificar="${esc(c.dominio)}">Ya los cambié, revisar ahora</button>
+    <button class="btn sec" style="border-color:#E7DDD6;color:#6B6B6B" data-cancelar="${esc(c.dominio)}">Cancelar</button>
+  </div>`;
+}
+
+async function cargar(){
+  try {
+    const e = await api("estado");
+    $("hostActual").textContent = location.hostname;
+    $("hostActual").href = "https://" + location.hostname;
+    $("chipPrincipal").innerHTML = e.dominioPrincipal ? `· principal: <span class="chip">${esc(e.dominioPrincipal)}</span>` : "";
+    $("lista").innerHTML = (e.conexiones || []).map(tarjeta).join("");
+    const pend = (e.conexiones || []).some(c => c.estado !== "activo");
+    clearInterval(temporizador);
+    if (pend) temporizador = setInterval(cargar, 30000);
+  } catch(err){ $("lista").innerHTML = `<div class="card"><div class="err">${esc(err.message)}</div></div>`; }
+}
+
+$("bEntrar").onclick = async () => {
+  $("eLogin").textContent = "";
+  try { await auth.signInWithEmailAndPassword($("email").value.trim(), $("pass").value); }
+  catch(e){ $("eLogin").textContent = "Correo o contraseña incorrectos"; }
+};
+$("pass").addEventListener("keydown", e => { if (e.key === "Enter") $("bEntrar").click(); });
+
+$("bConectar").onclick = async () => {
+  const b = $("bConectar"); $("eCon").textContent = ""; b.disabled = true; b.textContent = "Conectando…";
+  try { await api("conectar", { dominio: $("dom").value }); $("dom").value = ""; await cargar(); }
+  catch(e){ $("eCon").textContent = e.message; }
+  finally { b.disabled = false; b.textContent = "Conectar"; }
+};
+
+document.addEventListener("click", async (ev) => {
+  const c = ev.target.closest("[data-copiar]");
+  if (c){ try { await navigator.clipboard.writeText(c.dataset.copiar); c.textContent = "Copiado ✓"; setTimeout(() => c.textContent = "Copiar", 1500); } catch(e){} return; }
+  const v = ev.target.closest("[data-verificar]");
+  if (v){ v.disabled = true; v.textContent = "Revisando…";
+    try { const r = await api("verificar", { dominio: v.dataset.verificar }); if (r.conexion.estado !== "activo") alert("Todavía no se aplica el cambio. Puede tardar un rato; seguimos revisando solos."); await cargar(); }
+    catch(e){ alert(e.message); v.disabled = false; v.textContent = "Ya los cambié, revisar ahora"; } return; }
+  const x = ev.target.closest("[data-cancelar]");
+  if (x){ if (!confirm("¿Cancelar la conexión de " + x.dataset.cancelar + "?")) return;
+    try { await api("cancelar", { dominio: x.dataset.cancelar }); await cargar(); } catch(e){ alert(e.message); } }
+});
+
+auth.onAuthStateChanged(u => {
+  $("vLogin").classList.toggle("oculto", !!u);
+  $("vMain").classList.toggle("oculto", !u);
+  if (u) cargar();
+});
+</script>
+</body>
+</html>

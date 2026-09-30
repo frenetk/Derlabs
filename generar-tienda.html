@@ -761,10 +761,10 @@ qs("#formTienda").addEventListener("submit", async (e) => {
       ${avisoProp}
       ${avisoSuscripcion}
       <div class="pasos-siguientes">
-        <p style="margin-bottom:6px"><b>Lo que sigue siendo manual (ver LEEME.md, sección 9):</b></p>
+        <p style="margin-bottom:6px"><b>Lo que sigue:</b></p>
         <ul>
-          <li>Apuntar el DNS de <b>${j.hostname}</b> hacia Netlify, en el registrador del cliente.</li>
-          <li>Netlify → Domain management → Add custom domain → <b>${j.hostname}</b>.</li>
+          <li>La tienda ya está en línea: <a href="https://${j.hostname}" target="_blank" style="color:var(--rojo)">https://${j.hostname}</a></li>
+          <li>¿El cliente tiene dominio propio? Que entre a <a href="https://${j.hostname}/dominio" target="_blank" style="color:var(--rojo)">${j.hostname}/dominio</a> con su cuenta y siga los pasos (se conecta solo).</li>
           <li>El cliente pega su Access Token de MercadoPago desde <code>${j.hostname}/?dev=1</code> → tab Pagos.</li>
           ${j.propietario ? "" : "<li><b>Nadie va a poder entrar al devmode de esta tienda todavía</b> — creá la cuenta de propietario a mano en Firebase Console (ver LEEME.md, Paso 5) o volviendo a correr este formulario con el mismo dominio.</li>"}
         </ul>
@@ -801,7 +801,7 @@ qs("#formTienda").addEventListener("submit", async (e) => {
       sugerir();
     } else {
       campo.placeholder = "pizzeriajuan.cl"; campo.value = "";
-      ay.innerHTML = 'Sin "https://" ni barra final. El dominio del cliente se conecta en Cloudflare (Workers → derlabs-worker → Domains → Add custom domain).';
+      ay.innerHTML = 'Solo si el dominio ya está conectado a DerLabs. Lo normal: crea la tienda con subdominio y luego el cliente conecta su dominio desde <b>su-tienda/dominio</b> (automático).';
     }
   }
   bSub.addEventListener("click", function(){ poner("sub"); });
