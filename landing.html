@@ -312,84 +312,6 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
   box-shadow:0 12px 30px -6px rgba(108,92,231,.5);
 }
 
-/* ══════════════════════════════════════
-   DEVMODE — panel de administración del landing, mismos tokens
-   oscuros que generar-tienda.html/suscripciones.html (panel interno,
-   no cara al público como el resto del landing). Accesible solo por
-   #dev en la URL — sin ningún botón visible en el landing público,
-   mismo criterio que generar-tienda.html/suscripciones.html, que
-   tampoco tienen ningún enlace desde ningún lado.
-══════════════════════════════════════ */
-:root{
-  --dev-negro:  #0E0E0E;
-  --dev-card:   #1E1E1E;
-  --dev-bg2:    #181818;
-  --dev-borde:  rgba(255,255,255,.08);
-  --dev-txt:    #F5F5F5;
-  --dev-txt2:   #A0A0A0;
-}
-#devGate{
-  position:fixed;inset:0;background:var(--dev-negro);
-  display:none;align-items:center;justify-content:center;
-  padding:24px;z-index:200;
-}
-#devGate.abierto{display:flex}
-.dev-gate-box{width:100%;max-width:360px;text-align:center;color:var(--dev-txt)}
-.dev-gate-box h2{font-size:24px;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif}
-.dev-gate-box p{color:var(--dev-txt2);font-size:14px;margin-bottom:20px}
-.dev-gate-box input{
-  width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--dev-borde);
-  background:var(--dev-bg2);color:var(--dev-txt);font-size:15px;margin-bottom:12px;
-}
-.dev-gate-box button{
-  width:100%;padding:14px;border-radius:12px;border:none;
-  background:var(--morado);color:#fff;font-weight:800;font-size:15px;
-}
-.dev-gate-err{color:#E53935;font-size:13px;margin-top:10px;min-height:18px}
-
-#devPanel{
-  position:fixed;inset:0;background:var(--dev-negro);color:var(--dev-txt);
-  display:none;flex-direction:column;z-index:150;overflow-y:auto;
-}
-#devPanel.abierto{display:flex}
-.dev-header{
-  padding:18px 20px;border-bottom:1px solid var(--dev-borde);
-  display:flex;justify-content:space-between;align-items:center;
-  position:sticky;top:0;background:var(--dev-negro);z-index:5;
-}
-.dev-header h1{font-size:22px;font-family:'Plus Jakarta Sans',sans-serif}
-.dev-close{background:none;border:none;color:var(--dev-txt2);font-size:24px;cursor:pointer}
-.dev-tabs{display:flex;gap:8px;padding:14px 20px;overflow-x:auto;border-bottom:1px solid var(--dev-borde)}
-.dev-tab{
-  background:var(--dev-card);border:1px solid var(--dev-borde);color:var(--dev-txt2);
-  padding:10px 18px;border-radius:999px;font-weight:700;font-size:13px;
-  white-space:nowrap;cursor:pointer;
-}
-.dev-tab.activa{background:var(--morado);color:#fff;border-color:var(--morado)}
-.dev-body{padding:20px;max-width:800px;margin:0 auto;width:100%}
-.dev-seccion{display:none}
-.dev-seccion.activa{display:block}
-.dev-campo{margin-bottom:16px}
-.dev-campo label{display:block;font-size:13px;color:var(--dev-txt2);font-weight:700;margin-bottom:6px}
-.dev-campo input,.dev-campo textarea{
-  width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--dev-borde);
-  background:var(--dev-card);color:var(--dev-txt);font-size:14px;font-family:inherit;
-}
-.dev-campo textarea{min-height:70px;resize:vertical}
-.dev-resena-card{
-  background:var(--dev-card);border:1px solid var(--dev-borde);border-radius:12px;
-  padding:16px;margin-bottom:12px;
-}
-.dev-resena-card .dev-fila{display:flex;gap:10px;margin-bottom:8px}
-.dev-resena-card .dev-fila input{flex:1}
-.dev-btn-del{background:rgba(229,57,53,.15);color:#E53935;border:none;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;flex-shrink:0}
-.dev-btn-add{background:var(--morado-suave);color:var(--morado-dark);border:none;border-radius:10px;padding:12px 18px;font-weight:800;cursor:pointer;margin-top:8px}
-.dev-metricas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
-.dev-metrica-card{background:var(--dev-card);border:1px solid var(--dev-borde);border-radius:14px;padding:16px;text-align:center}
-.dev-metrica-card .num{font-size:28px;font-weight:900;font-family:'Plus Jakarta Sans',sans-serif;color:var(--morado)}
-.dev-metrica-card .lbl{font-size:11.5px;color:var(--dev-txt2);font-weight:700;margin-top:2px}
-.dev-guardado{color:#2E7D32;font-size:13px;font-weight:700;margin-top:16px;opacity:0;transition:opacity .3s}
-.dev-guardado.visible{opacity:1}
 
 /* ══════════════════════════════════════════════════════════════
    DESKTOP — adaptacion a pantallas grandes (>=900px)
@@ -554,9 +476,9 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
 @media (max-width:720px){.demos-hero{gap:8px}.demo-link{font-size:12px;padding:7px 12px}}
 </style>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script data-migracion src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script data-migracion src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script data-migracion src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <!-- SEO: Open Graph (WhatsApp, Facebook, LinkedIn) -->
   <meta property="og:type" content="website">
@@ -900,7 +822,61 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
     <span class="badge">CLIENTES</span>
     <h2 class="section-tit" style="margin-top:16px">Lo que dicen <span class="acento">nuestros clientes</span></h2>
     <div class="features-grid" id="resenasGrid">
-      <p class="section-sub"><b>Todavía no hay reseñas cargadas.</b> Se agregan desde el panel de administración.</p>
+        <div class="reseña-card">
+          <div class="reseña-estrellas">★★★★★</div>
+          <p class="reseña-texto">Al comienzo tuve mis dudas, pero en un par de días me di cuenta de lo fácil que se vuelve todo. Tener todo en uno me da bastante tiempo extra que se traduce en ganancia.</p>
+          <div class="reseña-autor">
+            <div class="reseña-avatar">CF</div>
+            <div>
+              <div class="reseña-nombre">Camilo Fuentes</div>
+              <div class="reseña-negocio">Cocina urbana</div>
+            </div>
+          </div>
+        </div>
+        <div class="reseña-card">
+          <div class="reseña-estrellas">★★★★★</div>
+          <p class="reseña-texto">Llevo varios años vendiendo por WhatsApp y marketplace. Desde que entré a la plataforma lo primero que noté es cómo bajó mi carga mental. Eso me ayudó a preocuparme más de mis proveedores y comencé a llegar a público que antes no llegaba. Ahora reparto en todo Santiago, no solo en mi comuna.</p>
+          <div class="reseña-autor">
+            <div class="reseña-avatar">NR</div>
+            <div>
+              <div class="reseña-nombre">Natalia Rubilar</div>
+              <div class="reseña-negocio">Moda y accesorios</div>
+            </div>
+          </div>
+        </div>
+        <div class="reseña-card">
+          <div class="reseña-estrellas">★★★★★</div>
+          <p class="reseña-texto">Dejo mi reseña principalmente porque la atención que recibí me hizo enamorarme de la plataforma. Un sábado por la noche se me ocurrió escribir a soporte para agregar un chatbot a mi tienda y me sorprendió la rapidez con la que recibí atención e integración de lo que pedí. Realmente el soporte es 24/7. Recomendadísimos.</p>
+          <div class="reseña-autor">
+            <div class="reseña-avatar">MR</div>
+            <div>
+              <div class="reseña-nombre">Matías Rodríguez</div>
+              <div class="reseña-negocio">Tecnología y accesorios</div>
+            </div>
+          </div>
+        </div>
+        <div class="reseña-card">
+          <div class="reseña-estrellas">★★★★★</div>
+          <p class="reseña-texto">Llevo 5 meses con DerLabs y ya logré sacar a mi restaurant de PedidosYa para dejar de pagar la tremenda comisión por venta. Ahora solo uso el gestor de pedidos y mis repartidores propios. Solo a veces uso PedidosYa Envíos cuando estoy corto de repartidores. La integración fue sencilla: solo tuve que meter el token en el panel de administrador. Los recomiendo.</p>
+          <div class="reseña-autor">
+            <div class="reseña-avatar">FC</div>
+            <div>
+              <div class="reseña-nombre">Felipe Catalán</div>
+              <div class="reseña-negocio">Restaurant</div>
+            </div>
+          </div>
+        </div>
+        <div class="reseña-card">
+          <div class="reseña-estrellas">★★★★★</div>
+          <p class="reseña-texto">Vendía ropa por marketplace y por Instagram. Ahora tengo mi propio sitio que parece una web de casa comercial tipo Falabella o MercadoLibre. El aspecto profesional que da el sitio me encanta. Fue un crecimiento increíble: ahora solo pago publicidad a mi web y las ventas caen solas.</p>
+          <div class="reseña-autor">
+            <div class="reseña-avatar">MS</div>
+            <div>
+              <div class="reseña-nombre">Macarena Sánchez</div>
+              <div class="reseña-negocio">Ropa</div>
+            </div>
+          </div>
+        </div>
     </div>
   </div>
 </section>
@@ -1017,382 +993,49 @@ footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
 
 <a href="https://wa.me/56930025299" class="chat-float" target="_blank" rel="noopener" title="Escríbenos por WhatsApp"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/> </svg></span></a>
 
-<!-- ══════════════════════════════════════════════════════════════
-     DEVMODE — solo accesible por #dev en la URL, sin ningún botón
-     visible en el landing público. Misma clave ADMIN_SECRET que
-     generar-tienda.html/suscripciones.html. ══════════════════════════════════════════════════════════════ -->
-<div id="devGate">
-  <div class="dev-gate-box">
-    <h2>🔐 Panel del landing</h2>
-    <p>Iniciá sesión con tu cuenta de administrador.</p>
-    <input type="email" id="devGateEmail" placeholder="Email" autocomplete="username">
-    <input type="password" id="devGateInput" placeholder="Contraseña" autocomplete="current-password">
-    <button id="devGateBtn">Entrar</button>
-    <div class="dev-gate-err" id="devGateErr"></div>
-  </div>
-</div>
-
-<div id="devPanel">
-  <div class="dev-header">
-    <h1>Panel del landing</h1>
-    <div style="display:flex;gap:8px;align-items:center">
-      <a href="/generar-tienda.html" class="dev-tab" style="text-decoration:none">+ Nueva tienda</a>
-      <a href="/suscripciones.html" class="dev-tab" style="text-decoration:none">Suscripciones</a>
-      <button class="dev-close" id="devClose">✕</button>
-    </div>
-  </div>
-  <div class="dev-tabs">
-    <button class="dev-tab activa" data-tab="contenido">Contenido</button>
-    <button class="dev-tab" data-tab="resenas">Reseñas</button>
-    <button class="dev-tab" data-tab="metricas">Métricas</button>
-  </div>
-  <div class="dev-body">
-
-    <div class="dev-seccion activa" id="tabContenido">
-      <div class="dev-campo">
-        <label for="devHeroTitulo">Título del hero</label>
-        <input id="devHeroTitulo" data-campo="heroTitulo">
-      </div>
-      <div class="dev-campo">
-        <label for="devHeroAcento">Palabra destacada del hero (en morado)</label>
-        <input id="devHeroAcento" data-campo="heroAcento">
-      </div>
-      <div class="dev-campo">
-        <label for="devHeroBajada">Bajada del hero</label>
-        <textarea id="devHeroBajada" data-campo="heroBajada"></textarea>
-      </div>
-      <div class="dev-campo">
-        <label for="devPrecioMensual">Precio mensualidad (texto libre, ej. "$25.000/mes")</label>
-        <input id="devPrecioMensual" data-campo="precioMensual">
-      </div>
-      <div class="dev-campo">
-        <label for="devPrecioUnico">Precio desarrollo a medida (texto libre, ej. "Desde $500.000")</label>
-        <input id="devPrecioUnico" data-campo="precioUnico">
-      </div>
-      <div class="dev-campo">
-        <label for="devFraseFooter">Frase del footer (después de "Sitios web para delivery con")</label>
-        <input id="devFraseFooter" data-campo="fraseFooter">
-      </div>
-      <button class="dev-btn-add" id="devGuardarContenido">Guardar contenido</button>
-      <div class="dev-guardado" id="devGuardadoContenido">Guardado ✓</div>
-    </div>
-
-    <div class="dev-seccion" id="tabResenas">
-      <div id="devResenasLista"></div>
-      <button class="dev-btn-add" id="devAgregarResena">+ Agregar reseña</button>
-    </div>
-
-    <div class="dev-seccion" id="tabMetricas">
-      <div class="dev-campo" id="devSecretoWrap">
-        <label for="devAdminSecretInput">Clave de administrador (para ver métricas de facturación)</label>
-        <input type="password" id="devAdminSecretInput" placeholder="Misma clave de ADMIN_SECRET">
-        <button class="dev-btn-add" id="devVerMetricas" style="margin-top:8px">Ver métricas</button>
-      </div>
-      <div class="dev-metricas-grid" id="devMetricasGrid" style="display:none"></div>
-      <p style="color:var(--dev-txt2);font-size:13px">Datos en vivo desde Firestore — tiendas registradas y estado de mensualidades. Para el detalle completo de cada tienda, usá <a href="/suscripciones.html" style="color:var(--morado)">suscripciones.html</a>.</p>
-    </div>
-
-  </div>
-</div>
+<script data-migracion>
+/* Carga inicial desde Firestore (solo mientras no exista una versión
+   publicada con el editor). El editor quita este script al publicar. */
+window.__landingMigracion = (async function(){
+  try {
+    if (!window.firebase) return;
+    if (!firebase.apps.length) firebase.initializeApp({
+      apiKey: "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM",
+      authDomain: "tienda-test-burgers.firebaseapp.com",
+      projectId: "tienda-test-burgers",
+      storageBucket: "tienda-test-burgers.firebasestorage.app",
+      messagingSenderId: "406623629835",
+      appId: "1:406623629835:web:31152eac803ed8c679cd0e"
+    });
+    var db = firebase.firestore();
+    var esc = function(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); };
+    var q = function(s){ return document.querySelector(s); };
+    var tareas = [];
+    tareas.push(db.doc("plataforma/landing").get().then(function(doc){
+      if (!doc.exists) return;
+      var d = doc.data();
+      if (d.heroTituloPre != null && q("#heroTituloPre")) q("#heroTituloPre").innerHTML = esc(d.heroTituloPre).replace(/\n/g, "<br>");
+      ["heroAcento","heroBajada","precioMensual","precioUnico","fraseFooter"].forEach(function(k){
+        if (d[k] != null && q("#" + k)) q("#" + k).textContent = d[k];
+      });
+    }).catch(function(e){ console.warn("landing:", e); }));
+    tareas.push(db.collection("plataforma/landing/resenas").orderBy("orden").get().then(function(snap){
+      var grid = q("#resenasGrid"); if (!grid || snap.empty) return;
+      grid.innerHTML = snap.docs.map(function(doc){
+        var r = doc.data();
+        var ini = (r.nombre || "").split(" ").map(function(p){ return p[0] || ""; }).join("").slice(0,2).toUpperCase();
+        var est = "★".repeat(Math.max(1, Math.min(5, r.estrellas || 5)));
+        return '\n        <div class="reseña-card">\n          <div class="reseña-estrellas">' + est + '</div>\n          <p class="reseña-texto">' + esc(r.texto) + '</p>\n          <div class="reseña-autor">\n            <div class="reseña-avatar">' + esc(ini) + '</div>\n            <div>\n              <div class="reseña-nombre">' + esc(r.nombre) + '</div>\n              <div class="reseña-negocio">' + esc(r.negocio) + '</div>\n            </div>\n          </div>\n        </div>';
+      }).join("");
+    }).catch(function(e){ console.warn("reseñas:", e); }));
+    await Promise.all(tareas);
+  } catch(e){ console.warn("migración landing:", e); }
+})();
+</script>
 
 <script>
-/* ══════════════════════════════════════════════════════════════
-   FIREBASE — mismo proyecto compartido que index.html/pedidos.html.
-   El landing no es una tienda, así que no usa STORE_ID — su
-   contenido vive en un documento fijo: plataforma/landing.
-   ══════════════════════════════════════════════════════════════ */
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM",
-  authDomain:        "tienda-test-burgers.firebaseapp.com",
-  projectId:         "tienda-test-burgers",
-  storageBucket:     "tienda-test-burgers.firebasestorage.app",
-  messagingSenderId: "406623629835",
-  appId:             "1:406623629835:web:31152eac803ed8c679cd0e"
-};
-firebase.initializeApp(FIREBASE_CONFIG);
-const db = firebase.firestore();
-const docLanding = db.doc("plataforma/landing");
-const colResenas = db.collection("plataforma/landing/resenas");
-
-function esc(s){
-  return String(s == null ? "" : s)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
-}
-const qs = s => document.querySelector(s);
-
-/* ── Carga del contenido público — corre siempre, sin necesitar la
-   clave de administrador. Si el documento no existe todavía (primera
-   vez), se queda con el texto que ya está escrito a mano en el HTML,
-   sin sobrescribir nada. ── */
-async function cargarContenidoPublico(){
-  try {
-    const doc = await docLanding.get();
-    if (!doc.exists) return;
-    const d = doc.data();
-    if (d.heroTituloPre != null) qs("#heroTituloPre").innerHTML = esc(d.heroTituloPre).replace(/\n/g, "<br>");
-    if (d.heroAcento != null) qs("#heroAcento").textContent = d.heroAcento;
-    if (d.heroBajada != null) qs("#heroBajada").textContent = d.heroBajada;
-    if (d.precioMensual != null) qs("#precioMensual").textContent = d.precioMensual;
-    if (d.precioUnico != null) qs("#precioUnico").textContent = d.precioUnico;
-    if (d.fraseFooter != null) qs("#fraseFooter").textContent = d.fraseFooter;
-  } catch(e){ console.warn("No se pudo cargar el contenido del landing:", e); }
-}
-const RESENAS_DEFAULT = [
-  { nombre: "Camilo Fuentes", negocio: "Cocina urbana", estrellas: 5,
-    texto: "Al comienzo tuve mis dudas, pero en un par de días me di cuenta de lo fácil que se vuelve todo. Tener todo en uno me da bastante tiempo extra que se traduce en ganancia." },
-  { nombre: "Natalia Rubilar", negocio: "Moda y accesorios", estrellas: 5,
-    texto: "Llevo varios años vendiendo por WhatsApp y marketplace. Desde que entré a la plataforma lo primero que noté es cómo bajó mi carga mental. Eso me ayudó a preocuparme más de mis proveedores y comencé a llegar a público que antes no llegaba. Ahora reparto en todo Santiago, no solo en mi comuna." },
-  { nombre: "Matías Rodríguez", negocio: "Tecnología y accesorios", estrellas: 5,
-    texto: "Dejo mi reseña principalmente porque la atención que recibí me hizo enamorarme de la plataforma. Un sábado por la noche se me ocurrió escribir a soporte para agregar un chatbot a mi tienda y me sorprendió la rapidez con la que recibí atención e integración de lo que pedí. Realmente el soporte es 24/7. Recomendadísimos." },
-  { nombre: "Felipe Catalán", negocio: "Restaurant", estrellas: 5,
-    texto: "Llevo 5 meses con DerLabs y ya logré sacar a mi restaurant de PedidosYa para dejar de pagar la tremenda comisión por venta. Ahora solo uso el gestor de pedidos y mis repartidores propios. Solo a veces uso PedidosYa Envíos cuando estoy corto de repartidores. La integración fue sencilla: solo tuve que meter el token en el panel de administrador. Los recomiendo." },
-  { nombre: "Macarena Sánchez", negocio: "Ropa", estrellas: 5,
-    texto: "Vendía ropa por marketplace y por Instagram. Ahora tengo mi propio sitio que parece una web de casa comercial tipo Falabella o MercadoLibre. El aspecto profesional que da el sitio me encanta. Fue un crecimiento increíble: ahora solo pago publicidad a mi web y las ventas caen solas." }
-];
-
-function renderResenas(lista){
-  return lista.map(r => {
-    const iniciales = (r.nombre || "").split(" ").map(p => p[0]).join("").slice(0,2).toUpperCase();
-    const estrellas = "★".repeat(Math.max(1, Math.min(5, r.estrellas || 5)));
-    return `
-        <div class="reseña-card">
-          <div class="reseña-estrellas">${estrellas}</div>
-          <p class="reseña-texto">${esc(r.texto)}</p>
-          <div class="reseña-autor">
-            <div class="reseña-avatar">${esc(iniciales)}</div>
-            <div>
-              <div class="reseña-nombre">${esc(r.nombre)}</div>
-              <div class="reseña-negocio">${esc(r.negocio)}</div>
-            </div>
-          </div>
-        </div>`;
-  }).join("");
-}
-
-async function cargarResenasPublico(){
-  const grid = qs("#resenasGrid");
-  try {
-    const snap = await colResenas.orderBy("orden").get();
-    const resenas = snap.empty ? RESENAS_DEFAULT : snap.docs.map(doc => doc.data());
-    grid.innerHTML = renderResenas(resenas);
-  } catch(e){
-    console.warn("Reseñas por defecto (no hay Firestore):", e);
-    grid.innerHTML = renderResenas(RESENAS_DEFAULT);
-  }
-}
-cargarContenidoPublico();
-cargarResenasPublico();
-
-/* ══════════════════════════════════════════════════════════════
-   DEVMODE — solo se activa si la URL tiene #dev. Protegido con
-   Firebase Auth (no con un secreto compartido): la cuenta que entra
-   necesita roles.plataforma = "propietario" en usuarios/{uid} — mismo
-   mecanismo que ya protege el devmode de cada tienda (ver
-   resolverRolPropietario en index.html), reutilizado acá porque el
-   devmode del landing escribe directo a Firestore desde el navegador,
-   sin pasar por ninguna función de Netlify — así que las reglas de
-   Firestore son la única barrera real, y esas reglas solo pueden
-   verificar una sesión de Firebase Auth, no un secreto que compara el
-   propio JS del cliente.
-   ══════════════════════════════════════════════════════════════ */
-const auth = firebase.auth();
-let ADMIN_SECRET = ""; // se sigue usando aparte, solo para listarSuscripciones.js (ver pestaña Métricas)
-
-function abrirDevGate(){
-  qs("#devGate").classList.add("abierto");
-}
-async function intentarEntrarDev(){
-  const email = qs("#devGateEmail").value.trim();
-  const pass = qs("#devGateInput").value;
-  const err = qs("#devGateErr");
-  err.textContent = "";
-  if (!email || !pass){ err.textContent = "Completá email y contraseña"; return; }
-  try {
-    const cred = await auth.signInWithEmailAndPassword(email, pass);
-    const doc = await db.doc("usuarios/" + cred.user.uid).get();
-    const roles = doc.exists ? (doc.data().roles || {}) : {};
-    if (roles.plataforma !== "propietario"){
-      await auth.signOut();
-      err.textContent = "Esta cuenta no tiene acceso al panel del landing";
-      return;
-    }
-    qs("#devGate").classList.remove("abierto");
-    abrirDevPanel();
-  } catch(e){
-    err.textContent = "Email o contraseña incorrectos";
-  }
-}
-if (location.hash === "#dev"){
-  auth.onAuthStateChanged(async user => {
-    if (!user){ abrirDevGate(); return; }
-    const doc = await db.doc("usuarios/" + user.uid).get();
-    const roles = doc.exists ? (doc.data().roles || {}) : {};
-    if (roles.plataforma === "propietario") abrirDevPanel();
-    else abrirDevGate();
-  });
-}
-qs("#devGateBtn").addEventListener("click", intentarEntrarDev);
-qs("#devGateInput").addEventListener("keydown", e => { if (e.key === "Enter") intentarEntrarDev(); });
-qs("#devClose").addEventListener("click", () => {
-  qs("#devPanel").classList.remove("abierto");
-  history.replaceState(null, "", location.pathname);
-});
-
-document.querySelectorAll(".dev-tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".dev-tab").forEach(t => t.classList.remove("activa"));
-    document.querySelectorAll(".dev-seccion").forEach(s => s.classList.remove("activa"));
-    tab.classList.add("activa");
-    qs("#tab" + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add("activa");
-  });
-});
-
-function abrirDevPanel(){
-  qs("#devPanel").classList.add("abierto");
-  cargarContenidoDev();
-  cargarResenasDev();
-  // Métricas no se cargan automático — necesitan ADMIN_SECRET, que se
-  // pide aparte en esa misma pestaña (ver botón #devVerMetricas).
-}
-
-/* ── Pestaña Contenido — precarga los campos con lo que ya hay
-   guardado (o lo que está escrito a mano en el HTML, como valor de
-   partida razonable la primera vez). ── */
-async function cargarContenidoDev(){
-  try {
-    const doc = await docLanding.get();
-    const d = doc.exists ? doc.data() : {};
-    qs("#devHeroTitulo").value = d.heroTituloPre ?? qs("#heroTituloPre").textContent.trim();
-    qs("#devHeroAcento").value = d.heroAcento ?? qs("#heroAcento").textContent.trim();
-    qs("#devHeroBajada").value = d.heroBajada ?? qs("#heroBajada").textContent.trim();
-    qs("#devPrecioMensual").value = d.precioMensual ?? qs("#precioMensual").textContent.trim();
-    qs("#devPrecioUnico").value = d.precioUnico ?? qs("#precioUnico").textContent.trim();
-    qs("#devFraseFooter").value = d.fraseFooter ?? qs("#fraseFooter").textContent.trim();
-  } catch(e){ console.warn(e); }
-}
-qs("#devGuardarContenido").addEventListener("click", async () => {
-  try {
-    await docLanding.set({
-      heroTituloPre: qs("#devHeroTitulo").value,
-      heroAcento:    qs("#devHeroAcento").value,
-      heroBajada:    qs("#devHeroBajada").value,
-      precioMensual: qs("#devPrecioMensual").value,
-      precioUnico:   qs("#devPrecioUnico").value,
-      fraseFooter:   qs("#devFraseFooter").value
-    }, { merge: true });
-    await cargarContenidoPublico(); // refleja el cambio en la propia página al toque
-    const av = qs("#devGuardadoContenido");
-    av.classList.add("visible");
-    setTimeout(() => av.classList.remove("visible"), 2000);
-  } catch(e){
-    alert("Error al guardar: " + e.message);
-  }
-});
-
-/* ── Pestaña Reseñas — lista editable, cada tarjeta se guarda
-   individualmente al perder el foco de cualquiera de sus campos. ── */
-async function cargarResenasDev(){
-  try {
-    const snap = await colResenas.orderBy("orden").get();
-    const lista = qs("#devResenasLista");
-    lista.innerHTML = snap.docs.map(doc => renderResenaDevCard(doc.id, doc.data())).join("");
-    conectarEventosResenas();
-  } catch(e){ console.warn(e); }
-}
-function renderResenaDevCard(id, r){
-  return `
-    <div class="dev-resena-card" data-id="${esc(id)}">
-      <div class="dev-fila">
-        <input placeholder="Nombre" value="${esc(r.nombre||"")}" data-campo="nombre">
-        <input placeholder="Negocio" value="${esc(r.negocio||"")}" data-campo="negocio">
-      </div>
-      <div class="dev-fila">
-        <input type="number" min="1" max="5" placeholder="Estrellas (1-5)" value="${r.estrellas||5}" data-campo="estrellas" style="max-width:120px">
-        <button class="dev-btn-del" data-accion="borrar">Borrar</button>
-      </div>
-      <textarea placeholder="Texto de la reseña" data-campo="texto">${esc(r.texto||"")}</textarea>
-    </div>`;
-}
-function conectarEventosResenas(){
-  document.querySelectorAll(".dev-resena-card").forEach(card => {
-    const id = card.dataset.id;
-    card.querySelectorAll("[data-campo]").forEach(campo => {
-      campo.addEventListener("blur", () => guardarResena(id, card));
-    });
-    const btnBorrar = card.querySelector("[data-accion='borrar']");
-    if (btnBorrar) btnBorrar.addEventListener("click", async () => {
-      if (!confirm("¿Borrar esta reseña?")) return;
-      await colResenas.doc(id).delete();
-      card.remove();
-      await cargarResenasPublico();
-    });
-  });
-}
-async function guardarResena(id, card){
-  try {
-    const datos = {
-      nombre: card.querySelector('[data-campo="nombre"]').value,
-      negocio: card.querySelector('[data-campo="negocio"]').value,
-      estrellas: Number(card.querySelector('[data-campo="estrellas"]').value) || 5,
-      texto: card.querySelector('[data-campo="texto"]').value
-    };
-    await colResenas.doc(id).set(datos, { merge: true });
-    await cargarResenasPublico();
-  } catch(e){ console.warn(e); }
-}
-qs("#devAgregarResena").addEventListener("click", async () => {
-  try {
-    const snap = await colResenas.get();
-    const nuevoDoc = await colResenas.add({
-      nombre: "", negocio: "", estrellas: 5, texto: "", orden: snap.size
-    });
-    const lista = qs("#devResenasLista");
-    lista.insertAdjacentHTML("beforeend", renderResenaDevCard(nuevoDoc.id, { estrellas: 5 }));
-    conectarEventosResenas();
-  } catch(e){ alert("Error al agregar reseña: " + e.message); }
-});
-
-/* ── Pestaña Métricas — lee suscripciones_plataforma vía la misma
-   función backend que ya usa suscripciones.html, no directo a
-   Firestore (esa colección está cerrada por completo del lado del
-   cliente — ver README-FIRESTORE-RULES.md). ── */
-qs("#devVerMetricas").addEventListener("click", () => {
-  ADMIN_SECRET = qs("#devAdminSecretInput").value.trim();
-  if (!ADMIN_SECRET) return;
-  cargarMetricasDev();
-});
-async function cargarMetricasDev(){
-  const grid = qs("#devMetricasGrid");
-  grid.style.display = "grid";
-  grid.innerHTML = '<div class="dev-metrica-card"><div class="num">…</div><div class="lbl">Cargando</div></div>';
-  try {
-    const res = await fetch("/.netlify/functions/listarSuscripciones", {
-      headers: { "X-Admin-Secret": ADMIN_SECRET }
-    });
-    const j = await res.json().catch(() => ({}));
-    if (!res.ok || !j.ok){
-      grid.innerHTML = '<p style="color:var(--dev-txt2)">No se pudieron cargar las métricas — revisá la clave.</p>';
-      return;
-    }
-    qs("#devSecretoWrap").style.display = "none";
-    const lista = j.suscripciones || [];
-    const activas = lista.filter(s => s.estado === "activa").length;
-    const totalMensual = lista.filter(s => s.estado === "activa").reduce((sum, s) => sum + (s.montoMensual||0), 0);
-    grid.innerHTML = `
-      <div class="dev-metrica-card"><div class="num">${lista.length}</div><div class="lbl">Tiendas totales</div></div>
-      <div class="dev-metrica-card"><div class="num">${activas}</div><div class="lbl">Suscripciones activas</div></div>
-      <div class="dev-metrica-card"><div class="num">$${totalMensual.toLocaleString("es-CL")}</div><div class="lbl">Facturación mensual</div></div>
-    `;
-  } catch(e){
-    grid.innerHTML = '<p style="color:var(--dev-txt2)">Error de red al cargar métricas.</p>';
-  }
-}
-
-document.querySelectorAll("[data-faq]").forEach(btn => {
-  btn.addEventListener("click", () => {
-    btn.closest(".faq-item").classList.toggle("abierto");
-  });
+document.querySelectorAll("[data-faq]").forEach(function(btn){
+  btn.addEventListener("click", function(){ btn.closest(".faq-item").classList.toggle("abierto"); });
 });
 </script>
 
