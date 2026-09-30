@@ -196,6 +196,11 @@ export default {
       return manifestTienda(request, env);
     }
 
+    /* ── Pantalla de cocina (comandas): tienda.cl/cocina ── */
+    if (url.pathname === "/cocina" || url.pathname === "/cocina/") {
+      const urlCo = new URL(request.url); urlCo.pathname = "/cocina.html";
+      return env.ASSETS.fetch(new Request(urlCo, request));
+    }
     /* ── Caja local (restaurante): tienda.cl/caja ── */
     if (url.pathname === "/caja" || url.pathname === "/caja/") {
       const urlCaja = new URL(request.url); urlCaja.pathname = "/caja.html";

@@ -8,7 +8,35 @@
    pedido (canal:"local"), así aparecen en el gestor, finanzas y stock.
    Los turnos de caja viven en tiendas/{s}/caja_turnos. Todo pasa por aquí
    (cuenta de servicio): no hace falta tocar las reglas de Firestore. */
-import { getDb, corsHeaders, admin, uidDesdeToken } from "./_firebase.js";
+import { getDb, corsHeaders, admin, uidDesdeToken, authRest } from "./_firebase.js";
+
+/* Personal del local (fase 2): cuentas con usuario y clave, SIN rol en
+   usuarios/{uid}.roles (las reglas de Firestore no les abren nada).
+   Todo lo que hacen pasa por esta función, que revisa su permiso:
+     cajero → todo menos mesas, anular cuentas y personal
+     garzon → tomar pedidos, agregar rondas, mover mesa (no cobra)
+     cocina → ver comandas y marcarlas listas */
+export function emailPersonal(usuario, storeId){ return usuario + "--" + storeId + "@personal.derlabs.cl"; }
+const PERMISOS = {
+  cajero: ["estado", "pedidos", "abrirTurno", "movimiento", "crearPedido", "agregarItems", "anularItem", "ajustes", "pagar", "estadoLlevar", "moverMesa", "cerrarTurno", "turnos", "cocinaListo", "estadoOnline"],
+  garzon: ["estado", "pedidos", "crearPedido", "agregarItems", "moverMesa"],
+  cocina: ["estado", "pedidos", "cocinaListo"]
+};
+function claveNueva(){
+  const abc = "abcdefghjkmnpqrstuvwxyz23456789", b = crypto.getRandomValues(new Uint8Array(8));
+  let s = ""; for (let i = 0; i < 8; i++) s += abc[b[i] % abc.length];
+  return s.slice(0, 4) + "-" + s.slice(4);
+}
+/* Lo que ve el personal por la API (sin correos ni datos de pago) */
+function pedidoVista(id, p){
+  const c = p.cliente || {};
+  return { _docId: id, id: p.id || id, canal: p.canal || "web", tipo: p.tipo || "", estado: p.estado || "nuevo", fecha: p.fecha || "",
+    mesa: p.mesa || null, cliente: { nombre: c.nombre || "", telefono: p.canal === "local" ? (c.telefono || "") : "", direccion: c.direccion || "", notas: c.notas || "" },
+    items: p.items || [], subtotal: p.subtotal || 0, descuentoLocal: p.descuentoLocal || 0, propina: p.propina || 0, total: p.total || 0,
+    pagos: (p.pagos || []).map(x => ({ metodo: x.metodo, monto: x.monto })), pagado: !!p.pagado, cerrado: !!p.cerrado, entregado: !!p.entregado,
+    rondas: p.rondas || 1, rondasListas: p.rondasListas || [], cocinaListo: !!p.cocinaListo, metodoPago: p.metodoPago || "",
+    envio: p.envio ? { metodo: p.envio.metodo || "" } : null, estadoTimeline: p.estadoTimeline || {} };
+}
 
 const hdr = () => Object.assign({}, corsHeaders(), { "Cache-Control": "no-store" });
 const json = (o, st) => new Response(JSON.stringify(o), { status: st || 200, headers: hdr() });
@@ -107,12 +135,18 @@ export async function cajaLocal(request, env){
     const uid = await uidDesdeToken(request, env);
     if (!uid) return json({ ok: false, error: "Sesión vencida — vuelve a entrar" }, 401);
     const u = await db.doc("usuarios/" + uid).get();
-    const rol = u.exists && u.data().roles ? u.data().roles[storeId] : null;
-    if (!rol || rol === "repartidor") return json({ ok: false, error: "Sin permiso en esta tienda" }, 403);
+    let rol = u.exists && u.data().roles ? u.data().roles[storeId] : null;
+    let quien = u.exists ? (u.data().nombre || u.data().email || "") : "";
+    if (!rol || rol === "repartidor"){
+      const pe = await db.doc("tiendas/" + storeId + "/personal/" + uid).get();
+      if (!pe.exists || pe.data().activo === false) return json({ ok: false, error: "Sin permiso en esta tienda" }, 403);
+      rol = pe.data().rol; quien = pe.data().nombre || pe.data().usuario || "";
+      if (!PERMISOS[rol] || PERMISOS[rol].indexOf(b.accion) < 0) return json({ ok: false, error: "Tu cuenta (" + rol + ") no tiene permiso para esto" }, 403);
+    }
+    quien = quien || uid;
     const cfgD = await db.doc("tiendas/" + storeId + "/config/general").get();
     const cfg = cfgD.exists ? cfgD.data() : {};
     if (cfg.cajaLocal !== true) return json({ ok: false, error: "Esta tienda no tiene el sistema Caja local activado" }, 403);
-    const quien = (u.data().nombre || u.data().email || "") || uid;
     const ahora = new Date().toISOString();
     const col = "tiendas/" + storeId + "/pedidos";
     const pedidoRef = id => db.doc(col + "/" + idOk(id));
@@ -125,8 +159,66 @@ export async function cajaLocal(request, env){
     switch (b.accion){
       case "estado": {
         const t = await turnoAbierto(db, storeId);
-        return json({ ok: true, rol, turno: t ? Object.assign({ id: t.id }, t.t) : null,
+        return json({ ok: true, rol, quien, turno: t ? Object.assign({ id: t.id }, t.t) : null,
                       resumen: t ? await resumenTurno(db, storeId, t.id, t.t) : null, mesas: cfg.cajaMesas || null });
+      }
+      case "pedidos": {  /* para el personal y la cocina (sin acceso directo a Firestore) */
+        const desde = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
+        const s = await db.collection(col).where("fecha", ">=", desde).orderBy("fecha", "desc").get();
+        return json({ ok: true, pedidos: s.docs.map(d => pedidoVista(d.id, d.data())) });
+      }
+      case "cocinaListo": {  /* la cocina marca una comanda como lista */
+        const a = await pedidoLocal(b.pedidoId);
+        const cambios = { cocinaListoEn: ahora };
+        if (a.p.canal === "local" && a.p.mesa){
+          const r = Math.max(1, num(b.ronda) || (a.p.rondas || 1));
+          const listas = Array.from(new Set((a.p.rondasListas || []).concat([r]))).sort((x, y) => x - y);
+          cambios.rondasListas = listas;
+          cambios.cocinaListo = listas.length >= (a.p.rondas || 1);
+        } else if (a.p.canal === "local"){
+          cambios.cocinaListo = true; cambios.estado = "listo";
+          cambios.estadoTimeline = Object.assign({}, a.p.estadoTimeline || {}, { listo: ahora });
+        } else {
+          cambios.cocinaListo = true;
+        }
+        await a.ref.set(cambios, { merge: true });
+        return json({ ok: true });
+      }
+      case "personal": {
+        if (rol !== "propietario") return json({ ok: false, error: "Solo el propietario administra el personal" }, 403);
+        const pcol = "tiendas/" + storeId + "/personal";
+        const pid = idOk(b.id);
+        if (b.op === "listar"){
+          const s = await db.collection(pcol).get();
+          return json({ ok: true, personal: s.docs.map(d => { const x = d.data(); return { id: d.id, nombre: x.nombre || "", usuario: x.usuario || "", rol: x.rol || "", telefono: x.telefono || "", activo: x.activo !== false }; }) });
+        }
+        if (b.op === "crear"){
+          const nombre = limpio(b.nombre, 40), usuario = String(b.usuario || "").trim().toLowerCase(), rolP = String(b.rol || "");
+          if (!nombre) return json({ ok: false, error: "Escribe el nombre" }, 400);
+          if (!/^[a-z0-9._-]{3,20}$/.test(usuario)) return json({ ok: false, error: "El usuario debe tener 3 a 20 letras o números, sin espacios" }, 400);
+          if (!PERMISOS[rolP]) return json({ ok: false, error: "Elige el cargo" }, 400);
+          const ya = await db.collection(pcol).where("usuario", "==", usuario).limit(1).get();
+          if (!ya.empty) return json({ ok: false, error: "Ese usuario ya existe" }, 409);
+          const clave = claveNueva();
+          const cuenta = await admin.auth().createUser({ email: emailPersonal(usuario, storeId), password: clave, displayName: nombre });
+          await db.doc(pcol + "/" + cuenta.uid).set({ nombre, usuario, rol: rolP, telefono: limpio(b.telefono, 20), activo: true, creadoEn: ahora, creadoPor: uid });
+          return json({ ok: true, id: cuenta.uid, usuario, clave });
+        }
+        if (!pid || !(await db.doc(pcol + "/" + pid).get()).exists) return json({ ok: false, error: "No existe" }, 404);
+        if (b.op === "clave"){ const clave = claveNueva(); await authRest(":update", { localId: pid, password: clave }); return json({ ok: true, clave }); }
+        if (b.op === "activo"){ const activo = b.activo !== false; await authRest(":update", { localId: pid, disableUser: !activo }); await db.doc(pcol + "/" + pid).set({ activo }, { merge: true }); return json({ ok: true, activo }); }
+        if (b.op === "rol"){ if (!PERMISOS[b.rol]) return json({ ok: false, error: "Cargo inválido" }, 400); await db.doc(pcol + "/" + pid).set({ rol: b.rol }, { merge: true }); return json({ ok: true }); }
+        if (b.op === "eliminar"){ await authRest(":delete", { localId: pid }).catch(e => { if (!/USER_NOT_FOUND/.test(e.message)) throw e; }); await db.doc(pcol + "/" + pid).delete(); return json({ ok: true }); }
+        return json({ ok: false, error: "Operación desconocida" }, 400);
+      }
+      case "estadoOnline": {  /* avanzar pedidos web desde la caja (cajero) */
+        const a = await pedidoLocal(b.pedidoId);
+        if (a.p.canal === "local") return json({ ok: false, error: "No corresponde" }, 400);
+        const ORDEN = ["nuevo", "preparacion", "camino", "listo"];
+        const nuevo = String(b.estado || "");
+        if (ORDEN.indexOf(nuevo) <= ORDEN.indexOf(a.p.estado)) return json({ ok: false, error: "Ese pedido ya avanzó" }, 409);
+        await a.ref.set({ estado: nuevo, estadoTimeline: Object.assign({}, a.p.estadoTimeline || {}, { [nuevo]: ahora }) }, { merge: true });
+        return json({ ok: true });
       }
       case "guardarMesas": {
         if (rol !== "propietario") return json({ ok: false, error: "Solo el propietario puede cambiar las mesas" }, 403);
@@ -184,7 +276,7 @@ export async function cajaLocal(request, env){
         const nuevos = await validarItems(db, storeId, b.items, ronda, ahora);
         const items = (a.p.items || []).concat(nuevos);
         const sub = subtotalDe(items);
-        await a.ref.set({ items, rondas: ronda, subtotal: sub, total: Math.max(0, sub - (a.p.descuentoLocal || 0)),
+        await a.ref.set({ items, rondas: ronda, cocinaListo: false, subtotal: sub, total: Math.max(0, sub - (a.p.descuentoLocal || 0)),
                           estado: "preparacion", estadoTimeline: Object.assign({}, a.p.estadoTimeline || {}, { preparacion: ahora, listo: null }) }, { merge: true });
         await moverStock(db, storeId, nuevos, -1);
         return json({ ok: true, ronda });

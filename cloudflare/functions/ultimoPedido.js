@@ -26,13 +26,17 @@ export async function ultimoPedido(request, env){
     if (!storeId) storeId = "test-burgers";
 
     const snap = await db.collection("tiendas/" + storeId + "/pedidos")
-      .orderBy("fecha", "desc").limit(1).get();
+      .orderBy("fecha", "desc").limit(15).get();
 
-    if (snap.empty) {
+    /* Solo pedidos de la tienda online: los de mesa / caja local (canal "local")
+       no generan aviso "Nuevo pedido" (se ven en la caja y en /cocina). */
+    const hace15 = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const doc = snap.docs.find(function(x){ const p = x.data(); return p.canal !== "local" && String(p.fecha || "") >= hace15; });
+    if (!doc) {
       return new Response(JSON.stringify({ ok: true, pedido: null }), { status: 200, headers });
     }
 
-    const d = snap.docs[0].data();
+    const d = doc.data();
     const resumen = resumenItems(d.items);
 
     return new Response(JSON.stringify({

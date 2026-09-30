@@ -24,6 +24,8 @@ a{color:inherit;text-decoration:none}
 input,select,textarea{background:var(--bg3);border:1.5px solid var(--line);border-radius:12px;padding:12px 13px;width:100%;font-size:16px}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--info)}
 .oculto{display:none!important}
+body[data-rol="garzon"] .solo-caja,body[data-rol="garzon"] .solo-admin,body[data-rol="cajero"] .solo-admin{display:none!important}
+.listo-servir{color:#86EFAC!important}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:12px;font-weight:900;background:var(--bg4)}
 .btn:disabled{opacity:.45}
 .btn-ok{background:var(--ok);color:#fff}.btn-info{background:var(--info);color:#fff}.btn-acc{background:var(--acc);color:#fff}.btn-bad{background:var(--badb);color:#FCA5A5}
@@ -139,7 +141,7 @@ table.t td:last-child{text-align:right;font-weight:800}
   <div class="login-box">
     <h1>🧾 Caja local</h1>
     <p class="muted" id="loginTienda">Entra con tu cuenta de administrador</p>
-    <input id="lEmail" type="email" placeholder="Correo" autocomplete="username">
+    <input id="lEmail" type="text" placeholder="Correo o usuario" autocomplete="username" autocapitalize="none">
     <input id="lPass" type="password" placeholder="Contraseña" autocomplete="current-password">
     <button class="btn btn-acc" id="lBtn">Entrar</button>
     <p id="loginErr"></p>
@@ -151,7 +153,9 @@ table.t td:last-child{text-align:right;font-weight:800}
     <span class="h-nombre" id="hNombre">Caja local</span>
     <span class="chip" id="chipTurno">…</span>
     <span id="reloj"></span>
-    <a class="btn btn-sm" href="/pedidos.html" title="Gestor de pedidos">📦 Gestor</a>
+    <button class="btn btn-sm oculto" id="btnPersonal">👥 Personal</button>
+    <a class="btn btn-sm" href="/cocina" title="Pantalla de cocina">👨‍🍳 Cocina</a>
+    <a class="btn btn-sm solo-admin" href="/pedidos.html" title="Gestor de pedidos">📦 Gestor</a>
     <button class="btn btn-sm" id="btnSalir" title="Salir">⏻</button>
   </header>
   <nav class="tabs">
@@ -225,7 +229,13 @@ async function api(accion, datos){
     body: JSON.stringify(Object.assign({ accion, storeId: STORE_ID }, datos || {})) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
+  if (S.poll && ["estado", "pedidos", "turnos"].indexOf(accion) < 0) setTimeout(cargarPedidosApi, 150);
   return j;
+}
+const ES_PERSONAL = r => ["cajero", "garzon", "cocina"].indexOf(r) >= 0;
+async function cargarPedidosApi(){
+  try { const j = await api("pedidos"); S.pedidos = j.pedidos || []; render(); }
+  catch(e){ console.warn("pedidos:", e.message); }
 }
 
 /* ───────────── Arranque ───────────── */
@@ -238,7 +248,9 @@ async function iniciar(){
 }
 qs("#lBtn").addEventListener("click", async () => {
   qs("#loginErr").textContent = "";
-  try { await auth.signInWithEmailAndPassword(qs("#lEmail").value.trim(), qs("#lPass").value); }
+  let id = qs("#lEmail").value.trim().toLowerCase();
+  if (id && id.indexOf("@") < 0) id = id + "--" + STORE_ID + "@personal.derlabs.cl";   /* cuentas del personal */
+  try { await auth.signInWithEmailAndPassword(id, qs("#lPass").value); }
   catch(e){ qs("#loginErr").textContent = "Correo o contraseña incorrectos"; }
 });
 qs("#lPass").addEventListener("keydown", e => { if (e.key === "Enter") qs("#lBtn").click(); });
@@ -254,9 +266,13 @@ async function entrar(){
     qs("#loginTienda").textContent = "Esta tienda no tiene Caja local activado. Pídelo a DerLabs.";
     return;
   }
-  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.rol = e.rol; if (e.mesas) S.cfg.cajaMesas = e.mesas; }
+  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.rol = e.rol; S.quien = e.quien; if (e.mesas) S.cfg.cajaMesas = e.mesas; }
   catch(e){ qs("#login").classList.remove("oculto"); qs("#app").classList.add("oculto"); qs("#loginErr").textContent = e.message; return; }
+  if (S.rol === "cocina"){ location.href = "/cocina"; return; }
   qs("#login").classList.add("oculto"); qs("#app").classList.remove("oculto");
+  document.body.dataset.rol = S.rol;
+  qs("#btnPersonal").classList.toggle("oculto", S.rol !== "propietario");
+  qs('.tab[data-v="turno"]').classList.toggle("oculto", S.rol === "garzon");
   qs("#hNombre").textContent = (S.cfg.nombre || "Tienda") + " · Caja";
   qs("#reloj").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
   document.title = (S.cfg.nombre || "Tienda") + " — Caja local";
@@ -264,10 +280,17 @@ async function entrar(){
   _unsubs.push(T.collection("config").doc("general").onSnapshot(d => { if (d.exists){ S.cfg = d.data(); render(); } }));
   _unsubs.push(T.collection("productos").onSnapshot(s => { S.productos = s.docs.map(d => Object.assign({ id: d.id }, d.data())); if (!qs("#catalogo").classList.contains("oculto")) renderCatalogo(); }));
   const desde = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
-  _unsubs.push(T.collection("pedidos").where("fecha", ">=", desde).orderBy("fecha", "desc").onSnapshot(s => {
-    S.pedidos = s.docs.map(d => Object.assign({ _docId: d.id }, d.data()));
-    render();
-  }, e => toast("⚠️ Sin conexión a los pedidos: " + e.message, 5000)));
+  clearInterval(S.poll); S.poll = null;
+  if (ES_PERSONAL(S.rol)){
+    /* El personal no lee Firestore directo: pide los pedidos al servidor cada 4 s */
+    S.poll = setInterval(() => { if (!document.hidden) cargarPedidosApi(); }, 4000);
+    cargarPedidosApi();
+  } else {
+    _unsubs.push(T.collection("pedidos").where("fecha", ">=", desde).orderBy("fecha", "desc").onSnapshot(s => {
+      S.pedidos = s.docs.map(d => Object.assign({ _docId: d.id }, d.data()));
+      render();
+    }, e => toast("⚠️ Sin conexión a los pedidos: " + e.message, 5000)));
+  }
   render();
 }
 setInterval(() => { qs("#reloj").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }); if (S.vista === "mesas") renderMesas(); }, 30000);
@@ -322,7 +345,9 @@ function renderMesas(){
     const parcial = pagado(p) > 0;
     return '<button class="mesa ' + (parcial ? 'parcial' : 'ocupada') + (sel ? ' sel' : '') + '" data-mesa="' + esc(m.id) + '">' + (pend ? '<span class="dot"></span>' : '') +
       '<b>' + esc(m.nombre) + '</b><span class="st">' + (parcial ? 'Pago parcial' : 'Ocupada') + ' · ' + minutos(p.fecha) + ' min</span>' +
-      '<span class="st">' + (p.items || []).filter(i => !i.anulado).reduce((t, i) => t + i.cantidad, 0) + ' productos</span><span class="tot">' + $$(aPagar(p) - pagado(p)) + '</span></button>';
+      '<span class="st">' + (p.items || []).filter(i => !i.anulado).reduce((t, i) => t + i.cantidad, 0) + ' productos</span>' +
+      ((p.rondasListas || []).indexOf(p.rondas || 1) >= 0 ? '<span class="st listo-servir">🔔 Listo para servir</span>' : '') +
+      '<span class="tot">' + $$(aPagar(p) - pagado(p)) + '</span></button>';
   }).join("");
 }
 qs("#zonas").addEventListener("click", e => {
@@ -368,8 +393,8 @@ function renderLlevar(){
       '<span class="muted small">#' + esc(p.id) + ' · ' + minutos(p.fecha) + ' min · ' + (p.estado === "listo" ? "✅ Listo para entregar" : "👨‍🍳 En preparación") + (p.cliente && p.cliente.telefono ? ' · 📞 ' + esc(p.cliente.telefono) : '') + '</span>' +
       '<div class="card-top"><span class="muted small">' + esc((p.items || []).filter(i => !i.anulado).map(i => i.cantidad + "× " + i.nombre).join(", ")) + '</span><b>' + $$(aPagar(p)) + '</b></div>' +
       '<div class="acciones"><button class="btn btn-sm" data-abrir="' + esc(p._docId) + '">Abrir</button>' +
-      (p.estado !== "listo" ? '<button class="btn btn-sm btn-info" data-listo="' + esc(p._docId) + '">✅ Marcar listo</button>' : '') +
-      (!p.pagado ? '<button class="btn btn-sm btn-ok" data-cobrar="' + esc(p._docId) + '">💵 Cobrar</button>' : '<button class="btn btn-sm btn-ok" data-entregar="' + esc(p._docId) + '">🥡 Entregado</button>') +
+      (p.estado !== "listo" ? '<button class="btn btn-sm btn-info solo-caja" data-listo="' + esc(p._docId) + '">✅ Marcar listo</button>' : '') +
+      (!p.pagado ? '<button class="btn btn-sm btn-ok solo-caja" data-cobrar="' + esc(p._docId) + '">💵 Cobrar</button>' : '<button class="btn btn-sm btn-ok solo-caja" data-entregar="' + esc(p._docId) + '">🥡 Entregado</button>') +
       '</div></div>').join("");
 }
 qs("#listaLlevar").addEventListener("click", async e => {
@@ -402,10 +427,10 @@ function renderOnline(){
     const e = ESTS[p.estado] || [p.estado, ""];
     let sig = SIG[p.estado];
     if (sig && sig[0] === "__listo") sig = p.tipo === "delivery" ? ["camino", "🛵 Salió"] : ["listo", "✅ Entregado"];
-    return '<div class="card"><div class="card-top"><b>#' + esc(p.id) + ' · ' + esc(cl.nombre || "") + '</b><span class="badge ' + e[1] + '">' + e[0] + '</span></div>' +
+    return '<div class="card"><div class="card-top"><b>#' + esc(p.id) + ' · ' + esc(cl.nombre || "") + '</b><span>' + (p.cocinaListo && p.estado === "preparacion" ? '<span class="badge ok">👨‍🍳 Cocina lista</span> ' : '') + '<span class="badge ' + e[1] + '">' + e[0] + '</span></span></div>' +
       '<span class="muted small">' + (p.tipo === "delivery" ? "🛵 Delivery · " + esc(cl.direccion || "") : "🏠 Retiro") + ' · ' + minutos(p.fecha) + ' min · ' + (p.metodoPago === "mercadopago" ? "Pagado online" : "Efectivo") + '</span>' +
       '<div class="card-top"><span class="muted small">' + esc((p.items || []).map(i => i.cantidad + "× " + i.nombre).join(", ")) + '</span><b>' + $$(p.total) + '</b></div>' +
-      (sig && !(p.envio && p.envio.metodo === "repartidor" && p.estado !== "nuevo") ? '<div class="acciones"><button class="btn btn-sm btn-info" data-avanza="' + esc(p._docId) + '" data-a="' + sig[0] + '">' + sig[1] + '</button></div>' : '') + '</div>';
+      (sig && !(p.envio && p.envio.metodo === "repartidor" && p.estado !== "nuevo") ? '<div class="acciones solo-caja"><button class="btn btn-sm btn-info" data-avanza="' + esc(p._docId) + '" data-a="' + sig[0] + '">' + sig[1] + '</button></div>' : '') + '</div>';
   };
   qs("#listaOnline").innerHTML = (act.length ? act.map(card).join("") : '<div class="vacio">No hay pedidos online en curso.</div>') +
     (hechos.length ? '<div class="sec-t">Entregados recientes</div>' + hechos.map(card).join("") : "");
@@ -413,10 +438,9 @@ function renderOnline(){
 qs("#listaOnline").addEventListener("click", async e => {
   const b = e.target.closest("[data-avanza]"); if (!b) return;
   const p = pedidoPorId(b.dataset.avanza); if (!p) return;
-  const nuevo = b.dataset.a, ahora = new Date().toISOString(), tl = Object.assign({}, p.estadoTimeline || {}); tl[nuevo] = ahora;
   b.disabled = true;
-  try { await db.collection("tiendas").doc(STORE_ID).collection("pedidos").doc(p._docId).update({ estado: nuevo, estadoTimeline: tl }); }
-  catch(err){ toast("❌ No se pudo actualizar"); b.disabled = false; }
+  try { await api("estadoOnline", { pedidoId: p._docId, estado: b.dataset.a }); }
+  catch(err){ toast("❌ " + err.message); b.disabled = false; }
 });
 
 /* ───────────── Cuenta (mesa o para llevar) ───────────── */
@@ -445,7 +469,7 @@ function renderCuenta(){
       h += '<div class="ronda">' + (Object.keys(rondas).length > 1 ? "Ronda " + r : "Enviado a cocina") + '</div>';
       rondas[r].forEach(([it, idx]) => {
         h += '<div class="it' + (it.anulado ? ' anulado' : '') + '"><span class="q">' + it.cantidad + '×</span><span class="n">' + esc(it.nombre) + (variantesTxt(it) ? '<small>' + esc(variantesTxt(it)) + '</small>' : '') + '</span><span class="p">' + $$(it.precio * it.cantidad) + '</span>' +
-          (!it.anulado && !p.pagado ? '<button class="xbtn" data-anular="' + idx + '" title="Anular">✕</button>' : '') + '</div>';
+          (!it.anulado && !p.pagado ? '<button class="xbtn solo-caja" data-anular="' + idx + '" title="Anular">✕</button>' : '') + '</div>';
       });
     });
   }
@@ -469,8 +493,8 @@ function renderCuenta(){
   const pendTot = pend.reduce((t, i) => t + i.precio * i.cantidad, 0);
   h += '<div class="fila2"><button class="btn" id="cProd">＋ Productos</button>' +
     (pend.length ? '<button class="btn btn-acc" id="cEnviar">👨‍🍳 Enviar (' + pend.reduce((t, i) => t + i.cantidad, 0) + ') · ' + $$(pendTot) + '</button>'
-                 : p && !p.pagado ? '<button class="btn btn-ok" id="cCobrar">💵 Cobrar</button>' : '<span></span>') + '</div>';
-  if (pend.length && p && !p.pagado) h += '<button class="btn btn-ok" id="cCobrar" disabled title="Envía primero lo pendiente">💵 Cobrar</button>';
+                 : p && !p.pagado ? (S.rol === "garzon" ? '<button class="btn" id="cPrecuenta">🧾 Pre-cuenta</button>' : '<button class="btn btn-ok" id="cCobrar">💵 Cobrar</button>') : '<span></span>') + '</div>';
+  if (pend.length && p && !p.pagado && S.rol !== "garzon") h += '<button class="btn btn-ok" id="cCobrar" disabled title="Envía primero lo pendiente">💵 Cobrar</button>';
   h += '</div>';
   qs("#cuenta").innerHTML = h;
 }
@@ -485,6 +509,7 @@ qs("#cuenta").addEventListener("click", async e => {
   if (e.target.closest("#cEnviar")){ enviarCocina(e.target.closest("#cEnviar")); return; }
   if (e.target.closest("#cCobrar")){ abrirCobro(); return; }
   if (e.target.closest("#cMas")){ menuCuenta(); return; }
+  if (e.target.closest("#cPrecuenta")){ precuenta(); return; }
   if ((b = e.target.closest("[data-pq]"))){
     const arr = S.pend[c.key] || [], it = arr[Number(b.dataset.pq)]; if (!it) return;
     it.cantidad += Number(b.dataset.d); if (it.cantidad <= 0) arr.splice(Number(b.dataset.pq), 1);
@@ -518,6 +543,14 @@ async function enviarCocina(btn){
     toast("👨‍🍳 Enviado a cocina");
     render();
   } catch(err){ toast("❌ " + err.message, 5000); btn.disabled = false; renderCuenta(); }
+}
+function precuenta(){
+  const p = pedidoCuenta(); if (!p) return;
+  const sug = Math.round((p.subtotal || 0) * 0.1 / 10) * 10;
+  modal('<h3>🧾 Pre-cuenta · ' + esc(S.cuenta.mesa ? S.cuenta.mesa.nombre : p.cliente.nombre) + '</h3><table class="t">' +
+    (p.items || []).filter(i => !i.anulado).map(i => '<tr><td>' + i.cantidad + '× ' + esc(i.nombre) + '</td><td>' + $$(i.precio * i.cantidad) + '</td></tr>').join("") +
+    '<tr><td><b>Total</b></td><td>' + $$((p.subtotal || 0) - (p.descuentoLocal || 0)) + '</td></tr><tr><td class="muted">Propina sugerida (10%)</td><td>' + $$(sug) + '</td></tr><tr><td><b>Total con propina</b></td><td>' + $$((p.subtotal || 0) - (p.descuentoLocal || 0) + sug) + '</td></tr></table>' +
+    '<p class="muted small">Muéstrala al cliente. El cobro lo hace la caja.</p><button class="btn" data-cerrar>Cerrar</button>');
 }
 function menuCuenta(){
   const p = pedidoCuenta(); if (!p) return;
@@ -751,6 +784,45 @@ function verTurno(id){
     (R.top && R.top.length ? '<div class="sec-t">Más vendidos</div><table class="t">' + R.top.map(x => '<tr><td>' + esc(x.nombre) + '</td><td>' + x.cantidad + '</td></tr>').join("") + '</table>' : '') +
     (t.nota ? '<p class="muted small">Nota: ' + esc(t.nota) + '</p>' : '') + '<button class="btn" data-cerrar>Cerrar</button>');
 }
+
+/* ───────────── Personal (solo propietario) ───────────── */
+const CARGOS = { cajero: "💵 Cajero/a", garzon: "🧑‍🍳 Garzón/Garzona", cocina: "👨‍🍳 Cocina" };
+let _personal = [];
+async function abrirPersonal(){
+  modal('<h3>👥 Personal del local</h3><div id="pLista"><p class="muted small">Cargando…</p></div>' +
+    '<div class="sec-t" style="margin-top:6px">Agregar</div><input id="pNom" placeholder="Nombre (ej: Camila)" maxlength="40"><input id="pUsu" placeholder="Usuario (ej: camila)" maxlength="20" autocapitalize="none">' +
+    '<input id="pTel" type="tel" placeholder="Teléfono (para mandarle su acceso)" maxlength="20"><div class="opts" id="pRoles">' + Object.keys(CARGOS).map(k => '<button class="opt" data-prol="' + k + '">' + CARGOS[k] + '</button>').join("") + '</div>' +
+    '<p class="muted small">Cajero: cobra y maneja el turno. Garzón: toma pedidos en las mesas (no cobra). Cocina: ve las comandas en ' + location.host + '/cocina.</p>' +
+    '<button class="btn btn-ok" id="pCrear">Crear cuenta</button><div id="pRes"></div><button class="btn" data-cerrar>Cerrar</button>');
+  let rolSel = "";
+  const box = qs("#mBox");
+  const pint = () => {
+    const l = qs("#pLista"); if (!l) return;
+    l.innerHTML = _personal.length ? _personal.map(x => '<div class="card" style="margin-bottom:8px"><div class="card-top"><b>' + esc(x.nombre) + '</b><span class="badge ' + (x.activo ? "ok" : "bad") + '">' + (x.activo ? (CARGOS[x.rol] || x.rol) : "Pausado") + '</span></div>' +
+      '<span class="muted small">Usuario: ' + esc(x.usuario) + '</span><div class="acciones"><button class="btn btn-sm" data-pclave="' + x.id + '">Nueva clave</button><button class="btn btn-sm" data-pact="' + x.id + '">' + (x.activo ? "Pausar" : "Reactivar") + '</button><button class="btn btn-sm btn-bad" data-pdel="' + x.id + '">Eliminar</button></div></div>').join("")
+      : '<p class="muted small">Aún no hay personal.</p>';
+  };
+  const cargar = async () => { try { _personal = (await api("personal", { op: "listar" })).personal; pint(); } catch(e){ toast("❌ " + e.message); } };
+  const cred = (x, clave, t) => {
+    const txt = "Hola " + x.nombre + ", tu acceso a " + (S.cfg.nombre || "la tienda") + ":\n" + location.origin + (x.rol === "cocina" ? "/cocina" : "/caja") + "\nUsuario: " + x.usuario + "\nClave: " + clave;
+    let tel = String(x.telefono || "").replace(/\D/g, ""); if (tel.length === 9 && tel[0] === "9") tel = "56" + tel;
+    qs("#pRes").innerHTML = '<div class="card"><b>' + esc(t) + '</b><span>Usuario: <b>' + esc(x.usuario) + '</b> · Clave: <b>' + esc(clave) + '</b></span><span class="muted small">Guárdala ahora: no se vuelve a mostrar.</span><a class="btn btn-ok btn-sm" target="_blank" rel="noopener" href="https://wa.me/' + tel + '?text=' + encodeURIComponent(txt) + '">💬 Enviar por WhatsApp</a></div>';
+  };
+  box.addEventListener("click", async e => {
+    let b;
+    if ((b = e.target.closest("[data-prol]"))){ rolSel = b.dataset.prol; box.querySelectorAll("[data-prol]").forEach(x => x.classList.toggle("activo", x === b)); return; }
+    if (e.target.closest("#pCrear")){
+      const x = { nombre: qs("#pNom").value.trim(), usuario: qs("#pUsu").value.trim().toLowerCase(), telefono: qs("#pTel").value.trim(), rol: rolSel };
+      try { const r = await api("personal", Object.assign({ op: "crear" }, x)); cred(x, r.clave, "✅ Cuenta creada"); qs("#pNom").value = ""; qs("#pUsu").value = ""; qs("#pTel").value = ""; cargar(); } catch(err){ toast("❌ " + err.message, 4000); }
+      return;
+    }
+    if ((b = e.target.closest("[data-pclave]"))){ const x = _personal.find(y => y.id === b.dataset.pclave); if (!x || !confirm("¿Nueva clave para " + x.nombre + "?")) return; try { const r = await api("personal", { op: "clave", id: x.id }); cred(x, r.clave, "🔑 Clave nueva"); } catch(err){ toast("❌ " + err.message); } return; }
+    if ((b = e.target.closest("[data-pact]"))){ const x = _personal.find(y => y.id === b.dataset.pact); if (!x) return; try { await api("personal", { op: "activo", id: x.id, activo: !x.activo }); cargar(); } catch(err){ toast("❌ " + err.message); } return; }
+    if ((b = e.target.closest("[data-pdel]"))){ const x = _personal.find(y => y.id === b.dataset.pdel); if (!x || !confirm("¿Eliminar la cuenta de " + x.nombre + "?")) return; try { await api("personal", { op: "eliminar", id: x.id }); cargar(); } catch(err){ toast("❌ " + err.message); } }
+  });
+  cargar();
+}
+qs("#btnPersonal").addEventListener("click", abrirPersonal);
 
 /* ───────────── Modal ───────────── */
 function modal(html){ const m = qs("#modal"), old = qs("#mBox"), n = old.cloneNode(false); old.replaceWith(n); n.innerHTML = html; m.classList.remove("oculto"); }
