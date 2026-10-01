@@ -331,12 +331,15 @@ Pendiente:
 - Caja (POS): vender productos con extras desde la caja (hoy se cobra el precio base).
 - Mitad y mitad real en pizzas (dos sabores con precio del más caro): hoy se arma con un grupo "Segunda mitad".
 
-## 11. Promociones + menú completo en el inicio (P24) — siguiente
+## 11. Promociones + menú completo en el inicio (P24) — ✅ hecho (estilo App)
 
 "Ofertas de hoy" pasa a "Promociones": lista vertical, interruptor
 "En promoción" + "precio antes" por producto (badge de % automático), y
-debajo el menú completo por categorías con pestañas fijas. Ambos estilos
-(App y Clásico).
+debajo el menú completo por categorías con pestañas fijas. Campos:
+`producto.enPromo`, `producto.precioAntes`, `config.destacadosIds` (hasta 6).
+En modo DEV: "Elegir destacados" y "Elegir promociones" en el inicio. El
+estilo Clásico solo cambia el título a "Promociones". Las barras del
+carrusel ahora van dentro de cada tarjeta.
 
 ## 12. Segunda pasarela: Flow (P25) y camino a Webpay directo
 

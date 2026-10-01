@@ -7277,6 +7277,7 @@ function _vtIndice(){
 function _vtMarcar(){
   var i = _vtIndice();
   qsa("#vtSegs span").forEach(function(s, k){ s.classList.toggle("on", k <= i); });
+  qsa(".vt-segs2").forEach(function(g){ Array.prototype.forEach.call(g.children, function(s, k){ s.classList.toggle("on", k <= i); }); });
   qsa("#vtDots span").forEach(function(s, k){ s.classList.toggle("on", k === i); });
 }
 
@@ -7309,13 +7310,17 @@ function vitrinaApp(){
     var trk = qs("#vtTrack");
     Array.prototype.slice.call(trk.querySelectorAll(".vt-slide")).forEach(function(s){ s.remove(); });
     var n = Math.max(1, Number(SKIN.slotsDestacados) || 2), usados = {};
-    for (var i = 0; i < n; i++){
+    var elegidos = typeof v24Destacados === "function" ? v24Destacados() : null;
+    if (elegidos){
+      elegidos.forEach(function(p){ if (!usados[p.id]){ usados[p.id] = 1; trk.insertAdjacentHTML("beforeend", _vtSlideProd(p)); } });
+    } else for (var i = 0; i < n; i++){
       var s = _productoDeSlot(c["productoDestacado" + (i + 1)], i);
       if (s.producto && !usados[s.producto.id]){ usados[s.producto.id] = 1; trk.insertAdjacentHTML("beforeend", _vtSlideProd(s.producto)); }
     }
     var total = trk.children.length;
     qs("#vtSegs").innerHTML = total > 1 ? new Array(total + 1).join("<span></span>") : "";
     qs("#vtDots").innerHTML = total > 1 ? new Array(total + 1).join("<span></span>") : "";
+    if (typeof v24Render === "function") v24Render();
     _vtMarcar();
   } catch(e){ console.warn("vitrinaApp:", e); }
 }
@@ -7804,3 +7809,279 @@ document.addEventListener("change", function(e){
     }
   }, f === "obligatorio" || f === "opactivo").catch(function(err){ console.error("extras:", err); toast("No se pudo guardar el cambio"); });
 });
+
+/* ════════════════════════════════════════════════════════════════
+   P24 — PROMOCIONES + MENÚ COMPLETO EN EL INICIO (estilo App)
+   · Promociones: lista vertical de productos con producto.enPromo,
+     y producto.precioAntes opcional (muestra tachado y -%). Si no hay
+     ninguno marcado, usa las 2 "Ofertas de hoy" configuradas antes.
+   · Menú: todo el catálogo por categoría, con pestañas fijas arriba.
+   · Destacados: config.destacadosIds (hasta 6), elegibles en modo DEV.
+   · Barras del carrusel: ahora van dentro de cada tarjeta.
+   El precio que se cobra sigue siendo producto.precio: la promoción
+   solo cambia cómo se muestra.
+   ════════════════════════════════════════════════════════════════ */
+var _v24 = { modo: null, scrollOk: false };
+
+function _v24Css(){
+  if (document.getElementById("v24-css")) return;
+  var st = document.createElement("style"); st.id = "v24-css";
+  st.textContent = [
+    ".vt-track > *{position:relative}",
+    "#vtSegs{display:none!important}",
+    ".vt-segs2{position:absolute;left:16px;right:16px;top:12px;display:flex;gap:5px;z-index:5;pointer-events:none}",
+    ".vt-segs2 span{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.4)}",
+    ".vt-segs2 span.on{background:rgba(255,255,255,.95)}",
+    "body.v-app .vt-clasico-sec{display:none!important}",
+    ".v24-dev{display:none;border:0;background:var(--crema,#FBF7F5);color:var(--rojo);font:inherit;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:999px;cursor:pointer}",
+    "body.dev-on:not(.preview-cliente) .v24-dev{display:inline-flex}",
+    ".v24-sec{padding:22px 16px 0}",
+    ".v24-tit{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 4px 10px}",
+    ".v24-tit h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;font-size:26px;line-height:1}",
+    ".v24-tit small{font-size:12.5px;font-weight:700;color:var(--muted)}",
+    ".v24-promo{display:flex;gap:12px;align-items:stretch;background:#fff;border:1px solid #EFE6E0;border-radius:20px;padding:10px;margin-bottom:10px;cursor:pointer}",
+    ".v24-pimg{position:relative;flex:none;width:108px;height:108px;border-radius:14px;overflow:hidden;background:#EFE6E0}",
+    ".v24-pimg img{width:100%;height:100%;object-fit:cover;display:block}",
+    ".v24-badge{position:absolute;top:7px;left:7px;background:#F2C230;color:#1A1A1A;font-size:12px;font-weight:900;padding:3px 8px;border-radius:999px}",
+    ".v24-pinf{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}",
+    ".v24-pinf b{font-size:15.5px;font-weight:800;line-height:1.25}",
+    ".v24-pinf p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}",
+    ".v24-prow{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px}",
+    ".v24-precio{font-size:16px;font-weight:900;color:var(--rojo)}",
+    ".v24-precio s{font-size:12px;font-weight:600;color:#8A8A8A;margin-left:6px}",
+    ".v24-add{flex:none;width:38px;height:38px;border-radius:50%;border:0;background:var(--rojo);color:var(--rojo-texto,#fff);display:flex;align-items:center;justify-content:center;cursor:pointer}",
+    ".v24-tabs{position:sticky;top:0;z-index:20;display:flex;gap:8px;overflow-x:auto;padding:10px 16px;margin:0 -16px;background:var(--fondo,#fff);border-bottom:1px solid #F1ECE8;scrollbar-width:none}",
+    ".v24-tabs::-webkit-scrollbar{display:none}",
+    ".v24-tabs button{flex:none;border:0;border-radius:999px;padding:8px 14px;background:var(--crema,#FBF7F5);color:#1A1A1A;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer}",
+    ".v24-tabs button.on{background:var(--rojo);color:var(--rojo-texto,#fff)}",
+    ".v24-cat{scroll-margin-top:64px}",
+    ".v24-cat h3{margin:20px 4px 2px;font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;font-size:22px}",
+    ".v24-item{display:flex;gap:12px;align-items:center;padding:14px 4px;border-bottom:1px solid #F1ECE8;cursor:pointer}",
+    ".v24-iinf{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}",
+    ".v24-iinf b{font-size:15px;font-weight:800}",
+    ".v24-iinf p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}",
+    ".v24-ipr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14.5px;font-weight:800}",
+    ".v24-ipr s{font-size:12px;color:#8A8A8A;font-weight:600}",
+    ".v24-tag{font-size:11px;font-weight:800;color:var(--rojo);background:var(--crema,#FBF7F5);padding:3px 8px;border-radius:999px}",
+    ".v24-ithumb{position:relative;flex:none;width:86px;height:86px;border-radius:14px;background:#EFE6E0}",
+    ".v24-ithumb img{width:100%;height:100%;object-fit:cover;border-radius:14px;display:block}",
+    ".v24-ithumb .v24-add{position:absolute;right:-6px;bottom:-6px;width:34px;height:34px;background:#fff;color:var(--rojo);border:1.5px solid var(--rojo)}",
+    ".v24-agot{opacity:.5}",
+    ".v24-vacio{margin:0 4px;font-size:13px;color:var(--muted)}",
+    /* hoja de selección (modo DEV) */
+    ".v24-sel{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #F1ECE8;flex-wrap:wrap}",
+    ".v24-sel img{width:46px;height:46px;border-radius:10px;object-fit:cover;background:#EFE6E0;flex:none}",
+    ".v24-sel .t{flex:1;min-width:0;font-size:14px;font-weight:800}",
+    ".v24-sel .t small{display:block;font-weight:600;color:var(--muted);font-size:12px}",
+    ".v24-sel input[type=checkbox]{width:24px;height:24px;accent-color:var(--rojo);flex:none}",
+    ".v24-antes{flex-basis:100%;display:flex;align-items:center;gap:8px;padding-left:56px;font-size:12.5px;font-weight:700;color:var(--muted)}",
+    ".v24-antes input{width:120px;height:38px;border-radius:999px;border:1.5px solid #E7DDD6;padding:0 12px;font:inherit;font-size:14px}"
+  ].join("\n");
+  document.head.appendChild(st);
+}
+
+function _v24Ico(){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'; }
+function _v24Pct(p){
+  var a = Math.round(Number(p.precioAntes) || 0), n = Math.round(Number(p.precio) || 0);
+  return a > n && n > 0 ? Math.round((a - n) * 100 / a) : 0;
+}
+function _v24Agotado(p){ return p.stock != null && p.stock !== "" && Number(p.stock) <= 0; }
+
+function v24Promos(){
+  var act = productosActivos();
+  var marc = act.filter(function(p){ return p.enPromo === true; });
+  if (marc.length) return marc;
+  var c = state.config || {}, out = [];
+  ["oferta1", "oferta2", "oferta3"].forEach(function(k){
+    var p = c[k] && act.find(function(x){ return x.id === c[k]; });
+    if (p && out.indexOf(p) < 0) out.push(p);
+  });
+  return out;
+}
+function v24Destacados(){
+  var c = state.config || {}, act = productosActivos();
+  if (Array.isArray(c.destacadosIds) && c.destacadosIds.length){
+    return c.destacadosIds.map(function(id){ return act.find(function(p){ return p.id === id; }); }).filter(Boolean).slice(0, 6);
+  }
+  return null; /* null = usar los 2 slots de siempre */
+}
+
+function _v24PromoHTML(p){
+  var pct = _v24Pct(p), ag = _v24Agotado(p);
+  var antes = pct ? '<s>' + fmtPrecio(p.precioAntes) + '</s>' : "";
+  return '<div class="v24-promo' + (ag ? " v24-agot" : "") + '" data-ver="' + esc(p.id) + '">' +
+    '<div class="v24-pimg">' + (p.imagen ? '<img src="' + esc(p.imagen) + '" alt="" loading="lazy">' : "") +
+      '<span class="v24-badge">' + (pct ? "-" + pct + "%" : "Promo") + '</span></div>' +
+    '<div class="v24-pinf"><b>' + esc(p.nombre) + '</b>' + (p.descripcion ? '<p>' + esc(p.descripcion) + '</p>' : "") +
+      '<div class="v24-prow"><span class="v24-precio">' + fmtPrecio(p.precio) + antes + '</span>' +
+      (ag ? '<span class="v24-tag">Agotado</span>' : '<button type="button" class="v24-add" data-add="' + esc(p.id) + '" aria-label="Agregar ' + esc(p.nombre) + '">' + _v24Ico() + '</button>') +
+    '</div></div></div>';
+}
+function _v24ItemHTML(p){
+  var pct = _v24Pct(p), ag = _v24Agotado(p);
+  var tag = ag ? "Agotado" : (typeof tieneExtras === "function" && tieneExtras(p)) ? (gxTieneObligatorios(p) ? "Arma a tu gusto" : "Con extras") : (pct ? "-" + pct + "%" : "");
+  return '<div class="v24-item' + (ag ? " v24-agot" : "") + '" data-ver="' + esc(p.id) + '">' +
+    '<div class="v24-iinf"><b>' + esc(p.nombre) + '</b>' + (p.descripcion ? '<p>' + esc(p.descripcion) + '</p>' : "") +
+      '<span class="v24-ipr">' + fmtPrecio(p.precio) + (pct ? '<s>' + fmtPrecio(p.precioAntes) + '</s>' : "") + (tag ? '<span class="v24-tag">' + tag + '</span>' : "") + '</span></div>' +
+    '<div class="v24-ithumb">' + (p.imagen ? '<img src="' + esc(p.imagen) + '" alt="" loading="lazy">' : "") +
+      (ag ? "" : '<button type="button" class="v24-add" data-add="' + esc(p.id) + '" aria-label="Agregar ' + esc(p.nombre) + '">' + _v24Ico() + '</button>') + '</div></div>';
+}
+
+function _v24Categorias(prods){
+  var orden = Array.isArray(state.config.categorias) ? state.config.categorias : [];
+  var vistas = [];
+  prods.forEach(function(p){ var c = p.categoria || "Otros"; if (vistas.indexOf(c) < 0) vistas.push(c); });
+  return vistas.sort(function(a, b){
+    var ia = orden.indexOf(a), ib = orden.indexOf(b);
+    if (ia >= 0 && ib >= 0) return ia - ib;
+    if (ia >= 0) return -1; if (ib >= 0) return 1;
+    return a.localeCompare(b, "es");
+  });
+}
+
+/* Llamada desde vitrinaApp() en cada render del inicio */
+function v24Render(){
+  _v24Css();
+  var wrap = qs("#vtCarrWrap"); if (!wrap) return;
+  /* ocultar secciones del diseño clásico que este estilo reemplaza */
+  ["#ofertasScroll", "#popularesList", "#catGrid"].forEach(function(s){
+    var el = qs(s), b = el && el.closest(".bloque"); if (b) b.classList.add("vt-clasico-sec");
+  });
+  /* botón DEV en Destacados */
+  var tit = wrap.querySelector(".vt-tit");
+  if (tit && !qs("#v24DevDest")){
+    var bd = document.createElement("button"); bd.type = "button"; bd.id = "v24DevDest"; bd.className = "v24-dev"; bd.textContent = "✏️ Elegir destacados";
+    tit.insertBefore(bd, tit.lastChild);
+  }
+  /* barras dentro de cada tarjeta */
+  var trk = qs("#vtTrack");
+  if (trk){
+    var n = trk.children.length;
+    Array.prototype.forEach.call(trk.children, function(sl){
+      var s = sl.querySelector(":scope > .vt-segs2");
+      if (n < 2){ if (s) s.remove(); return; }
+      if (!s){ s = document.createElement("div"); s.className = "vt-segs2"; sl.appendChild(s); }
+      if (s.children.length !== n) s.innerHTML = new Array(n + 1).join("<span></span>");
+    });
+  }
+  /* Promociones + Menú */
+  var cont = qs("#v24Cont");
+  if (!cont){ cont = document.createElement("div"); cont.id = "v24Cont"; wrap.parentNode.insertBefore(cont, wrap.nextSibling); }
+  var promos = v24Promos();
+  var prods = productosActivos();
+  var cats = _v24Categorias(prods);
+  var html = "";
+  if (promos.length || document.body.classList.contains("dev-on")){
+    html += '<section class="v24-sec" id="v24Promos"><div class="v24-tit"><h2>Promociones</h2>' +
+      '<button type="button" class="v24-dev" id="v24DevPromo">✏️ Elegir promociones</button>' +
+      (promos.length ? '<small>' + promos.length + (promos.length === 1 ? " activa" : " activas") + '</small>' : "") + '</div>' +
+      (promos.length ? promos.map(_v24PromoHTML).join("") : '<p class="v24-vacio">Sin promociones. Toca “Elegir promociones” para marcar productos.</p>') + '</section>';
+  }
+  if (prods.length){
+    html += '<section class="v24-sec" id="v24Menu"><div class="v24-tit"><h2>Menú</h2></div>' +
+      (cats.length > 1 ? '<nav class="v24-tabs" id="v24Tabs" aria-label="Categorías">' + cats.map(function(c, i){ return '<button type="button" data-v24cat="' + i + '"' + (i ? "" : ' class="on"') + '>' + esc(c) + '</button>'; }).join("") + '</nav>' : "") +
+      cats.map(function(c, i){
+        return '<div class="v24-cat" id="v24cat' + i + '"><h3>' + esc(c) + '</h3>' +
+          prods.filter(function(p){ return (p.categoria || "Otros") === c; }).map(_v24ItemHTML).join("") + '</div>';
+      }).join("") + '</section>';
+  }
+  if (cont._html !== html){ cont.innerHTML = html; cont._html = html; }
+  if (!_v24.scrollOk){ _v24.scrollOk = true; window.addEventListener("scroll", _v24Scroll, { passive: true }); }
+}
+
+var _v24Raf = 0;
+function _v24Scroll(){
+  if (_v24Raf) return;
+  _v24Raf = requestAnimationFrame(function(){
+    _v24Raf = 0;
+    var tabs = qs("#v24Tabs"); if (!tabs || !document.body.classList.contains("v-app")) return;
+    var secs = qsa(".v24-cat"), act = 0;
+    secs.forEach(function(s, i){ if (s.getBoundingClientRect().top < 90) act = i; });
+    var bs = tabs.querySelectorAll("button");
+    if (bs[act] && !bs[act].classList.contains("on")){
+      bs.forEach(function(b, i){ b.classList.toggle("on", i === act); });
+      try { tabs.scrollTo({ left: bs[act].offsetLeft - 16, behavior: "smooth" }); } catch(e){}
+    }
+  });
+}
+
+/* ── Hoja de selección (modo DEV): destacados / promociones ── */
+function _v24Hoja(){
+  if (qs("#v24Hoja")) return;
+  _vtHojas();
+  var h = document.createElement("div");
+  h.className = "vt-hoja"; h.id = "v24Hoja"; h.setAttribute("role", "dialog");
+  h.innerHTML = '<div class="vt-asa"></div><div class="vt-hhead"><h3 id="v24HTit"></h3><button class="vt-x" id="v24HCerrar" aria-label="Cerrar">✕</button></div>' +
+    '<p class="pnota" id="v24HNota" style="margin:0 0 6px"></p><div id="v24HLista"></div>' +
+    '<button class="vt-btn" id="v24HListo">Listo</button>';
+  document.body.appendChild(h);
+  function cerrar(){ h.classList.remove("open"); qs("#vtVelo").classList.remove("open"); renderInicio(); }
+  qs("#v24HCerrar").addEventListener("click", cerrar);
+  qs("#v24HListo").addEventListener("click", cerrar);
+  h.addEventListener("change", function(e){
+    var el = e.target;
+    if (el.dataset.v24sel){
+      var id = el.dataset.v24sel;
+      if (_v24.modo === "dest"){
+        var ids = (Array.isArray(state.config.destacadosIds) ? state.config.destacadosIds : []).filter(function(x){ return x !== id; });
+        if (el.checked){ if (ids.length >= 6){ el.checked = false; toast("Máximo 6 destacados"); return; } ids.push(id); }
+        state.config.destacadosIds = ids;
+        saveConfig("destacadosIds", ids);
+      } else {
+        var p = state.productos.find(function(x){ return x.id === id; }); if (p) p.enPromo = el.checked;
+        saveField("productos", id, "enPromo", el.checked);
+      }
+      _v24PintarLista();
+    } else if (el.dataset.v24antes){
+      var v = Math.max(0, Math.round(Number(el.value) || 0));
+      var q = state.productos.find(function(x){ return x.id === el.dataset.v24antes; }); if (q) q.precioAntes = v || null;
+      saveField("productos", el.dataset.v24antes, "precioAntes", v || null);
+    }
+  });
+}
+function _v24PintarLista(){
+  var dest = _v24.modo === "dest";
+  var ids = dest ? (Array.isArray(state.config.destacadosIds) ? state.config.destacadosIds : []) : null;
+  qs("#v24HLista").innerHTML = productosActivos().map(function(p){
+    var on = dest ? ids.indexOf(p.id) >= 0 : p.enPromo === true;
+    var pos = dest && on ? " · #" + (ids.indexOf(p.id) + 1) : "";
+    return '<label class="v24-sel"><img src="' + esc(p.imagen || "") + '" alt=""><span class="t">' + esc(p.nombre) + '<small>' + fmtPrecio(p.precio) + pos + '</small></span>' +
+      '<input type="checkbox" data-v24sel="' + esc(p.id) + '"' + (on ? " checked" : "") + '>' +
+      (!dest && on ? '<span class="v24-antes">Precio normal (antes) $<input type="number" inputmode="numeric" min="0" data-v24antes="' + esc(p.id) + '" value="' + (Math.round(Number(p.precioAntes) || 0) || "") + '" placeholder="opcional"></span>' : "") +
+      '</label>';
+  }).join("") || '<p class="pnota">No hay productos activos.</p>';
+}
+function v24AbrirSel(modo){
+  _v24.modo = modo; _v24Hoja();
+  qs("#v24HTit").textContent = modo === "dest" ? "Destacados" : "Promociones";
+  qs("#v24HNota").textContent = modo === "dest"
+    ? "Marca hasta 6 productos para el carrusel, en el orden en que los marques. Sin marcar ninguno se usan los de siempre."
+    : "Marca los productos en promoción. Si pones el precio normal (antes), se muestra tachado con el % de descuento. Lo que se cobra es el precio del producto.";
+  _v24PintarLista();
+  qs("#vtVelo").classList.add("open"); qs("#v24Hoja").classList.add("open");
+}
+
+document.addEventListener("click", function(e){
+  var t = e.target.closest("#v24DevDest, #v24DevPromo, [data-v24cat]");
+  if (!t) return;
+  if (t.dataset.v24cat != null){
+    var sec = qs("#v24cat" + t.dataset.v24cat); if (!sec) return;
+    window.scrollTo({ top: sec.getBoundingClientRect().top + window.scrollY - 60, behavior: "smooth" });
+    return;
+  }
+  e.preventDefault(); e.stopPropagation();
+  v24AbrirSel(t.id === "v24DevDest" ? "dest" : "promo");
+}, true);
+
+/* "Ver menú" en el estilo App baja al menú del inicio en vez de cambiar de página */
+document.addEventListener("click", function(e){
+  if (!document.body.classList.contains("v-app")) return;
+  var b = e.target.closest("#vtVerMenu, #btnVerMenu");
+  var m = qs("#v24Menu");
+  if (!b || !m) return;
+  if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente") && b.id === "btnVerMenu") return;
+  e.preventDefault(); e.stopPropagation();
+  window.scrollTo({ top: m.getBoundingClientRect().top + window.scrollY - 8, behavior: "smooth" });
+}, true);
+/* Estilo Clásico: el título "Ofertas de hoy" pasa a "Promociones" */
+(function(){ try { var o = qs("#ofertasScroll"), h = o && o.previousElementSibling; if (h && /ofertas de hoy/i.test(h.textContent)) h.textContent = "Promociones"; } catch(e){} })();
