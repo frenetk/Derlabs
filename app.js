@@ -980,6 +980,7 @@ function router(){
     if (res) res.classList.remove("expandido");
   }
   if (p === "confirmacion") renderConfirmacion();
+  if (p === "producto" && !_prodDetId) v25Restaurar();
   window.scrollTo({ top:0, behavior:"auto" });
 }
 
@@ -1126,6 +1127,7 @@ function mostrarSkeletons(){
 }
 
 function renderInicio(){
+  if (typeof v25Restaurar === "function") setTimeout(v25Restaurar, 0);
   const c = state.config;
   qs("#heroImg").src = c.heroImagen || DEMO_IMAGES.banner;
   qs("#heroBadge").textContent  = c.heroBadge  || _txt("heroBadge", "🔥 Más pedido hoy");
@@ -1345,6 +1347,7 @@ function abrirDetProducto(prodId){
   document.getElementById("prodDetTotal").textContent = fmtPrecio(p.precio);
   renderVariantesEnDetalle(p);
   gxAbrir(p);
+  v25Abrir(p);
   if (_sk("detalleProducto")) SKIN.detalleProducto(p);
   irPagina("producto");
 }
@@ -3996,6 +3999,9 @@ function comprimirImagen(dataURL, maxW, calidad){
       const canvas = document.createElement("canvas");
       let w = img.width, h = img.height;
       if (w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+      /* fotos muy verticales: limitar también el alto (sin recortar) */
+      var maxH = Math.round(maxW * 1.6);
+      if (h > maxH){ w = Math.round(w * maxH / h); h = maxH; }
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, w, h);
@@ -7529,8 +7535,8 @@ function gxRender(p){
     var regla = tipo === "uno" ? "Elige 1" : tipo === "varios" ? (max ? "Elige hasta " + max : "Elige los que quieras")
               : tipo === "cantidad" ? "Hasta " + (max || 10) + " de cada uno" : "Sin costo";
     if (!req && tipo !== "quitar") regla += " · opcional";
-    var badge = req ? (n ? '<span class="gx-b ok">Listo</span>' : '<span class="gx-b req">Obligatorio</span>')
-              : (n ? '<span class="gx-b">' + n + (tipo === "quitar" ? " quitado" + (n > 1 ? "s" : "") : " elegido" + (n > 1 ? "s" : "")) + '</span>' : '<span class="gx-b">Opcional</span>');
+    var badge = req ? (n ? '<span class="gx-b ok">✓ Listo</span>' : '<span class="gx-b req"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/></svg>Requerido</span>')
+              : (n ? '<span class="gx-b">' + n + (tipo === "quitar" ? " quitado" + (n > 1 ? "s" : "") : " elegido" + (n > 1 ? "s" : "")) + '</span>' : '<span class="gx-b opc">Opcional</span>');
     var ops = gxOpsValidas(g), cuerpo = "";
     if (tipo === "quitar"){
       cuerpo = '<div class="gx-chips">' + ops.map(function(o){
@@ -8085,3 +8091,105 @@ document.addEventListener("click", function(e){
 }, true);
 /* Estilo Clásico: el título "Ofertas de hoy" pasa a "Promociones" */
 (function(){ try { var o = qs("#ofertasScroll"), h = o && o.previousElementSibling; if (h && /ofertas de hoy/i.test(h.textContent)) h.textContent = "Promociones"; } catch(e){} })();
+
+/* ════════════════════════════════════════════════════════════════
+   P24b — HOJA DE PRODUCTO
+   · Al recargar estando en #producto se vuelve a abrir el mismo
+     producto (antes quedaba la página vacía).
+   · Foto completa, sin recorte: se ajusta a su proporción, con un
+     fondo difuminado de la misma foto.
+   · Barra fija abajo con cantidad y "Agregar $X" siempre visible.
+   · Precio con % y precio anterior tachado si está en promoción.
+   · "Preferencias" (nota para la cocina) en tiendas de comida.
+   ════════════════════════════════════════════════════════════════ */
+function _v25Css(){
+  if (document.getElementById("v25-css")) return;
+  var st = document.createElement("style"); st.id = "v25-css";
+  st.textContent = [
+    "#prodDetImg{height:auto!important;min-height:120px;position:relative;background:#F3F0EE!important;overflow:hidden}",
+    "#prodDetImg::before{content:'';position:absolute;inset:-40px;background-image:var(--pdimg,none);background-size:cover;background-position:center;filter:blur(24px);opacity:.5}",
+    "#prodDetImgEl{position:relative;z-index:1;display:block;width:100%!important;height:auto!important;max-height:min(62vh,480px);object-fit:contain!important;margin:0 auto}",
+    "#prodDetImg.sin-foto #prodDetImgEl{display:none}",
+    "#page-producto button[onclick*='history.back']{z-index:3}",
+    "body[data-page='producto'] #tabbar{display:none!important}",
+    "#pdBar{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;box-sizing:border-box;z-index:160;background:#fff;border-top:1px solid rgba(0,0,0,.08);box-shadow:0 -8px 24px rgba(0,0,0,.06);padding:10px 14px calc(10px + env(safe-area-inset-bottom));gap:10px;align-items:center}",
+    "body[data-page='producto'] #pdBar{display:flex}",
+    "#pdBar .pd-step{display:flex;align-items:center;gap:8px;flex:none}",
+    "#pdBar #prodDetAgregar{flex:1;width:auto!important;margin:0!important;height:54px;padding:0 22px!important;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:17px!important;font-weight:900;border-radius:999px}",
+    "#page-producto > div:last-of-type{padding-bottom:130px!important}",
+    ".pd-promo{display:inline-flex;align-items:center;gap:8px;margin-left:10px;vertical-align:middle}",
+    ".pd-promo b{background:var(--rojo);color:var(--rojo-texto,#fff);font-size:13px;font-weight:900;padding:4px 9px;border-radius:999px}",
+    ".pd-promo s{font-size:15px;color:#8A8A8A;font-weight:700}",
+    "#pdPrefs{border-top:1px solid rgba(0,0,0,.08);padding:16px 0 6px}",
+    "#pdPrefs b{display:block;font-size:16px;font-weight:800}",
+    "#pdPrefs small{display:block;font-size:12.5px;color:var(--muted,#666);margin:2px 0 10px}",
+    "#pdPrefs textarea{width:100%;box-sizing:border-box;min-height:74px;border:1.5px solid rgba(0,0,0,.18);border-radius:14px;padding:12px;font:inherit;font-size:14.5px;resize:vertical}",
+    ".gx-b.req{background:var(--rojo,#B3261E)!important;color:var(--rojo-texto,#fff)!important;display:inline-flex;align-items:center;gap:5px}",
+    ".gx-b.opc{background:transparent!important;border:1.5px solid rgba(0,0,0,.18);color:#444}"
+  ].join("\n");
+  document.head.appendChild(st);
+}
+
+function _v25Layout(){
+  _v25Css();
+  if (document.getElementById("pdBar")) return;
+  var btn = document.getElementById("prodDetAgregar");
+  var menos = document.getElementById("prodDetMenos"), cant = document.getElementById("prodDetCant"), mas = document.getElementById("prodDetMas");
+  if (!btn || !menos || !cant || !mas) return;
+  var bar = document.createElement("div"); bar.id = "pdBar";
+  var step = document.createElement("div"); step.className = "pd-step";
+  step.appendChild(menos); step.appendChild(cant); step.appendChild(mas);
+  bar.appendChild(step); bar.appendChild(btn);
+  btn.innerHTML = '<span>Agregar</span><span id="prodDetTotal"></span>';
+  document.body.appendChild(bar);
+  var fila = document.getElementById("prodDetPrecio");
+  if (fila && fila.parentNode){ fila.parentNode.style.justifyContent = "flex-start"; fila.parentNode.style.flexWrap = "wrap"; fila.parentNode.style.gap = "6px"; }
+}
+
+function v25Abrir(p){
+  _v25Layout();
+  try { sessionStorage.setItem("tb_prodDet", p.id); } catch(e){}
+  /* foto completa + fondo difuminado */
+  var caja = document.getElementById("prodDetImg");
+  if (caja){
+    caja.classList.toggle("sin-foto", !p.imagen);
+    caja.style.setProperty("--pdimg", p.imagen ? "url(" + JSON.stringify(String(p.imagen)) + ")" : "none");
+  }
+  /* promoción: % y precio anterior */
+  var pr = document.getElementById("prodDetPrecio");
+  if (pr){
+    var viejo = document.getElementById("pdPromo"); if (viejo) viejo.remove();
+    var antes = Math.round(Number(p.precioAntes) || 0), ahora = Math.round(Number(p.precio) || 0);
+    if (antes > ahora && ahora > 0){
+      var sp = document.createElement("span"); sp.id = "pdPromo"; sp.className = "pd-promo";
+      sp.innerHTML = '<b>-' + Math.round((antes - ahora) * 100 / antes) + '%</b><s>' + fmtPrecio(antes) + '</s>';
+      pr.insertAdjacentElement("afterend", sp);
+    }
+  }
+  /* Preferencias (nota para la cocina) en tiendas de comida, si el producto no pide ya un texto propio */
+  var prefs = document.getElementById("pdPrefs");
+  var comida = typeof _vtEsComida === "function" && _vtEsComida();
+  if (comida && !p.permitePersonalizacion){
+    if (!prefs){
+      prefs = document.createElement("div"); prefs.id = "pdPrefs";
+      prefs.innerHTML = '<label for="pdNota"><b>Preferencias</b><small>Cuéntanos algún requisito en especial</small></label><textarea id="pdNota" maxlength="140" placeholder="Ej: sin sal, bien cocida"></textarea>';
+      var ancla = document.getElementById("prodDetExtras") || document.getElementById("prodDetVariantes");
+      ancla.parentNode.insertBefore(prefs, ancla.nextSibling);
+      prefs.querySelector("textarea").addEventListener("input", function(e){ _prodDetTextoPersonal = e.target.value; });
+    }
+    prefs.style.display = "";
+    prefs.querySelector("textarea").value = "";
+  } else if (prefs){ prefs.style.display = "none"; }
+  var tot = document.getElementById("prodDetTotal");
+  if (tot) tot.textContent = fmtPrecio((typeof gxPrecioUnit === "function" ? gxPrecioUnit(p) : Number(p.precio) || 0) * (_prodDetCant || 1));
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+/* Recarga estando en #producto: reabrir el último producto, o volver al inicio */
+function v25Restaurar(){
+  if (paginaActual() !== "producto" || _prodDetId) return;
+  var id = null; try { id = sessionStorage.getItem("tb_prodDet"); } catch(e){}
+  var p = id && state.productos.find(function(x){ return x.id === id; });
+  if (p){ abrirDetProducto(p.id); return; }
+  if (state.productos.length || !id) irPagina("inicio");
+}
