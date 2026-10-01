@@ -138,7 +138,9 @@ export function plantillaCliente(pedido, nombreTienda, color){
   const cl = pedido.cliente || {};
   const items = (pedido.items || []).map(function(it){
     return '<tr>' +
-      '<td style="padding:8px 0;font-size:14px;color:#333">' + (it.cantidad || 1) + '× ' + esc(it.nombre) + '</td>' +
+      '<td style="padding:8px 0;font-size:14px;color:#333">' + (it.cantidad || 1) + '× ' + esc(it.nombre) +
+        (it.variantes && typeof it.variantes === "object" ? Object.keys(it.variantes).map(function(k){ return '<br><span style="font-size:12px;color:#777">' + esc(k) + ': ' + esc(it.variantes[k]) + '</span>'; }).join("") : "") +
+        (it.notaPersonal ? '<br><span style="font-size:12px;color:#777">“' + esc(it.notaPersonal) + '”</span>' : "") + '</td>' +
       '<td style="padding:8px 0;font-size:14px;color:#333;text-align:right">' + fmtPrecio((it.precio || 0) * (it.cantidad || 1)) + '</td>' +
     '</tr>';
   }).join("");

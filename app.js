@@ -1344,6 +1344,7 @@ function abrirDetProducto(prodId){
   document.getElementById("prodDetCant").textContent = "1";
   document.getElementById("prodDetTotal").textContent = fmtPrecio(p.precio);
   renderVariantesEnDetalle(p);
+  gxAbrir(p);
   if (_sk("detalleProducto")) SKIN.detalleProducto(p);
   irPagina("producto");
 }
@@ -1354,13 +1355,13 @@ function initDetProducto(){
     _prodDetCant--;
     document.getElementById("prodDetCant").textContent = _prodDetCant;
     const p = state.productos.find(function(x){ return x.id === _prodDetId; });
-    if (p) document.getElementById("prodDetTotal").textContent = fmtPrecio(p.precio * _prodDetCant);
+    if (p) document.getElementById("prodDetTotal").textContent = fmtPrecio(gxPrecioUnit(p) * _prodDetCant);
   });
   document.getElementById("prodDetMas").addEventListener("click", function(){
     _prodDetCant++;
     document.getElementById("prodDetCant").textContent = _prodDetCant;
     const p = state.productos.find(function(x){ return x.id === _prodDetId; });
-    if (p) document.getElementById("prodDetTotal").textContent = fmtPrecio(p.precio * _prodDetCant);
+    if (p) document.getElementById("prodDetTotal").textContent = fmtPrecio(gxPrecioUnit(p) * _prodDetCant);
   });
   /* Guarda la elección apenas cambia — así prodDetAgregar solo lee
      estado ya actualizado, sin tener que releer el DOM en ese momento. */
@@ -1392,8 +1393,17 @@ function initDetProducto(){
         return;
       }
     }
+    var _gxOk = null;
+    if (p && tieneExtras(p)){
+      _gxOk = gxCalcular(p, gxLib(), _gxSel);
+      if (!_gxOk.ok){
+        toast(_gxOk.falta ? "Falta completar: " + _gxOk.falta : _gxOk.error);
+        if (_gxOk.faltaId) gxMarcarFalta(_gxOk.faltaId);
+        return;
+      }
+    }
     for (var i = 0; i < _prodDetCant; i++){
-      agregarAlCarrito(_prodDetId, Object.assign({}, _prodDetSeleccion), _prodDetTextoPersonal.trim());
+      agregarAlCarrito(_prodDetId, Object.assign({}, _prodDetSeleccion), _prodDetTextoPersonal.trim(), _gxOk ? _gxOk.sel : null);
     }
     history.back();
     toast(_txt("agregadoDetalle", "✅ Agregado al pedido"));
@@ -1466,7 +1476,7 @@ function initMenu(){
     e.preventDefault();
     if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
     const p = state.productos.find(x => x.id === prodId);
-    if (p && (p.variantesActivas || p.permitePersonalizacion)){
+    if (necesitaDetalle(p)){
       abrirDetProducto(prodId);
       return;
     }
@@ -1859,10 +1869,15 @@ function claveCarrito(prodId, variantes, notaPersonal){
   if (notaPersonal) partes.push("nota:" + notaPersonal);
   return partes.join("|");
 }
-function agregarAlCarrito(prodId, variantes, notaPersonal){
+function agregarAlCarrito(prodId, variantes, notaPersonal, extrasSel){
   if (state.config.abierto === false){ toast("🔴 La tienda está cerrada por ahora"); return; }
   const p = state.productos.find(x => x.id === prodId);
   if (!p) return;
+  /* P23: con pasos obligatorios y sin elección → abrir la hoja para elegir */
+  if (!extrasSel && gxTieneObligatorios(p)){ abrirDetProducto(prodId); return; }
+  const _gx = (extrasSel && tieneExtras(p)) ? gxCalcular(p, gxLib(), extrasSel) : null;
+  if (_gx && !_gx.ok){ toast(_gx.error); abrirDetProducto(prodId); return; }
+  if (_gx && Object.keys(_gx.variantes).length) variantes = Object.assign({}, variantes || {}, _gx.variantes);
   /* Control de inventario (stock null/"" = sin control) — suma TODAS
      las líneas de este producto en el carrito, sin importar la
      variante, porque el stock es del producto físico. */
@@ -1877,9 +1892,10 @@ function agregarAlCarrito(prodId, variantes, notaPersonal){
   const it = carrito.find(x => x.claveCarrito === clave);
   if (it) it.cantidad += 1;
   else carrito.push({
-    id:p.id, claveCarrito: clave, nombre:p.nombre, precio:Number(p.precio)||0, imagen:p.imagen||"", cantidad:1,
+    id:p.id, claveCarrito: clave, nombre:p.nombre, precio:(Number(p.precio)||0) + (_gx ? _gx.unit : 0), imagen:p.imagen||"", cantidad:1,
     variantes: (variantes && Object.keys(variantes).length) ? variantes : undefined,
-    notaPersonal: notaPersonal || undefined
+    notaPersonal: notaPersonal || undefined,
+    extras: (_gx && Object.keys(_gx.sel).length) ? _gx.sel : undefined
   });
   guardarCarrito();
   renderBadge(true);
@@ -2541,7 +2557,7 @@ function construirPedido(pedidoId, cliente){
     metodoPago: metodoPago,
     items: carrito.map(i => ({
       id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio,
-      variantes: i.variantes || null, notaPersonal: i.notaPersonal || null
+      variantes: i.variantes || null, notaPersonal: i.notaPersonal || null, extras: i.extras || null
     })),
     cliente: cliente,
     uid: cliente.uid || null,
@@ -2640,7 +2656,7 @@ async function confirmarPedido(){
           body: JSON.stringify({
             storeId: STORE_ID,
             pedidoId: pedidoIdLocal,
-            items: ped.items.map(function(i){ return { id: i.id, cantidad: i.cantidad, variantes: i.variantes || null, notaPersonal: i.notaPersonal || null }; }),
+            items: ped.items.map(function(i){ return { id: i.id, cantidad: i.cantidad, variantes: i.variantes || null, notaPersonal: i.notaPersonal || null, extras: i.extras || null }; }),
             cliente: cliente,
             cuponAplicado: ped.cuponAplicado,
             costoDelivery: ped.costoDelivery,
@@ -2720,7 +2736,7 @@ async function confirmarPedido(){
       body: JSON.stringify({
         storeId: STORE_ID,
         pedidoId: pedidoId,
-        items: ped.items.map(function(i){ return { id: i.id, cantidad: i.cantidad }; }),
+        items: ped.items.map(function(i){ return { id: i.id, cantidad: i.cantidad, variantes: i.variantes || null, notaPersonal: i.notaPersonal || null, extras: i.extras || null }; }),
         cliente: cliente,
         cuponAplicado: ped.cuponAplicado,
         costoDelivery: ped.costoDelivery,
@@ -4775,6 +4791,7 @@ function renderPanelProds(){
           <label class="switch"><input type="checkbox" class="pe" data-pid="${esc(p.id)}" data-pf="variantesActivas" ${p.variantesActivas ? "checked" : ""}><span class="slider"></span></label>
         </div>
         ${p.variantesActivas ? renderEditorVariantes(p) : ""}
+        ${renderEditorExtras(p)}
         <div class="switch-row">
           <span>Permitir texto personalizado (algo que el cliente escribe, único por pedido)</span>
           <label class="switch"><input type="checkbox" class="pe" data-pid="${esc(p.id)}" data-pf="permitePersonalizacion" ${p.permitePersonalizacion ? "checked" : ""}><span class="slider"></span></label>
@@ -6233,7 +6250,7 @@ function initHistorial(){
       if (ped){
         (ped.items||[]).forEach(function(it){
           var prod = state.productos.find(function(p){return p.nombre===it.nombre;});
-          if (prod) for (var i=0; i<(it.cantidad||1); i++) agregarAlCarrito(prod.id);
+          if (prod) for (var i=0; i<(it.cantidad||1); i++) agregarAlCarrito(prod.id, gxVarsBase(prod, it.variantes), it.notaPersonal || "", it.extras || null);
         });
         toast("🛒 Productos agregados al carrito");
         irPagina("menu");
@@ -6797,7 +6814,7 @@ window.addEventListener("pageshow", function(e){
         if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
 
         var p = state.productos.find(function(x){ return x.id === pid; });
-        if (p && (p.variantesActivas || p.permitePersonalizacion)){
+        if (necesitaDetalle(p)){
           abrirDetProducto(pid);
           return;
         }
@@ -6851,7 +6868,7 @@ window.addEventListener("pageshow", function(e){
         ev.stopImmediatePropagation();
         if (document.body.classList.contains("dev-on") && !document.body.classList.contains("preview-cliente")) return;
         var p = state.productos.find(function(x){ return x.id === pid; });
-        if (p && (p.variantesActivas || p.permitePersonalizacion)){
+        if (necesitaDetalle(p)){
           abrirDetProducto(pid);
           return;
         }
@@ -7326,3 +7343,464 @@ function instalarPanelVitrina(){
     qs("#vtBtnPortada").addEventListener("click", function(){ if (typeof abrirImgModal === "function") abrirImgModal({ col: "config", doc: "general", field: "portadaImagen" }); });
   } catch(e){ console.warn("panel vitrina:", e); }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   P23 — EXTRAS Y ARMADO DE PRODUCTOS
+   Grupos de opciones con precio, guardados UNA vez en la tienda
+   (config/general.gruposExtras) y enlazados a los productos que los
+   usan (producto.gruposExtras = [ids]). Sirve para:
+     · producto tal cual + extras opcionales (tocino +$1.200)
+     · producto para armar (pan, carne, quesos… con pasos obligatorios)
+   El servidor recalcula el precio con la misma lógica (calcularExtras
+   en _firebase.js): lo que se cobra nunca depende del navegador.
+   ════════════════════════════════════════════════════════════════ */
+/* P23 — cálculo de extras/armado. MISMA lógica en la tienda (app.js,
+   gxCalcular) y en el servidor (_firebase.js, calcularExtras): la tienda
+   la usa para mostrar el precio en vivo, el servidor para cobrar. Si se
+   cambia una, cambiar la otra.
+   prod.gruposExtras = [idGrupo, ...]  (orden en que se muestran)
+   lib = config/general.gruposExtras = [{ id, nombre, tipo, obligatorio, max, opciones:[{id,nombre,precio,activo}] }]
+     tipo: "uno" (elige 1) | "varios" (elige hasta max) | "cantidad" (hasta max de cada uno) | "quitar" (sin costo)
+   sel = { idGrupo: { idOpcion: cantidad } } */
+function gxCalcular(prod, lib, sel){
+  var ids = Array.isArray(prod && prod.gruposExtras) ? prod.gruposExtras : [];
+  var mapa = {};
+  (Array.isArray(lib) ? lib : []).forEach(function(g){ if (g && g.id) mapa[g.id] = g; });
+  sel = (sel && typeof sel === "object") ? sel : {};
+  var r = { ok: true, error: "", falta: null, faltaId: null, unit: 0, variantes: {}, detalle: [], sel: {}, nombres: [] };
+  ids.forEach(function(gid){
+    var g = mapa[gid];
+    if (!g) return;
+    var ops = (Array.isArray(g.opciones) ? g.opciones : []).filter(function(o){ return o && o.id && String(o.nombre || "").trim(); });
+    if (!ops.length) return;
+    var nombreG = String(g.nombre || "Extras").trim();
+    r.nombres.push(nombreG);
+    var tipo = ["uno", "varios", "cantidad", "quitar"].indexOf(g.tipo) >= 0 ? g.tipo : "uno";
+    var req = tipo !== "quitar" && g.obligatorio === true;
+    var max = Math.max(0, Math.floor(Number(g.max) || 0));
+    var s = (sel[gid] && typeof sel[gid] === "object") ? sel[gid] : {};
+    var elegidas = [], total = 0;
+    ops.forEach(function(o){
+      var c = Math.floor(Number(s[o.id]) || 0);
+      if (c <= 0) return;
+      if (o.activo === false){ if (r.ok){ r.ok = false; r.error = "\"" + o.nombre + "\" no está disponible ahora"; } return; }
+      if (tipo === "cantidad"){ var lim = max || 10; if (c > lim) c = lim; } else c = 1;
+      elegidas.push({ o: o, c: c }); total += c;
+    });
+    if (tipo === "uno" && elegidas.length > 1){ elegidas = elegidas.slice(0, 1); total = 1; }
+    if (tipo === "varios" && max && elegidas.length > max){ elegidas = elegidas.slice(0, max); total = max; }
+    if (req && total < 1 && r.ok){ r.ok = false; r.falta = nombreG; r.faltaId = gid; r.error = "falta completar «" + nombreG + "»"; }
+    if (!elegidas.length) return;
+    var textos = [];
+    r.sel[gid] = {};
+    elegidas.forEach(function(e){
+      var precio = tipo === "quitar" ? 0 : Math.max(0, Math.round(Number(e.o.precio) || 0));
+      r.unit += precio * e.c;
+      r.sel[gid][e.o.id] = e.c;
+      r.detalle.push({ grupo: nombreG, opcion: String(e.o.nombre).trim(), cantidad: e.c, precio: precio });
+      var n = String(e.o.nombre).trim();
+      textos.push(tipo === "quitar" ? "sin " + n.toLowerCase() : (e.c > 1 ? n + " x" + e.c : n));
+    });
+    r.variantes[nombreG] = textos.join(", ");
+  });
+  return r;
+}
+
+
+var _gxSel = {};          /* elección en la hoja abierta: { idGrupo: { idOpcion: cant } } */
+var _gxEdit = null;       /* panel: { pid, gid } del grupo abierto en el editor */
+var _gxPicker = null;     /* panel: pid con el selector de plantillas abierto */
+
+function gxLib(){ return Array.isArray(state.config.gruposExtras) ? state.config.gruposExtras : []; }
+function gxMapa(){ var m = {}; gxLib().forEach(function(g){ if (g && g.id) m[g.id] = g; }); return m; }
+function gxOpsValidas(g){ return (Array.isArray(g && g.opciones) ? g.opciones : []).filter(function(o){ return o && o.id && String(o.nombre || "").trim(); }); }
+function gxGruposDe(p){
+  var m = gxMapa();
+  return (Array.isArray(p && p.gruposExtras) ? p.gruposExtras : []).map(function(id){ return m[id]; })
+    .filter(function(g){ return g && gxOpsValidas(g).length; });
+}
+function tieneExtras(p){ return gxGruposDe(p).length > 0; }
+function gxTieneObligatorios(p){ return gxGruposDe(p).some(function(g){ return g.obligatorio === true && g.tipo !== "quitar"; }); }
+function necesitaDetalle(p){ return !!(p && (p.variantesActivas || p.permitePersonalizacion || tieneExtras(p))); }
+function gxPrecioUnit(p){ return (Number(p && p.precio) || 0) + (tieneExtras(p) ? gxCalcular(p, gxLib(), _gxSel).unit : 0); }
+function gxTipoDe(g){ return ["uno", "varios", "cantidad", "quitar"].indexOf(g && g.tipo) >= 0 ? g.tipo : "uno"; }
+function gxPrecioTxt(n){ n = Math.round(Number(n) || 0); return n > 0 ? "+ " + fmtPrecio(n) : ""; }
+
+/* Quita del objeto variantes las claves que son nombres de grupos de
+   extras del producto (al repetir un pedido se recalculan). */
+function gxVarsBase(p, variantes){
+  if (!variantes || typeof variantes !== "object") return null;
+  var nombres = gxGruposDe(p).map(function(g){ return String(g.nombre || "").trim(); });
+  var out = {};
+  Object.keys(variantes).forEach(function(k){ if (nombres.indexOf(k) < 0) out[k] = variantes[k]; });
+  return Object.keys(out).length ? out : null;
+}
+
+function gxCss(){
+  if (document.getElementById("gx-css")) return;
+  var st = document.createElement("style");
+  st.id = "gx-css";
+  st.textContent = [
+    "#prodDetExtras{margin:4px 0 16px}",
+    ".gx-g{border-top:1px solid rgba(0,0,0,.08);padding:14px 0 6px}",
+    ".gx-g.gx-falta{animation:gxFalta 1.4s ease}",
+    "@keyframes gxFalta{0%,60%{background:rgba(200,30,50,.08)}100%{background:transparent}}",
+    ".gx-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}",
+    ".gx-h b{display:block;font-size:16px;font-weight:800}",
+    ".gx-h small{display:block;font-size:12.5px;color:var(--muted,#666);margin-top:2px}",
+    ".gx-b{flex:none;font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.06);color:#444}",
+    ".gx-b.req{background:rgba(200,30,50,.1);color:var(--rojo,#B3261E)}",
+    ".gx-b.ok{background:#E3F1E7;color:#14532D}",
+    ".gx-op{display:flex;align-items:center;gap:12px;width:100%;min-height:50px;padding:0 2px;border:0;border-bottom:1px solid rgba(0,0,0,.06);background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer}",
+    ".gx-op:last-child{border-bottom:0}",
+    ".gx-op[disabled]{opacity:.45;cursor:default}",
+    ".gx-ind{flex:none;width:22px;height:22px;box-sizing:border-box;border:2px solid #C9C0BB;border-radius:50%;display:flex;align-items:center;justify-content:center}",
+    ".gx-ind.cuad{border-radius:6px}",
+    ".gx-op.on .gx-ind{border-color:var(--rojo,#B3261E);background:var(--rojo,#B3261E)}",
+    ".gx-op.on .gx-ind:after{content:'';width:9px;height:5px;border:solid #fff;border-width:0 0 2.5px 2.5px;transform:translate(0,-1px) rotate(-45deg)}",
+    ".gx-n{flex:1;font-size:14.5px;font-weight:500}",
+    ".gx-op.on .gx-n{font-weight:800}",
+    ".gx-n small{display:block;font-size:12.5px;color:var(--muted,#666);font-weight:700}",
+    ".gx-p{font-size:13.5px;font-weight:700;color:var(--muted,#666)}",
+    ".gx-step{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.05);border-radius:999px;padding:3px}",
+    ".gx-step button{width:36px;height:36px;border-radius:50%;border:0;background:#fff;font:inherit;font-size:18px;font-weight:900;cursor:pointer;color:#222}",
+    ".gx-step button.mas{background:var(--rojo,#B3261E);color:var(--rojo-texto,#fff)}",
+    ".gx-step button[disabled]{opacity:.35;cursor:default}",
+    ".gx-step b{min-width:20px;text-align:center}",
+    ".gx-chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0 4px}",
+    ".gx-chip{height:38px;padding:0 14px;border-radius:999px;border:1.5px solid rgba(0,0,0,.14);background:#fff;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;color:#222}",
+    ".gx-chip.on{background:#1A1A1A;border-color:#1A1A1A;color:#fff;text-decoration:line-through}",
+    ".gx-res{font-size:12.5px;line-height:1.5;background:rgba(0,0,0,.04);border-radius:12px;padding:9px 12px;margin:10px 0 0}",
+    /* panel */
+    ".gx-adm{margin-top:14px;padding:14px;border:1.5px solid rgba(0,0,0,.08);border-radius:16px;background:#fff}",
+    ".gx-adm-t{font-weight:900;font-size:15px;margin:0 0 4px}",
+    ".gx-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid rgba(0,0,0,.06)}",
+    ".gx-row .ttl{flex:1;min-width:0;font-weight:800;font-size:14px}",
+    ".gx-row .ttl small{display:block;font-weight:600;font-size:12px;color:var(--muted,#666);margin-top:2px}",
+    ".gx-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}",
+    ".gx-box{background:rgba(0,0,0,.035);border-radius:14px;padding:12px;margin:6px 0 10px}",
+    ".gx-tipos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:6px 0 4px}",
+    ".gx-tipo{border:1.5px solid rgba(0,0,0,.12);background:#fff;border-radius:12px;padding:8px;font:inherit;font-size:12.5px;font-weight:800;text-align:left;cursor:pointer;color:#222}",
+    ".gx-tipo small{display:block;font-weight:600;color:var(--muted,#666)}",
+    ".gx-tipo.on{border-color:var(--rojo,#B3261E);background:rgba(200,30,50,.06);color:var(--rojo,#B3261E)}",
+    ".gx-opr{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0;padding:10px;background:#fff;border-radius:14px;border:1px solid rgba(0,0,0,.06)}",
+    ".gx-opr input.field{margin:0}",
+    ".gx-opr .gx-on{flex:1 1 100%;min-width:0}",
+    ".gx-opr .gx-prw{display:flex;align-items:center;gap:6px;flex:1;font-size:12.5px;font-weight:800;color:var(--muted,#666)}",
+    ".gx-opr .gx-pr{flex:0 0 110px;width:110px!important}",
+    ".gx-hay{display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--muted,#666);flex:none}",
+    ".gx-plant{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}",
+    ".gx-sub{font-size:12.5px;font-weight:800;color:var(--muted,#666);margin:10px 0 2px}"
+  ].join("\n");
+  document.head.appendChild(st);
+}
+
+/* ─────────── Hoja del cliente ─────────── */
+function gxAbrir(p){
+  _gxSel = {};
+  var cont = document.getElementById("prodDetExtras");
+  if (!cont){
+    var v = document.getElementById("prodDetVariantes");
+    if (!v || !v.parentNode) return;
+    cont = document.createElement("div");
+    cont.id = "prodDetExtras";
+    v.parentNode.insertBefore(cont, v.nextSibling);
+  }
+  gxCss();
+  gxRender(p);
+}
+
+function gxRender(p){
+  var cont = document.getElementById("prodDetExtras");
+  if (!cont) return;
+  var grupos = gxGruposDe(p);
+  if (!grupos.length){ cont.innerHTML = ""; return; }
+  var calc = gxCalcular(p, gxLib(), _gxSel);
+  var html = grupos.map(function(g){
+    var tipo = gxTipoDe(g), req = tipo !== "quitar" && g.obligatorio === true;
+    var max = Math.max(0, Math.floor(Number(g.max) || 0));
+    var s = _gxSel[g.id] || {};
+    var n = Object.keys(s).reduce(function(a, k){ return a + (s[k] || 0); }, 0);
+    var regla = tipo === "uno" ? "Elige 1" : tipo === "varios" ? (max ? "Elige hasta " + max : "Elige los que quieras")
+              : tipo === "cantidad" ? "Hasta " + (max || 10) + " de cada uno" : "Sin costo";
+    if (!req && tipo !== "quitar") regla += " · opcional";
+    var badge = req ? (n ? '<span class="gx-b ok">Listo</span>' : '<span class="gx-b req">Obligatorio</span>')
+              : (n ? '<span class="gx-b">' + n + (tipo === "quitar" ? " quitado" + (n > 1 ? "s" : "") : " elegido" + (n > 1 ? "s" : "")) + '</span>' : '<span class="gx-b">Opcional</span>');
+    var ops = gxOpsValidas(g), cuerpo = "";
+    if (tipo === "quitar"){
+      cuerpo = '<div class="gx-chips">' + ops.map(function(o){
+        var on = !!s[o.id];
+        return '<button type="button" class="gx-chip' + (on ? " on" : "") + '" data-gxo="' + esc(g.id) + '|' + esc(o.id) + '"' + (o.activo === false ? " disabled" : "") + '>Sin ' + esc(String(o.nombre).trim().toLowerCase()) + '</button>';
+      }).join("") + '</div>';
+    } else if (tipo === "cantidad"){
+      var lim = max || 10;
+      cuerpo = ops.map(function(o){
+        var c = s[o.id] || 0, agot = o.activo === false;
+        return '<div class="gx-op' + (c ? " on" : "") + '" style="cursor:default">' +
+          '<span class="gx-n">' + esc(o.nombre) + '<small>' + (agot ? "Agotado" : (gxPrecioTxt(o.precio) ? gxPrecioTxt(o.precio) + " c/u" : "Sin costo")) + '</small></span>' +
+          '<span class="gx-step"><button type="button" aria-label="Quitar uno" data-gxm="' + esc(g.id) + '|' + esc(o.id) + '"' + (c ? "" : " disabled") + '>−</button><b>' + c + '</b>' +
+          '<button type="button" class="mas" aria-label="Agregar uno" data-gxp="' + esc(g.id) + '|' + esc(o.id) + '"' + (agot || c >= lim ? " disabled" : "") + '>+</button></span></div>';
+      }).join("");
+    } else {
+      var lleno = tipo === "varios" && max && Object.keys(s).length >= max;
+      cuerpo = ops.map(function(o){
+        var on = !!s[o.id], agot = o.activo === false;
+        var dis = agot || (lleno && !on);
+        return '<button type="button" class="gx-op' + (on ? " on" : "") + '" data-gxo="' + esc(g.id) + '|' + esc(o.id) + '"' + (dis ? " disabled" : "") + '>' +
+          '<span class="gx-ind' + (tipo === "varios" ? " cuad" : "") + '"></span><span class="gx-n">' + esc(o.nombre) + '</span>' +
+          '<span class="gx-p">' + (agot ? "Agotado" : gxPrecioTxt(o.precio)) + '</span></button>';
+      }).join("");
+    }
+    return '<section class="gx-g" data-gxg="' + esc(g.id) + '"><div class="gx-h"><div><b>' + esc(g.nombre || "Extras") + '</b><small>' + regla + '</small></div>' + badge + '</div>' + cuerpo + '</section>';
+  }).join("");
+  var partes = Object.keys(calc.variantes).map(function(k){ return calc.variantes[k]; });
+  if (partes.length) html += '<div class="gx-res"><b>Tu pedido:</b> ' + esc(partes.join(" · ")) + '</div>';
+  cont.innerHTML = html;
+  var tot = document.getElementById("prodDetTotal");
+  if (tot) tot.textContent = fmtPrecio(gxPrecioUnit(p) * (_prodDetCant || 1));
+}
+
+document.addEventListener("click", function(e){
+  var cont = document.getElementById("prodDetExtras");
+  if (!cont || !cont.contains(e.target)) return;
+  var b = e.target.closest("[data-gxo],[data-gxp],[data-gxm]");
+  if (!b || b.disabled) return;
+  var p = state.productos.find(function(x){ return x.id === _prodDetId; });
+  if (!p) return;
+  var par = (b.dataset.gxo || b.dataset.gxp || b.dataset.gxm).split("|"), gid = par[0], oid = par[1];
+  var g = gxMapa()[gid]; if (!g) return;
+  var tipo = gxTipoDe(g), max = Math.max(0, Math.floor(Number(g.max) || 0));
+  var s = Object.assign({}, _gxSel[gid] || {});
+  if (b.dataset.gxp){ s[oid] = Math.min(max || 10, (s[oid] || 0) + 1); }
+  else if (b.dataset.gxm){ s[oid] = Math.max(0, (s[oid] || 0) - 1); if (!s[oid]) delete s[oid]; }
+  else if (tipo === "uno"){
+    if (s[oid] && g.obligatorio !== true) s = {}; else { s = {}; s[oid] = 1; }
+  } else {
+    if (s[oid]) delete s[oid];
+    else { if (tipo === "varios" && max && Object.keys(s).length >= max) return; s[oid] = 1; }
+  }
+  _gxSel[gid] = s;
+  gxRender(p);
+});
+
+/* Marca el grupo que falta y lo lleva a la vista */
+function gxMarcarFalta(gid){
+  var el = document.querySelector('#prodDetExtras [data-gxg="' + gid + '"]');
+  if (!el) return;
+  el.classList.remove("gx-falta"); void el.offsetWidth; el.classList.add("gx-falta");
+  try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch(e){}
+}
+
+/* ─────────── Panel: editor de extras del producto ─────────── */
+var GX_PLANTILLAS = {
+  hamburguesa: { nombre: "Hamburguesa", grupos: [
+    { nombre: "Elige tu pan", tipo: "uno", obligatorio: true, ops: [["Brioche", 0], ["Pan de papa", 0], ["Sin gluten", 800]] },
+    { nombre: "Elige tu carne", tipo: "uno", obligatorio: true, ops: [["Simple 150 g", 0], ["Doble 300 g", 2500], ["Pollo crispy", 0], ["Veggie", 1000]] },
+    { nombre: "Quesos", tipo: "varios", max: 2, ops: [["Cheddar", 700], ["Provoleta", 900], ["Queso azul", 1000]] },
+    { nombre: "Agrega extras", tipo: "cantidad", max: 3, ops: [["Tocino", 1200], ["Huevo frito", 600], ["Palta", 1100], ["Cebolla caramelizada", 500]] },
+    { nombre: "¿Quitamos algo?", tipo: "quitar", ops: [["Cebolla", 0], ["Pepinillos", 0], ["Tomate", 0], ["Lechuga", 0]] },
+    { nombre: "Hazlo combo", tipo: "uno", ops: [["Papas + bebida", 3490], ["Papas XL + bebida", 4490]] } ] },
+  pizza: { nombre: "Pizza", grupos: [
+    { nombre: "Tamaño", tipo: "uno", obligatorio: true, ops: [["Individual", 0], ["Mediana", 3000], ["Familiar", 6000]] },
+    { nombre: "Masa", tipo: "uno", obligatorio: true, ops: [["Tradicional", 0], ["Delgada", 0], ["Borde relleno", 1500]] },
+    { nombre: "Ingredientes extra", tipo: "cantidad", max: 2, ops: [["Pepperoni", 1000], ["Champiñón", 800], ["Aceituna", 800], ["Pimentón", 700], ["Choclo", 700], ["Jamón", 900]] },
+    { nombre: "¿Quitamos algo?", tipo: "quitar", ops: [["Cebolla", 0], ["Aceituna", 0], ["Orégano", 0]] } ] },
+  burrito: { nombre: "Burrito / bowl", grupos: [
+    { nombre: "Formato", tipo: "uno", obligatorio: true, ops: [["Burrito", 0], ["Bowl", 0]] },
+    { nombre: "Proteína", tipo: "uno", obligatorio: true, ops: [["Pollo", 0], ["Carne", 1000], ["Vegetariano", 0]] },
+    { nombre: "Ingredientes", tipo: "varios", max: 4, ops: [["Arroz", 0], ["Porotos negros", 0], ["Pico de gallo", 0], ["Lechuga", 0], ["Choclo", 0]] },
+    { nombre: "Agrega extras", tipo: "cantidad", max: 2, ops: [["Guacamole", 1200], ["Queso", 700], ["Jalapeños", 400]] },
+    { nombre: "Salsas", tipo: "varios", max: 2, ops: [["Suave", 0], ["Picante", 0], ["Chipotle", 0]] } ] },
+  shawarma: { nombre: "Shawarma", grupos: [
+    { nombre: "Pan", tipo: "uno", obligatorio: true, ops: [["Pita", 0], ["Lafa", 500]] },
+    { nombre: "Proteína", tipo: "uno", obligatorio: true, ops: [["Pollo", 0], ["Carne", 1000], ["Mixto", 800], ["Falafel", 0]] },
+    { nombre: "Salsas", tipo: "varios", max: 3, ops: [["Ajo", 0], ["Tahini", 0], ["Picante", 0]] },
+    { nombre: "Agrega extras", tipo: "cantidad", max: 2, ops: [["Papas adentro", 800], ["Queso", 700]] },
+    { nombre: "¿Quitamos algo?", tipo: "quitar", ops: [["Cebolla", 0], ["Tomate", 0], ["Pepinillos", 0]] } ] },
+  combo: { nombre: "Combo", grupos: [
+    { nombre: "Acompañamiento", tipo: "uno", obligatorio: true, ops: [["Papas fritas", 0], ["Aros de cebolla", 500], ["Ensalada", 0]] },
+    { nombre: "Bebida", tipo: "uno", obligatorio: true, ops: [["Bebida lata", 0], ["Agua", 0], ["Jugo natural", 800]] } ] }
+};
+
+function gxNuevoId(pre){ return pre + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 6); }
+function gxClonLib(){ try { return JSON.parse(JSON.stringify(gxLib())); } catch(e){ return []; } }
+function gxUsos(gid){ return (state.productos || []).filter(function(p){ return Array.isArray(p.gruposExtras) && p.gruposExtras.indexOf(gid) >= 0; }).length; }
+function gxNorm(s){ return String(s || "").trim().toLowerCase(); }
+function gxRefrescarPanel(){ setTimeout(function(){ if (typeof renderPanelProds === "function") renderPanelProds(); }, 0); }
+
+function gxResumen(g){
+  var tipo = gxTipoDe(g), max = Math.max(0, Math.floor(Number(g.max) || 0));
+  var t = tipo === "uno" ? "Elige 1" : tipo === "varios" ? (max ? "Hasta " + max : "Varios") : tipo === "cantidad" ? "Con cantidad" : "Quitar";
+  var partes = [t];
+  if (tipo !== "quitar") partes.push(g.obligatorio === true ? "obligatorio" : "opcional");
+  partes.push(gxOpsValidas(g).length + " opciones");
+  var u = gxUsos(g.id);
+  if (u > 1) partes.push("en " + u + " productos");
+  return partes.join(" · ");
+}
+
+function renderEditorExtras(p){
+  gxCss();
+  var pid = esc(p.id), m = gxMapa();
+  var ids = (Array.isArray(p.gruposExtras) ? p.gruposExtras : []).filter(function(id){ return m[id]; });
+  var filas = ids.map(function(gid, i){
+    var g = m[gid], abierto = _gxEdit && _gxEdit.pid === p.id && _gxEdit.gid === gid;
+    return '<div class="gx-row"><span class="ttl">' + esc(g.nombre || "Sin nombre") + '<small>' + esc(gxResumen(g)) + '</small></span>' +
+      '<button class="ibtn" data-gxa="subir" data-pid="' + pid + '" data-gid="' + esc(gid) + '" title="Subir"' + (i ? "" : " disabled") + '>↑</button>' +
+      '<button class="ibtn" data-gxa="editar" data-pid="' + pid + '" data-gid="' + esc(gid) + '" title="Editar">' + (abierto ? "▾" : "✎") + '</button>' +
+      '<button class="ibtn" data-gxa="quitar" data-pid="' + pid + '" data-gid="' + esc(gid) + '" title="Quitar de este producto">✕</button></div>' +
+      (abierto ? gxEditorGrupo(g, p.id) : "");
+  }).join("");
+  var picker = "";
+  if (_gxPicker === p.id){
+    var libres = gxLib().filter(function(g){ return ids.indexOf(g.id) < 0 && gxOpsValidas(g).length; });
+    picker = '<div class="gx-box"><div class="gx-sub" style="margin-top:0">Empezar desde una plantilla</div><div class="gx-plant">' +
+      Object.keys(GX_PLANTILLAS).map(function(k){ return '<button class="pill pill-outline pill-sm" style="margin:0" data-gxa="plantilla" data-pid="' + pid + '" data-t="' + k + '">' + esc(GX_PLANTILLAS[k].nombre) + '</button>'; }).join("") +
+      '</div>' + (libres.length ? '<div class="gx-sub">Grupos que ya tienes en la tienda</div>' + libres.map(function(g){
+        return '<div class="gx-row"><span class="ttl">' + esc(g.nombre) + '<small>' + esc(gxResumen(g)) + '</small></span><button class="pill pill-solid pill-sm" style="margin:0" data-gxa="usar" data-pid="' + pid + '" data-gid="' + esc(g.id) + '">Usar</button></div>';
+      }).join("") : "") +
+      '<div class="gx-btns"><button class="pill pill-outline-muted pill-sm" style="margin:0" data-gxa="vacio" data-pid="' + pid + '">Crear grupo vacío</button>' +
+      '<button class="pill pill-outline-muted pill-sm" style="margin:0" data-gxa="cerrarpicker" data-pid="' + pid + '">Cerrar</button></div></div>';
+  }
+  return '<div class="gx-adm"><p class="gx-adm-t">Extras y armado</p>' +
+    '<p class="pnota" style="margin:0 0 4px">Para que el cliente agregue ingredientes con costo (ej. tocino extra) o arme el producto paso a paso. Si se vende tal cual, déjalo vacío.</p>' +
+    filas + picker +
+    '<div class="gx-btns"><button class="pill pill-solid pill-sm" style="margin:0" data-gxa="rapido" data-pid="' + pid + '">＋ Agregar extras</button>' +
+    '<button class="pill pill-outline pill-sm" style="margin:0" data-gxa="picker" data-pid="' + pid + '">＋ Agregar grupo de armado</button></div></div>';
+}
+
+function gxEditorGrupo(g, pid){
+  var tipo = gxTipoDe(g), gid = esc(g.id), max = Math.max(0, Math.floor(Number(g.max) || 0));
+  var tipos = [["uno", "Elige 1", "pan, carne, tamaño"], ["varios", "Elige varios", "quesos, salsas"], ["cantidad", "Con cantidad", "tocino x2"], ["quitar", "Quitar", "sin cebolla"]];
+  var u = gxUsos(g.id);
+  return '<div class="gx-box">' +
+    (u > 1 ? '<p class="pnota" style="margin:0 0 8px">Este grupo se usa en <b>' + u + ' productos</b>: los cambios se aplican en todos.</p>' : "") +
+    '<label class="plabel">Nombre que ve el cliente</label>' +
+    '<input class="field" data-gxf="nombre" data-gid="' + gid + '" value="' + esc(g.nombre || "") + '" placeholder="Ej: Agrega extras">' +
+    '<label class="plabel">Cómo elige el cliente</label><div class="gx-tipos">' +
+    tipos.map(function(t){ return '<button type="button" class="gx-tipo' + (t[0] === tipo ? " on" : "") + '" data-gxa="tipo" data-pid="' + esc(pid) + '" data-gid="' + gid + '" data-t="' + t[0] + '">' + t[1] + '<small>' + t[2] + '</small></button>'; }).join("") + '</div>' +
+    (tipo !== "quitar" ? '<div class="switch-row"><span>Obligatorio (no puede agregar sin elegir)</span><label class="switch"><input type="checkbox" data-gxf="obligatorio" data-gid="' + gid + '"' + (g.obligatorio === true ? " checked" : "") + '><span class="slider"></span></label></div>' : "") +
+    (tipo === "varios" || tipo === "cantidad" ? '<label class="plabel">' + (tipo === "varios" ? "Máximo que puede elegir (0 = sin límite)" : "Máximo de cada uno") + '</label><input class="field" type="number" inputmode="numeric" min="0" data-gxf="max" data-gid="' + gid + '" value="' + (max || (tipo === "cantidad" ? 3 : 0)) + '">' : "") +
+    '<div class="gx-sub">Opciones' + (tipo === "quitar" ? "" : " y precio extra") + '</div>' +
+    (Array.isArray(g.opciones) ? g.opciones : []).map(function(o){
+      var oid = esc(o.id);
+      return '<div class="gx-opr"><input class="field gx-on" data-gxf="opnombre" data-gid="' + gid + '" data-oid="' + oid + '" value="' + esc(o.nombre || "") + '" placeholder="Ej: Tocino">' +
+        (tipo === "quitar" ? '<span class="gx-prw">Sin costo</span>' : '<label class="gx-prw">+ $<input class="field gx-pr" type="number" inputmode="numeric" min="0" data-gxf="opprecio" data-gid="' + gid + '" data-oid="' + oid + '" value="' + (Math.round(Number(o.precio) || 0)) + '" aria-label="Precio extra"></label>') +
+        '<label class="gx-hay" title="Desmarca si se acabó"><input type="checkbox" data-gxf="opactivo" data-gid="' + gid + '" data-oid="' + oid + '"' + (o.activo === false ? "" : " checked") + '>Hay</label>' +
+        '<button class="ibtn" data-gxa="delop" data-pid="' + esc(pid) + '" data-gid="' + gid + '" data-oid="' + oid + '" title="Quitar opción">🗑</button></div>';
+    }).join("") +
+    '<div class="gx-btns"><button class="pill pill-outline pill-sm" style="margin:0" data-gxa="addop" data-pid="' + esc(pid) + '" data-gid="' + gid + '">＋ Agregar opción</button>' +
+    '<button class="pill pill-solid pill-sm" style="margin:0" data-gxa="listo" data-pid="' + esc(pid) + '" data-gid="' + gid + '">Listo</button>' +
+    '<button class="pill pill-outline-muted pill-sm" style="margin:0" data-gxa="borrar" data-pid="' + esc(pid) + '" data-gid="' + gid + '">Eliminar grupo de la tienda</button></div>' +
+    '<p class="pnota" style="margin:8px 0 0">Precio extra en pesos, sin puntos. 0 = sin costo.</p></div>';
+}
+
+/* Se aplica en memoria ANTES de guardar: si el dueño edita dos campos
+   seguidos, el segundo parte del primero aunque Firestore no haya
+   respondido todavía (si no, el segundo pisaba al primero). */
+function gxGuardarLib(lib){ state.config.gruposExtras = lib; return saveConfig("gruposExtras", lib); }
+function gxMutarGrupo(gid, fn, rerender){
+  var lib = gxClonLib(), g = lib.find(function(x){ return x.id === gid; });
+  if (!g) return Promise.resolve();
+  fn(g);
+  return Promise.resolve(gxGuardarLib(lib)).then(function(){ if (rerender !== false) gxRefrescarPanel(); });
+}
+function gxIdsProducto(pid){
+  var p = state.productos.find(function(x){ return x.id === pid; });
+  return p && Array.isArray(p.gruposExtras) ? p.gruposExtras.slice() : [];
+}
+function gxGuardarIds(pid, ids){
+  var p = state.productos.find(function(x){ return x.id === pid; });
+  if (p) p.gruposExtras = ids;
+  return Promise.resolve(saveField("productos", pid, "gruposExtras", ids)).then(gxRefrescarPanel);
+}
+function gxCrearGrupo(spec){
+  return {
+    id: gxNuevoId("g"), nombre: spec.nombre, tipo: spec.tipo || "uno", obligatorio: spec.obligatorio === true,
+    max: spec.max || (spec.tipo === "cantidad" ? 3 : 0),
+    opciones: (spec.ops || []).map(function(o){ return { id: gxNuevoId("o"), nombre: o[0], precio: o[1] || 0, activo: true }; })
+  };
+}
+/* Busca un grupo de la tienda con el mismo nombre y tipo; si no existe lo crea.
+   Así 15 pizzas comparten "Tamaño" y "Ingredientes extra" sin duplicarse. */
+function gxBuscarOCrear(lib, spec){
+  var ex = lib.find(function(g){ return gxNorm(g.nombre) === gxNorm(spec.nombre) && gxTipoDe(g) === (spec.tipo || "uno"); });
+  if (ex) return ex.id;
+  var g = gxCrearGrupo(spec); lib.push(g); return g.id;
+}
+
+async function gxAccion(b){
+  var a = b.dataset.gxa, pid = b.dataset.pid, gid = b.dataset.gid, oid = b.dataset.oid;
+  var ids = gxIdsProducto(pid);
+  if (a === "picker"){ _gxPicker = _gxPicker === pid ? null : pid; return gxRefrescarPanel(); }
+  if (a === "cerrarpicker"){ _gxPicker = null; return gxRefrescarPanel(); }
+  if (a === "editar"){ _gxEdit = (_gxEdit && _gxEdit.gid === gid && _gxEdit.pid === pid) ? null : { pid: pid, gid: gid }; return gxRefrescarPanel(); }
+  if (a === "listo"){ _gxEdit = null; return gxRefrescarPanel(); }
+  if (a === "quitar"){ return gxGuardarIds(pid, ids.filter(function(x){ return x !== gid; })); }
+  if (a === "subir"){
+    var i = ids.indexOf(gid); if (i <= 0) return;
+    ids.splice(i, 1); ids.splice(i - 1, 0, gid); return gxGuardarIds(pid, ids);
+  }
+  if (a === "usar"){ if (ids.indexOf(gid) < 0) ids.push(gid); _gxPicker = null; return gxGuardarIds(pid, ids); }
+  if (a === "rapido" || a === "vacio" || a === "plantilla"){
+    var lib = gxClonLib(), nuevos = [], abrir = null;
+    if (a === "plantilla"){
+      var pl = GX_PLANTILLAS[b.dataset.t]; if (!pl) return;
+      pl.grupos.forEach(function(spec){ nuevos.push(gxBuscarOCrear(lib, spec)); });
+    } else {
+      var p = state.productos.find(function(x){ return x.id === pid; });
+      var nombre = a === "vacio" ? "Nuevo grupo" : "Extras" + (p && p.categoria ? " " + String(p.categoria).trim().toLowerCase() : "");
+      var ex = a === "rapido" ? lib.find(function(g){ return gxNorm(g.nombre) === gxNorm(nombre) && gxTipoDe(g) === "cantidad"; }) : null;
+      if (ex){ nuevos.push(ex.id); }
+      else {
+        var g = gxCrearGrupo({ nombre: nombre, tipo: a === "vacio" ? "uno" : "cantidad", max: a === "vacio" ? 0 : 3, ops: [["", 0]] });
+        lib.push(g); nuevos.push(g.id); abrir = g.id;
+      }
+    }
+    await gxGuardarLib(lib);
+    nuevos.forEach(function(id){ if (ids.indexOf(id) < 0) ids.push(id); });
+    _gxPicker = null;
+    if (abrir) _gxEdit = { pid: pid, gid: abrir };
+    await gxGuardarIds(pid, ids);
+    toast(a === "plantilla" ? "✓ Plantilla aplicada — revisa nombres y precios" : abrir ? "✓ Grupo creado — escribe las opciones y su precio" : "✓ Usando el grupo que ya tenías");
+    return;
+  }
+  if (a === "tipo"){ return gxMutarGrupo(gid, function(g){ g.tipo = b.dataset.t; if (g.tipo === "quitar") g.obligatorio = false; if (g.tipo === "cantidad" && !g.max) g.max = 3; }); }
+  if (a === "addop"){ return gxMutarGrupo(gid, function(g){ g.opciones = Array.isArray(g.opciones) ? g.opciones : []; g.opciones.push({ id: gxNuevoId("o"), nombre: "", precio: 0, activo: true }); }); }
+  if (a === "delop"){ return gxMutarGrupo(gid, function(g){ g.opciones = (g.opciones || []).filter(function(o){ return o.id !== oid; }); }); }
+  if (a === "borrar"){
+    var u = gxUsos(gid);
+    if (!confirm("¿Eliminar este grupo de toda la tienda?" + (u ? " Se quitará de " + u + " producto" + (u > 1 ? "s" : "") + "." : ""))) return;
+    var prods = (state.productos || []).filter(function(p){ return Array.isArray(p.gruposExtras) && p.gruposExtras.indexOf(gid) >= 0; });
+    for (var k = 0; k < prods.length; k++){
+      await saveField("productos", prods[k].id, "gruposExtras", prods[k].gruposExtras.filter(function(x){ return x !== gid; }));
+    }
+    _gxEdit = null;
+    await gxGuardarLib(gxClonLib().filter(function(g){ return g.id !== gid; }));
+    gxRefrescarPanel();
+  }
+}
+
+document.addEventListener("click", function(e){
+  var b = e.target.closest("[data-gxa]");
+  if (!b || b.disabled) return;
+  e.preventDefault();
+  gxAccion(b).catch(function(err){ console.error("extras:", err); toast("No se pudo guardar el cambio"); });
+});
+document.addEventListener("change", function(e){
+  var el = e.target.closest("[data-gxf]");
+  if (!el) return;
+  var f = el.dataset.gxf, oid = el.dataset.oid;
+  gxMutarGrupo(el.dataset.gid, function(g){
+    if (f === "nombre") g.nombre = el.value.trim().slice(0, 60);
+    else if (f === "obligatorio") g.obligatorio = el.checked;
+    else if (f === "max") g.max = Math.max(0, Math.min(50, Math.floor(Number(el.value) || 0)));
+    else {
+      var o = (g.opciones || []).find(function(x){ return x.id === oid; });
+      if (!o) return;
+      if (f === "opnombre") o.nombre = el.value.trim().slice(0, 60);
+      else if (f === "opprecio") o.precio = Math.max(0, Math.round(Number(el.value) || 0));
+      else if (f === "opactivo") o.activo = el.checked;
+    }
+  }, f === "obligatorio" || f === "opactivo").catch(function(err){ console.error("extras:", err); toast("No se pudo guardar el cambio"); });
+});

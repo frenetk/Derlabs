@@ -33,13 +33,10 @@ export async function crearPedidoEfectivo(request, env){
     }
     const { itemsValidados, subtotal, costoDelivery: costoDeliveryReal, descuento, cuponFinal, total } = val;
 
-    const itemsConVariantes = itemsValidados.map(function(it){
-      const itemOriginal = (items || []).find(function(i){ return i.id === it.id; }) || {};
-      return Object.assign({}, it, {
-        variantes: itemOriginal.variantes || null,
-        notaPersonal: itemOriginal.notaPersonal || null
-      });
-    });
+    /* P23: validarPedidoCompleto ya devuelve variantes, nota y extras por
+       línea (antes se buscaban por id y dos líneas del mismo producto con
+       distintas opciones quedaban con la variante de la primera). */
+    const itemsConVariantes = itemsValidados;
 
     const id = pedidoId || ("TB" + Date.now().toString().slice(-5));
     const ahora = new Date().toISOString();

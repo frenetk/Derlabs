@@ -309,3 +309,57 @@ en Firestore):
 Netlify (Domain management → Add domain alias / Add custom domain,
 según corresponda a cuál es el dominio principal del sitio) y apuntar
 el DNS de cada uno — ver LEEME.md para el detalle de registros DNS.
+
+## 10. Extras y armado de productos (P23) — ✅ hecho
+
+Grupos de opciones con precio, guardados una vez en la tienda
+(`config/general.gruposExtras`) y enlazados a cada producto
+(`producto.gruposExtras = [ids]`). Tipos: elige 1, elige varios (máx.),
+con cantidad (máx. de cada uno) y quitar (sin costo). Opción "Hay" para
+marcar un ingrediente agotado. Plantillas: hamburguesa, pizza,
+burrito/bowl, shawarma, combo; al aplicar una plantilla se reutilizan los
+grupos con el mismo nombre, así que muchos productos comparten "Tamaño" o
+"Agrega extras" y se editan en un solo lugar.
+
+El precio lo recalcula el servidor (`calcularExtras` en `_firebase.js`, la
+misma lógica que `gxCalcular` en `app.js`). El servidor escribe el detalle
+en `variantes`, por eso pedidos, cocina, caja y seguimiento lo muestran
+sin cambios. Se corrigió además que los pedidos de MercadoPago perdían
+las variantes.
+
+Pendiente:
+- Caja (POS): vender productos con extras desde la caja (hoy se cobra el precio base).
+- Mitad y mitad real en pizzas (dos sabores con precio del más caro): hoy se arma con un grupo "Segunda mitad".
+
+## 11. Promociones + menú completo en el inicio (P24) — siguiente
+
+"Ofertas de hoy" pasa a "Promociones": lista vertical, interruptor
+"En promoción" + "precio antes" por producto (badge de % automático), y
+debajo el menú completo por categorías con pestañas fijas. Ambos estilos
+(App y Clásico).
+
+## 12. Segunda pasarela: Flow (P25) y camino a Webpay directo
+
+Flow primero: el comercio se registra en flow.cl y pega apiKey + secretKey
+en el panel (igual que el token de MP). Flujo: `payment/create` firmado con
+HMAC-SHA256 → redirigir a `url?token=` → Flow llama a `urlConfirmation` →
+`payment/getStatus` → pedido "nuevo". Cobra con Webpay, tarjetas y
+transferencias.
+
+Webpay Plus directo (para tiendas que ya tienen convenio con Transbank):
+- Datos por tienda en `config/privado`: código de comercio + API Key Secret.
+- REST con headers `Tbk-Api-Key-Id` / `Tbk-Api-Key-Secret`; crear
+  transacción (buy_order ≤ 26, session_id, amount, return_url) → redirigir
+  con `token_ws` → en la ruta de retorno hacer commit (PUT) y aprobar si
+  `response_code == 0` y `status == AUTHORIZED`. Abandono: llega
+  `TBK_TOKEN` sin `token_ws`.
+- No hay webhook: la confirmación es el commit en la ruta de retorno, así
+  que esa ruta tiene que ser idempotente (si el cliente recarga, no se
+  confirma dos veces).
+- Integración: código 597055555532 y su llave pública de pruebas.
+- Para producción Transbank valida la integración con evidencias, entrega
+  la llave secreta y pide una compra real de $50. Antes de abrirlo a
+  tiendas, confirmar con soporte@transbank.cl si cada comercio nuevo debe
+  validar por separado una integración propia como la nuestra.
+- Verificar rutas y versión de la API en transbankdevelopers.cl antes de
+  programar (no se pudo leer la referencia oficial al investigar).

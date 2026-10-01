@@ -59,7 +59,10 @@ export function fmtPrecio(n){
 }
 
 export function resumenItems(items){
-  return (items || []).map(function(i){ return i.cantidad + "x " + i.nombre; }).join(", ");
+  return (items || []).map(function(i){
+    const v = i.variantes && typeof i.variantes === "object" ? Object.keys(i.variantes).map(function(k){ return i.variantes[k]; }).filter(Boolean).join(", ") : "";
+    return i.cantidad + "x " + i.nombre + (v ? " (" + v + ")" : "");
+  }).join(", ");
 }
 
 export function esc(s){
@@ -124,6 +127,70 @@ export async function validarCuponServidor(db, storeId, codigoCrudo, clienteUid,
   return { ok: true, codigo, descuento: Math.max(0, Math.min(descuento, subtotal)) };
 }
 
+/* P23 — cálculo de extras/armado. MISMA lógica en la tienda (app.js,
+   gxCalcular) y en el servidor (_firebase.js, calcularExtras): la tienda
+   la usa para mostrar el precio en vivo, el servidor para cobrar. Si se
+   cambia una, cambiar la otra.
+   prod.gruposExtras = [idGrupo, ...]  (orden en que se muestran)
+   lib = config/general.gruposExtras = [{ id, nombre, tipo, obligatorio, max, opciones:[{id,nombre,precio,activo}] }]
+     tipo: "uno" (elige 1) | "varios" (elige hasta max) | "cantidad" (hasta max de cada uno) | "quitar" (sin costo)
+   sel = { idGrupo: { idOpcion: cantidad } } */
+function calcularExtras(prod, lib, sel){
+  var ids = Array.isArray(prod && prod.gruposExtras) ? prod.gruposExtras : [];
+  var mapa = {};
+  (Array.isArray(lib) ? lib : []).forEach(function(g){ if (g && g.id) mapa[g.id] = g; });
+  sel = (sel && typeof sel === "object") ? sel : {};
+  var r = { ok: true, error: "", falta: null, faltaId: null, unit: 0, variantes: {}, detalle: [], sel: {}, nombres: [] };
+  ids.forEach(function(gid){
+    var g = mapa[gid];
+    if (!g) return;
+    var ops = (Array.isArray(g.opciones) ? g.opciones : []).filter(function(o){ return o && o.id && String(o.nombre || "").trim(); });
+    if (!ops.length) return;
+    var nombreG = String(g.nombre || "Extras").trim();
+    r.nombres.push(nombreG);
+    var tipo = ["uno", "varios", "cantidad", "quitar"].indexOf(g.tipo) >= 0 ? g.tipo : "uno";
+    var req = tipo !== "quitar" && g.obligatorio === true;
+    var max = Math.max(0, Math.floor(Number(g.max) || 0));
+    var s = (sel[gid] && typeof sel[gid] === "object") ? sel[gid] : {};
+    var elegidas = [], total = 0;
+    ops.forEach(function(o){
+      var c = Math.floor(Number(s[o.id]) || 0);
+      if (c <= 0) return;
+      if (o.activo === false){ if (r.ok){ r.ok = false; r.error = "\"" + o.nombre + "\" no está disponible ahora"; } return; }
+      if (tipo === "cantidad"){ var lim = max || 10; if (c > lim) c = lim; } else c = 1;
+      elegidas.push({ o: o, c: c }); total += c;
+    });
+    if (tipo === "uno" && elegidas.length > 1){ elegidas = elegidas.slice(0, 1); total = 1; }
+    if (tipo === "varios" && max && elegidas.length > max){ elegidas = elegidas.slice(0, max); total = max; }
+    if (req && total < 1 && r.ok){ r.ok = false; r.falta = nombreG; r.faltaId = gid; r.error = "falta completar «" + nombreG + "»"; }
+    if (!elegidas.length) return;
+    var textos = [];
+    r.sel[gid] = {};
+    elegidas.forEach(function(e){
+      var precio = tipo === "quitar" ? 0 : Math.max(0, Math.round(Number(e.o.precio) || 0));
+      r.unit += precio * e.c;
+      r.sel[gid][e.o.id] = e.c;
+      r.detalle.push({ grupo: nombreG, opcion: String(e.o.nombre).trim(), cantidad: e.c, precio: precio });
+      var n = String(e.o.nombre).trim();
+      textos.push(tipo === "quitar" ? "sin " + n.toLowerCase() : (e.c > 1 ? n + " x" + e.c : n));
+    });
+    r.variantes[nombreG] = textos.join(", ");
+  });
+  return r;
+}
+
+/* Variantes que manda el navegador (texto libre de grupos sin precio):
+   solo strings cortos, máximo 10 claves. */
+function _limpiarVariantes(v){
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const out = {};
+  Object.keys(v).slice(0, 10).forEach(function(k){
+    const val = v[k];
+    if (typeof val === "string" && val.trim()) out[String(k).slice(0, 60)] = val.trim().slice(0, 160);
+  });
+  return Object.keys(out).length ? out : null;
+}
+
 export async function validarItemsCatalogo(db, storeId, items){
   const idsUnicos = Array.from(new Set((items || []).map(function(i){ return i.id; })));
   const prodDocs = await Promise.all(idsUnicos.map(function(pid){
@@ -131,6 +198,15 @@ export async function validarItemsCatalogo(db, storeId, items){
   }));
   const catalogo = {};
   prodDocs.forEach(function(doc){ if (doc.exists) catalogo[doc.id] = doc.data(); });
+
+  /* P23: grupos de extras de la tienda — se leen solo si algún producto los usa */
+  let _libExtras = null;
+  async function libExtras(){
+    if (_libExtras) return _libExtras;
+    const d = await db.doc("tiendas/" + storeId + "/config/general").get();
+    _libExtras = d.exists && Array.isArray(d.data().gruposExtras) ? d.data().gruposExtras : [];
+    return _libExtras;
+  }
 
   const itemsValidados = [];
   for (const it of (items || [])) {
@@ -142,11 +218,28 @@ export async function validarItemsCatalogo(db, storeId, items){
     if (prod.stock !== null && prod.stock !== undefined && prod.stock !== "" && Number(prod.stock) < cantidad) {
       return { ok: false, error: "No hay stock suficiente de \"" + prod.nombre + "\"" };
     }
+    let precio = Number(prod.precio) || 0;
+    let variantes = _limpiarVariantes(it.variantes);
+    let extras = null, extrasDetalle = null;
+    if (Array.isArray(prod.gruposExtras) && prod.gruposExtras.length) {
+      const cx = calcularExtras(prod, await libExtras(), it.extras);
+      if (!cx.ok) return { ok: false, error: "\"" + prod.nombre + "\": " + cx.error };
+      precio += cx.unit;
+      /* el texto de los grupos con precio lo escribe el servidor, no el navegador */
+      if (variantes) cx.nombres.forEach(function(n){ delete variantes[n]; });
+      variantes = Object.assign({}, variantes || {}, cx.variantes);
+      if (!Object.keys(variantes).length) variantes = null;
+      if (Object.keys(cx.sel).length) { extras = cx.sel; extrasDetalle = cx.detalle; }
+    }
     itemsValidados.push({
       id: it.id,
       nombre: prod.nombre,
-      precio: Number(prod.precio) || 0,
-      cantidad
+      precio,
+      cantidad,
+      variantes,
+      notaPersonal: typeof it.notaPersonal === "string" && it.notaPersonal.trim() ? it.notaPersonal.trim().slice(0, 140) : null,
+      extras,
+      extrasDetalle
     });
   }
 
