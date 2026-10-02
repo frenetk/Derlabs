@@ -35,6 +35,7 @@ import { gestionRepartidores, delivery } from "./functions/repartidores.js";
 import { cajaLocal } from "./functions/cajaLocal.js";
 import { landingEditor, servirImagenLanding } from "./functions/landingEditor.js";
 import { dominios, revisarDominios } from "./functions/dominios.js";
+import { planTienda } from "./functions/planTienda.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -62,7 +63,8 @@ const FUNCIONES = {
   delivery,
   cajaLocal,
   landingEditor,
-  dominios
+  dominios,
+  planTienda
 };
 
 

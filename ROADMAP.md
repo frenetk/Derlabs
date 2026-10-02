@@ -413,3 +413,107 @@ diseño nuevo, replicar ese estilo.
 - `enviarEmails.js` aplica la misma regla en el servidor; el aviso al dueño
   se envía siempre. Motivo: evitar rebotes que dañan la reputación del
   dominio de envío.
+
+## 15. Estado del plan original (numeración corregida)
+
+El plan de fines de septiembre usaba otros números. Así quedó cada punto:
+
+| Plan original | Estado |
+|---|---|
+| P9–P21 publicados | Hecho |
+| P21b reparación automática de dominios | Código subido (cron de 5 min + visitas). Falta verificarlo en producción. |
+| P22 vitrina + diseño "Clásico" | Hecho |
+| P23 tienda instantánea + imágenes en R2 | Tienda instantánea hecha (sección 13, el Worker incrusta los datos). Imágenes en R2: PENDIENTE (siguen en Firestore, servidas por /timg con caché). |
+| P24 panel nuevo | Navegación por grupos hecha (sección 13). Interior de cada sección: PENDIENTE. |
+| P25 en adelante: caja | En curso (sección 16). |
+
+Los números P23–P27 de las secciones 10–14 son los que se usaron después
+para extras, promociones, hoja de producto, velocidad/panel y correo.
+
+## 16. Caja local a nivel profesional (competir con Fu.do / Toteat)
+
+Objetivo del dueño: que todo el sistema del local quede completo y
+profesional. Principal: imprimir en las térmicas que los locales ya tienen.
+Alternativa: pantallas en vez de papel.
+
+Ya existía: mesas por zona, para llevar, rondas, cobro mixto / por partes /
+por productos, propina 10% con un toque, descuentos, turnos y cierre,
+personal (cajero, garzón, cocina), pantalla de cocina con tiempos y sonido,
+reparto propio y PedidosYa Envíos.
+
+**Caja 1 — vender completo: ✅ hecho.** Extras y armado en la caja
+(`local-util.js` → `DL.extras`, precio recalculado por `cajaLocal.js` con
+`calcularExtras`). Precuenta para todos los roles.
+
+**Caja 2 — impresión y estaciones: ✅ hecho, falta probar con una impresora
+real.** `local-util.js` → `DL.print`: comanda por estación, precuenta y
+comprobante, en 58 u 80 mm. Dos métodos por equipo (se guarda en el equipo,
+no en la tienda): "Directa" con la app RawBT en Android (ESC/POS, página de
+códigos 850) y "Del sistema" (diálogo de impresión del navegador).
+Estaciones: `config.cajaBarra` = categorías que van a la barra; el resto es
+cocina. Cada producto vendido guarda `cat`. La pantalla de cocina puede
+mostrar solo una estación y cada una marca lo suyo (`estListas` en el
+pedido); la ronda queda lista cuando terminan todas. La pantalla de cocina
+también puede imprimir sola las comandas que llegan.
+Por confirmar en un local: que Chrome deje imprimir sin tocar la pantalla
+con RawBT (si no, queda el botón 🖨 de cada comanda).
+
+**Caja 3 — mesas: ✅ hecho.** Plano del salón por zona: cada mesa guarda
+`forma` (cuadrada, redonda, larga, barra), `sillas` y su casilla (`x`, `y`)
+en `config.cajaMesas`; el dueño lo arma en "Editar plano" (arrastrar o tocar
+mesa y casilla). Sin plano guardado las mesas se muestran en fila, como
+antes. Colores: libre, ocupada, pago parcial y "pidió la cuenta"
+(`pedido.cuentaPedida`, se marca al abrir la pre-cuenta y se borra al
+agregar productos). En el pedido: `garzon`, `personas`, `mesasUnidas`
+(mesas juntadas a la cuenta) y `com` en cada producto (0 = para compartir,
+1..n = comensal). Acciones nuevas en `cajaLocal.js`: `datosMesa`,
+`pedirCuenta`, `asignarComensal`, `moverItems` (a mesa libre u ocupada; si
+el origen queda vacío se libera con `movida: true` y no cuenta como
+anulación), `juntarMesas`, `separarMesas`. `pagar` acepta `com` y `propina`
+por pago (cobro "Por comensal": lo propio + la parte de lo compartido).
+Las acciones que usan la posición de un producto mandan `n` (cuántos veía
+la caja) y el servidor las rechaza si la cuenta cambió en otro equipo.
+Por confirmar en producción: la consulta de cuentas abiertas
+(`canal == local` y `cerrado == false`); si Firestore la rechazara, la
+función usa sola la consulta por fecha de las últimas 36 horas.
+Pendiente menor: comensal en la comanda impresa y pre-cuenta impresa por
+persona.
+
+**Caja 4 — boleta electrónica SII:** solo para el plan Pro y solo para
+pagos en efectivo o transferencia (el comprobante de tarjeta, en máquina o
+por internet, vale como boleta según el SII; el local debe declarar ese
+modelo de emisión). Se descartó el bot sobre el portal gratuito del SII.
+Camino elegido: una sola cuenta de DerLabs en SimpleAPI (12 UF al año,
+compartida entre todos los RUT) y cada local con su certificado digital.
+Antes de programar hay que confirmar: el trámite de inscripción de cada
+local como emisor, el precio del certificado y que ese plan de SimpleAPI
+cubra boletas. La propina va fuera de la boleta. Hoy los tickets dicen
+"Documento interno. No es boleta".
+
+**Caja 5 — control:** arqueo ciego, propinas por garzón y período, ventas
+por hora / garzón / canal, exportar a Excel.
+
+**Después:** QR por mesa para pedir desde el celular, recetas e insumos,
+funcionamiento sin conexión.
+
+## 17. Planes Básico y Pro (P28) — ✅ hecho
+
+- **Básico:** tienda online, gestor de pedidos, GPS y repartidores. Pagos por
+  Mercado Pago (su comprobante vale como boleta). El efectivo en retiro o
+  entrega sigue disponible y esa boleta la emite el local por su cuenta.
+- **Pro:** todo lo anterior + caja local, mesas, cocina e impresión (y la
+  boleta SII cuando esté). Solo tiendas de comida.
+- La verdad del plan vive en `planes/{storeId}` (colección sin reglas: solo
+  la lee y escribe el Worker). `config/general.plan` y `cajaLocal` son una
+  copia para el panel y la caja. `planTienda.js` → `planDe()` lo revisa en
+  cada llamada de `cajaLocal.js` (memoria de 60 s por instancia, así que un
+  cambio de plan puede tardar un minuto en notarse).
+- `/api/planTienda` (clave de administrador): `listar` y `cambiar`. Se usa
+  desde "Planes de las tiendas" en `generar-tienda.html`. La primera vez
+  que se lista, las tiendas antiguas quedan registradas con lo que tenían
+  (con caja local → Pro; sin ella → Básico).
+- Panel de la tienda: fila "Caja y mesas" en Ventas. En Básico muestra la
+  etiqueta "Pro" y al tocarla avisa "Solo disponible en el plan Pro" con un
+  botón que escribe al WhatsApp de DerLabs. `/caja` y `/cocina` muestran el
+  mismo aviso.
+- Pendiente: cobro automático de la suscripción según el plan.

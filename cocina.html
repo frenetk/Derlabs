@@ -76,6 +76,7 @@ header b{font-size:18px;margin-right:auto}
     <div class="filtros"><button class="fil on" data-f="todo">Todo</button><button class="fil" data-f="local">🍽️ Local</button><button class="fil" data-f="web">🌐 Online</button></div>
     <span class="cnt" id="cnt">0</span>
     <span id="reloj"></span>
+    <button class="btn" id="btnEst" title="Estación e impresión de este equipo">🖨 <span id="estTxt">Todo</span></button>
     <button class="btn" id="btnSonido">🔇 Activar sonido</button>
     <button class="btn" id="btnFull" title="Pantalla completa">⛶</button>
     <button class="btn" id="btnSalir" title="Salir">⏻</button>
@@ -84,6 +85,7 @@ header b{font-size:18px;margin-right:auto}
   <div class="listos" id="listos"></div>
 </div>
 <div id="toast"></div>
+<script src="/local-util.js"></script>
 <script>
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM",
@@ -141,9 +143,10 @@ function beep(){
 document.querySelectorAll(".fil").forEach(b => b.addEventListener("click", () => { filtro = b.dataset.f; document.querySelectorAll(".fil").forEach(x => x.classList.toggle("on", x === b)); pintar(); }));
 
 async function entrar(){
-  try { const e = await api("estado"); nombreTienda = ""; if (e.rol === "garzon" || e.rol === "cajero"){ location.href = "/caja"; return; } }
+  try { const e = await api("estado"); nombreTienda = e.nombre || ""; barra = Array.isArray(e.barra) ? e.barra : []; if (e.rol === "garzon" || e.rol === "cajero"){ location.href = "/caja"; return; } }
   catch(err){ qs("#lErr").textContent = err.message; qs("#login").classList.remove("oculto"); qs("#app").classList.add("oculto"); return; }
   qs("#login").classList.add("oculto"); qs("#app").classList.remove("oculto");
+  pintarEst();
   cargar(); clearInterval(timer); timer = setInterval(() => { if (!document.hidden) cargar(); }, 4000);
 }
 setInterval(() => { qs("#reloj").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }); pintar(); }, 20000);
@@ -152,8 +155,25 @@ async function cargar(){
   catch(e){ console.warn(e.message); }
 }
 
-/* Comandas: cada ronda de una mesa es una comanda; para llevar y online, una por pedido */
+/* Estaciones (cocina / barra): si la tienda marcó categorías de barra, este equipo
+   puede mostrar solo las suyas. Se elige en 🖨 y queda guardado en el equipo. */
+let barra = [];
+const estacionAqui = () => { const e = DL.print.cfg().estacion; return barra.length && (e === "cocina" || e === "barra") ? e : null; };
+function pintarEst(){ const e = estacionAqui(); qs("#estTxt").textContent = e ? DL.est.nombre(e).charAt(0) + DL.est.nombre(e).slice(1).toLowerCase() : "Todo"; }
+qs("#btnEst").addEventListener("click", () => DL.print.abrirAjustes({ tienda: nombreTienda, pantalla: "cocina", barra: barra, alCerrar: () => { pintarEst(); vistos = null; pintar(); } }));
+function docsDe(c){ return DL.print.comandas({ titulo: c.titulo, sub: c.sub, items: c.items, nota: c.nota, fecha: c.desde }, barra, estacionAqui() || "todo"); }
+
 function comandas(){
+  const est = estacionAqui();
+  return comandasTodas().map(c => {
+    if (!est) return c;
+    if (((c.p.estListas || {})[c.ronda || 0] || []).indexOf(est) >= 0) return null;       /* esta estación ya la marcó */
+    const items = c.items.filter(i => DL.est.de(i.cat, barra) === est);
+    return items.length ? Object.assign({}, c, { items }) : null;
+  }).filter(Boolean);
+}
+/* Comandas: cada ronda de una mesa es una comanda; para llevar y online, una por pedido */
+function comandasTodas(){
   const out = [];
   pedidos.forEach(p => {
     if (p.estado === "cancelado" || p.cerrado && p.canal === "local" && !p.mesa) return;
@@ -163,7 +183,7 @@ function comandas(){
         if ((p.rondasListas || []).indexOf(r) >= 0) continue;
         const items = (p.items || []).filter(i => (i.ronda || 1) === r && !i.anulado);
         if (!items.length) continue;
-        out.push({ k: p._docId + ":" + r, p, ronda: r, titulo: "🍽️ " + p.mesa.nombre, sub: (p.rondas > 1 ? "Ronda " + r + " · " : "") + "#" + p.id, desde: (items[0] && items[0].enviadoEn) || p.fecha, items, tipo: "local" });
+        out.push({ k: p._docId + ":" + r, p, ronda: r, titulo: "🍽️ " + p.mesa.nombre + (p.mesasUnidas || []).map(m => " + " + String(m.nombre || "").replace(/^mesa\s+/i, "")).join(""), sub: (p.rondas > 1 ? "Ronda " + r + " · " : "") + "#" + p.id, desde: (items[0] && items[0].enviadoEn) || p.fecha, items, tipo: "local" });
       }
     } else if (p.canal === "local"){
       if (p.estado !== "preparacion") return;
@@ -178,7 +198,17 @@ function comandas(){
 function pintar(){
   const cs = comandas();
   const claves = cs.map(c => c.k);
-  if (vistos){ const nuevas = claves.filter(k => vistos.indexOf(k) < 0); if (nuevas.length){ beep(); if (navigator.vibrate) navigator.vibrate(300); } }
+  if (vistos){
+    const nuevas = claves.filter(k => vistos.indexOf(k) < 0);
+    if (nuevas.length){
+      beep(); if (navigator.vibrate) navigator.vibrate(300);
+      /* imprimir solas las comandas que van llegando (si este equipo tiene impresora) */
+      if (DL.print.activa() && DL.print.cfg().autoComanda){
+        let docs = []; cs.filter(c => nuevas.indexOf(c.k) >= 0).forEach(c => { docs = docs.concat(docsDe(c)); });
+        if (docs.length) DL.print.imprimir(docs);
+      }
+    }
+  }
   const recienNuevas = vistos ? claves.filter(k => vistos.indexOf(k) < 0) : [];
   vistos = claves;
   const vis = cs.filter(c => filtro === "todo" || c.tipo === filtro);
@@ -191,7 +221,7 @@ function pintar(){
         const hk = c.k + ":" + i, extra = [it.variantes ? Object.entries(it.variantes).map(([a, v]) => a + ": " + v).join(", ") : "", it.notaPersonal].filter(Boolean).join(" · ");
         return '<div class="li' + (hechos[hk] ? " hecho" : "") + '" data-h="' + esc(hk) + '"><span class="q">' + it.cantidad + '×</span><span>' + esc(it.nombre) + (extra ? "<small>⚠️ " + esc(extra) + "</small>" : "") + '</span></div>';
       }).join("") + '</div>' + (c.nota ? '<div class="tk-nota">📝 ' + esc(c.nota) + '</div>' : '') +
-      '<div class="tk-f"><button class="btn btn-ok" data-listo="' + esc(c.p._docId) + '" data-ronda="' + (c.ronda || "") + '">✅ Listo</button></div></div>';
+      '<div class="tk-f">' + (DL.print.activa() ? '<button class="btn" data-imp="' + esc(c.k) + '" title="Imprimir esta comanda">🖨</button>' : '') + '<button class="btn btn-ok" data-listo="' + esc(c.p._docId) + '" data-ronda="' + (c.ronda || "") + '">✅ Listo</button></div></div>';
   }).join("") : '<div class="vacio">👌 Sin comandas pendientes</div>';
   const listos = pedidos.filter(p => p.estado !== "cancelado" && (p.cocinaListo || (p.canal === "local" && !p.mesa && p.estado === "listo"))).slice(0, 12);
   qs("#listos").innerHTML = listos.length ? '<h3>Listos recientes</h3><div>' + listos.map(p => '<span>' + esc(p.mesa ? p.mesa.nombre : (p.cliente.nombre || "#" + p.id)) + '</span>').join("") + '</div>' : "";
@@ -199,12 +229,15 @@ function pintar(){
 qs("#tablero").addEventListener("click", async e => {
   const li = e.target.closest("[data-h]");
   if (li){ hechos[li.dataset.h] = !hechos[li.dataset.h]; guardarHechos(); li.classList.toggle("hecho"); return; }
+  const im = e.target.closest("[data-imp]");
+  if (im){ const c = comandas().find(x => x.k === im.dataset.imp); if (c) DL.print.imprimir(docsDe(c)); return; }
   const b = e.target.closest("[data-listo]"); if (!b) return;
   b.disabled = true; b.textContent = "…";
-  try { await api("cocinaListo", { pedidoId: b.dataset.listo, ronda: Number(b.dataset.ronda) || undefined }); toast("✅ Comanda lista"); cargar(); }
+  try { await api("cocinaListo", { pedidoId: b.dataset.listo, ronda: Number(b.dataset.ronda) || undefined, estacion: estacionAqui() || undefined }); toast("✅ Comanda lista"); cargar(); }
   catch(err){ toast("❌ " + err.message); b.disabled = false; b.textContent = "✅ Listo"; }
 });
 qs("#reloj").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+pintarEst();
 iniciar();
 </script>
 </body>

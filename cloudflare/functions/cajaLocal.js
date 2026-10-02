@@ -8,7 +8,8 @@
    pedido (canal:"local"), así aparecen en el gestor, finanzas y stock.
    Los turnos de caja viven en tiendas/{s}/caja_turnos. Todo pasa por aquí
    (cuenta de servicio): no hace falta tocar las reglas de Firestore. */
-import { getDb, corsHeaders, admin, uidDesdeToken, authRest } from "./_firebase.js";
+import { getDb, corsHeaders, admin, uidDesdeToken, authRest, calcularExtras } from "./_firebase.js";
+import { planDe } from "./planTienda.js";
 
 /* Personal del local (fase 2): cuentas con usuario y clave, SIN rol en
    usuarios/{uid}.roles (las reglas de Firestore no les abren nada).
@@ -18,8 +19,9 @@ import { getDb, corsHeaders, admin, uidDesdeToken, authRest } from "./_firebase.
      cocina → ver comandas y marcarlas listas */
 export function emailPersonal(usuario, storeId){ return usuario + "--" + storeId + "@personal.derlabs.cl"; }
 const PERMISOS = {
-  cajero: ["estado", "pedidos", "abrirTurno", "movimiento", "crearPedido", "agregarItems", "anularItem", "ajustes", "pagar", "estadoLlevar", "moverMesa", "cerrarTurno", "turnos", "cocinaListo", "estadoOnline"],
-  garzon: ["estado", "pedidos", "crearPedido", "agregarItems", "moverMesa"],
+  cajero: ["estado", "pedidos", "abrirTurno", "movimiento", "crearPedido", "agregarItems", "anularItem", "ajustes", "pagar", "estadoLlevar", "moverMesa", "cerrarTurno", "turnos", "cocinaListo", "estadoOnline",
+           "datosMesa", "pedirCuenta", "asignarComensal", "moverItems", "juntarMesas", "separarMesas"],
+  garzon: ["estado", "pedidos", "crearPedido", "agregarItems", "moverMesa", "datosMesa", "pedirCuenta", "asignarComensal", "moverItems", "juntarMesas", "separarMesas"],
   cocina: ["estado", "pedidos", "cocinaListo"]
 };
 function claveNueva(){
@@ -33,8 +35,9 @@ function pedidoVista(id, p){
   return { _docId: id, id: p.id || id, canal: p.canal || "web", tipo: p.tipo || "", estado: p.estado || "nuevo", fecha: p.fecha || "",
     mesa: p.mesa || null, cliente: { nombre: c.nombre || "", telefono: p.canal === "local" ? (c.telefono || "") : "", direccion: c.direccion || "", notas: c.notas || "" },
     items: p.items || [], subtotal: p.subtotal || 0, descuentoLocal: p.descuentoLocal || 0, propina: p.propina || 0, total: p.total || 0,
-    pagos: (p.pagos || []).map(x => ({ metodo: x.metodo, monto: x.monto })), pagado: !!p.pagado, cerrado: !!p.cerrado, entregado: !!p.entregado,
-    rondas: p.rondas || 1, rondasListas: p.rondasListas || [], cocinaListo: !!p.cocinaListo, metodoPago: p.metodoPago || "",
+    pagos: (p.pagos || []).map(x => ({ metodo: x.metodo, monto: x.monto, com: x.com == null ? null : x.com, propina: x.propina || 0 })), pagado: !!p.pagado,
+    garzon: p.garzon || "", personas: p.personas || 0, mesasUnidas: p.mesasUnidas || [], cuentaPedida: !!p.cuentaPedida, cerrado: !!p.cerrado, entregado: !!p.entregado,
+    rondas: p.rondas || 1, rondasListas: p.rondasListas || [], estListas: p.estListas || {}, cocinaListo: !!p.cocinaListo, metodoPago: p.metodoPago || "",
     envio: p.envio ? { metodo: p.envio.metodo || "" } : null, estadoTimeline: p.estadoTimeline || {} };
 }
 
@@ -51,9 +54,10 @@ function token(){ const b = crypto.getRandomValues(new Uint8Array(18)); return A
 function idPedido(){ const b = crypto.getRandomValues(new Uint8Array(2)); return "L" + Date.now().toString().slice(-6) + (b[0] % 10); }
 
 /* Precios SIEMPRE desde Firestore, nunca desde el navegador */
-async function validarItems(db, storeId, items, ronda, ahora){
+async function validarItems(db, storeId, items, ronda, ahora, cfg){
   if (!Array.isArray(items) || !items.length) throw new Error("Agrega al menos un producto");
   if (items.length > 60) throw new Error("Demasiados productos en un solo envío");
+  const libExtras = cfg && Array.isArray(cfg.gruposExtras) ? cfg.gruposExtras : [];
   const out = [];
   for (const it of items){
     const pid = idOk(it.id);
@@ -71,8 +75,18 @@ async function validarItems(db, storeId, items, ronda, ahora){
       });
       if (!Object.keys(variantes).length) variantes = null;
     }
-    out.push({ id: pid, nombre: p.nombre || "Producto", precio: Math.max(0, num(p.precio)), cantidad: cant,
-               variantes, notaPersonal: limpio(it.nota || it.notaPersonal, 140) || null, ronda, enviadoEn: ahora });
+    /* Extras y armado: mismo cálculo que la tienda online (calcularExtras) */
+    let precio = Math.max(0, num(p.precio)), extras = null;
+    if (Array.isArray(p.gruposExtras) && p.gruposExtras.length){
+      const cx = calcularExtras(p, libExtras, it.extras);
+      if (!cx.ok) throw new Error("«" + (p.nombre || pid) + "»: " + cx.error);
+      precio += cx.unit;
+      if (Object.keys(cx.variantes).length) variantes = Object.assign({}, variantes || {}, cx.variantes);
+      if (Object.keys(cx.sel).length) extras = cx.sel;
+    }
+    out.push({ id: pid, nombre: p.nombre || "Producto", precio, cantidad: cant, cat: limpio(p.categoria, 40) || null,
+               variantes, extras, notaPersonal: limpio(it.nota || it.notaPersonal, 140) || null, ronda, enviadoEn: ahora,
+               com: comOk(it.com) });
   }
   return out;
 }
@@ -86,6 +100,36 @@ async function moverStock(db, storeId, items, signo){
       await ref.set({ stock: Math.max(0, (Number(st) || 0) + signo * (Number(it.cantidad) || 1)) }, { merge: true });
     } catch(e){ console.warn("stock", it.id, e.message); }
   }
+}
+/* Comensal de un producto: 0 = para compartir, 1..30 = persona de la mesa */
+const comOk = v => Math.min(30, Math.max(0, num(v)));
+/* Mesas que ocupa una cuenta: la principal y las que se le juntaron */
+const mesasDe = p => (p && p.mesa ? [p.mesa.id] : []).concat(((p && p.mesasUnidas) || []).map(m => m.id));
+const FORMAS = ["cuadrada", "redonda", "larga", "barra"];
+/* Suma a una cuenta productos que ya estaban enviados en otra, respetando si
+   cocina ya los terminó: los listos van a una ronda lista, los pendientes a
+   una ronda pendiente (así la cocina no los pierde ni los repite). */
+function recibirItems(dest, movidos, rondasListasOrigen, extra){
+  let rondas = dest.rondas || 0; const rl = (dest.rondasListas || []).slice();
+  const listos = movidos.filter(it => rondasListasOrigen.indexOf(it.ronda || 1) >= 0);
+  const pend = movidos.filter(it => listos.indexOf(it) < 0);
+  const out = [];
+  if (listos.length){
+    let r; if (rl.length) r = Math.max.apply(null, rl); else { r = ++rondas; rl.push(r); }
+    listos.forEach(it => out.push(Object.assign({}, it, extra, { ronda: r })));
+  }
+  if (pend.length){
+    let r; if (rondas >= 1 && rl.indexOf(rondas) < 0) r = rondas; else r = ++rondas;
+    pend.forEach(it => out.push(Object.assign({}, it, extra, { ronda: r })));
+  }
+  return { items: (dest.items || []).concat(out), rondas: Math.max(1, rondas), rondasListas: rl.sort((x, y) => x - y) };
+}
+/* Tras sacar productos de una cuenta: las rondas que quedaron vacías se dan por listas */
+function rondasTrasSacar(p, quedan){
+  const rl = (p.rondasListas || []).slice();
+  for (let r = 1; r <= (p.rondas || 1); r++)
+    if (rl.indexOf(r) < 0 && !quedan.some(i => !i.anulado && (i.ronda || 1) === r)) rl.push(r);
+  return rl.sort((x, y) => x - y);
 }
 const subtotalDe = items => items.filter(i => !i.anulado).reduce((t, i) => t + i.precio * i.cantidad, 0);
 const pagadoDe = p => (p.pagos || []).reduce((t, x) => t + (Number(x.monto) || 0), 0);
@@ -103,6 +147,7 @@ async function resumenTurno(db, storeId, turnoId, t){
               porCanal: { mesa: 0, llevar: 0 }, anulados: 0, top: {} };
   s.docs.forEach(function(d){
     const p = d.data();
+    if (p.movida) return;
     if (p.estado === "cancelado"){ r.anulados++; return; }
     if (!p.pagado) return;
     r.pedidos++;
@@ -146,7 +191,7 @@ export async function cajaLocal(request, env){
     quien = quien || uid;
     const cfgD = await db.doc("tiendas/" + storeId + "/config/general").get();
     const cfg = cfgD.exists ? cfgD.data() : {};
-    if (cfg.cajaLocal !== true) return json({ ok: false, error: "Esta tienda no tiene el sistema Caja local activado" }, 403);
+    if (await planDe(db, storeId, cfg) !== "pro") return json({ ok: false, error: "La caja del local es parte del plan Pro. Pídelo a DerLabs.", plan: "basico" }, 403);
     const ahora = new Date().toISOString();
     const col = "tiendas/" + storeId + "/pedidos";
     const pedidoRef = id => db.doc(col + "/" + idOk(id));
@@ -156,11 +201,46 @@ export async function cajaLocal(request, env){
       return { ref: d.ref || pedidoRef(id), p: d.data() };
     }
 
+    /* Cuentas del local que siguen abiertas (pocas: una por mesa ocupada) */
+    async function cuentasAbiertas(){
+      let docs;
+      try { docs = (await db.collection(col).where("canal", "==", "local").where("cerrado", "==", false).get()).docs; }
+      catch(e){
+        const desde = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
+        docs = (await db.collection(col).where("fecha", ">=", desde).orderBy("fecha", "desc").get()).docs;
+      }
+      return docs.map(d => ({ id: d.id, ref: d.ref || pedidoRef(d.id), p: d.data() }))
+                 .filter(x => x.p.canal === "local" && !x.p.cerrado && x.p.estado !== "cancelado");
+    }
+    /* Quiénes pueden atender mesas (para asignar garzón) */
+    async function equipoLocal(){
+      try {
+        const s = await db.collection("tiendas/" + storeId + "/personal").get();
+        return s.docs.map(d => d.data()).filter(x => x.activo !== false && (x.rol === "garzon" || x.rol === "cajero")).map(x => x.nombre || x.usuario || "").filter(Boolean).slice(0, 40);
+      } catch(e){ return []; }
+    }
+    const ocupante = (abiertas, mesaId, salvoId) => abiertas.find(x => x.id !== salvoId && mesasDe(x.p).indexOf(mesaId) >= 0) || null;
+    const cambio = items => b.n != null && num(b.n) !== items.length;
+    const CAMBIO = "La cuenta cambió en otro equipo. Vuelve a elegir los productos.";
+    const mesaOk = m => ({ id: idOk(m && m.id), nombre: limpio(m && m.nombre, 24) || "Mesa", zona: limpio(m && m.zona, 24) });
+    const cuentaNueva = (mesa, items, extra) => {
+      const id = idPedido(), sub = subtotalDe(items);
+      return Object.assign({
+        id, storeId, canal: "local", tipo: "retiro", metodoPago: "pendiente", mesa,
+        cliente: { nombre: "🍽️ " + mesa.nombre, telefono: "", email: "", local: "En el local", tipo: "retiro", notas: "" },
+        items, subtotal: sub, descuento: 0, descuentoLocal: 0, propina: 0, costoDelivery: 0, total: sub,
+        pagos: [], pagado: false, cerrado: false, rondas: 1, seguimiento: token(), uid: null,
+        estado: "preparacion", fecha: ahora, creadoPor: quien,
+        estadoTimeline: { nuevo: ahora, preparacion: ahora, camino: null, listo: null }
+      }, extra || {});
+    };
+
     switch (b.accion){
       case "estado": {
         const t = await turnoAbierto(db, storeId);
         return json({ ok: true, rol, quien, turno: t ? Object.assign({ id: t.id }, t.t) : null,
-                      resumen: t ? await resumenTurno(db, storeId, t.id, t.t) : null, mesas: cfg.cajaMesas || null });
+                      resumen: t ? await resumenTurno(db, storeId, t.id, t.t) : null, mesas: cfg.cajaMesas || null,
+                      barra: Array.isArray(cfg.cajaBarra) ? cfg.cajaBarra : [], nombre: cfg.nombre || "", equipo: await equipoLocal() });
       }
       case "pedidos": {  /* para el personal y la cocina (sin acceso directo a Firestore) */
         const desde = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
@@ -170,6 +250,23 @@ export async function cajaLocal(request, env){
       case "cocinaListo": {  /* la cocina marca una comanda como lista */
         const a = await pedidoLocal(b.pedidoId);
         const cambios = { cocinaListoEn: ahora };
+        /* Con estaciones (cocina / barra): cada pantalla marca lo suyo; la comanda
+           queda lista cuando terminaron todas las estaciones que tenían productos. */
+        const est = b.estacion === "barra" || b.estacion === "cocina" ? b.estacion : null;
+        if (est){
+          const esMesaE = a.p.canal === "local" && a.p.mesa;
+          const rE = esMesaE ? Math.max(1, num(b.ronda) || (a.p.rondas || 1)) : 0;
+          const barraCats = (Array.isArray(cfg.cajaBarra) ? cfg.cajaBarra : []).map(x => String(x || "").trim().toLowerCase());
+          const estDe = it => (it.cat && barraCats.indexOf(String(it.cat).trim().toLowerCase()) >= 0) ? "barra" : "cocina";
+          const necesarias = Array.from(new Set((a.p.items || []).filter(i => !i.anulado && (!esMesaE || (i.ronda || 1) === rE)).map(estDe)));
+          const prev = a.p.estListas && typeof a.p.estListas === "object" ? a.p.estListas : {};
+          const hechas = Array.from(new Set((prev[rE] || []).concat([est])));
+          if (necesarias.some(x => hechas.indexOf(x) < 0)){
+            await a.ref.set({ estListas: Object.assign({}, prev, { [rE]: hechas }) }, { merge: true });
+            return json({ ok: true, parcial: true });
+          }
+          cambios.estListas = Object.assign({}, prev, { [rE]: hechas });
+        }
         if (a.p.canal === "local" && a.p.mesa){
           const r = Math.max(1, num(b.ronda) || (a.p.rondas || 1));
           const listas = Array.from(new Set((a.p.rondasListas || []).concat([r]))).sort((x, y) => x - y);
@@ -220,11 +317,23 @@ export async function cajaLocal(request, env){
         await a.ref.set({ estado: nuevo, estadoTimeline: Object.assign({}, a.p.estadoTimeline || {}, { [nuevo]: ahora }) }, { merge: true });
         return json({ ok: true });
       }
+      case "guardarEstaciones": {  /* qué categorías van a la barra (el resto, cocina) */
+        if (rol !== "propietario") return json({ ok: false, error: "Solo el propietario puede cambiar las estaciones" }, 403);
+        const barra = (Array.isArray(b.barra) ? b.barra : []).slice(0, 40).map(x => limpio(x, 40)).filter(Boolean);
+        await db.doc("tiendas/" + storeId + "/config/general").set({ cajaBarra: barra }, { merge: true });
+        return json({ ok: true, barra });
+      }
       case "guardarMesas": {
         if (rol !== "propietario") return json({ ok: false, error: "Solo el propietario puede cambiar las mesas" }, 403);
         const mesas = (Array.isArray(b.mesas) ? b.mesas : []).slice(0, 150).map(function(m, i){
-          return { id: idOk(m.id) || ("m" + (i + 1)), nombre: limpio(m.nombre, 24) || ("Mesa " + (i + 1)), zona: limpio(m.zona, 24) || "Salón" };
+          const o = { id: idOk(m.id) || ("m" + (i + 1)), nombre: limpio(m.nombre, 24) || ("Mesa " + (i + 1)), zona: limpio(m.zona, 24) || "Salón" };
+          /* plano: forma, sillas y casilla (columna x, fila y) */
+          if (FORMAS.indexOf(m.forma) >= 0) o.forma = m.forma;
+          if (m.sillas != null) o.sillas = Math.min(30, Math.max(1, num(m.sillas) || 4));
+          if (m.x != null && m.y != null){ o.x = Math.min(11, Math.max(0, num(m.x))); o.y = Math.min(59, Math.max(0, num(m.y))); }
+          return o;
         });
+        if (new Set(mesas.map(m => m.id)).size !== mesas.length) return json({ ok: false, error: "Hay dos mesas con el mismo identificador" }, 400);
         await db.doc("tiendas/" + storeId + "/config/general").set({ cajaMesas: mesas }, { merge: true });
         return json({ ok: true, mesas });
       }
@@ -245,12 +354,16 @@ export async function cajaLocal(request, env){
       }
       case "crearPedido": {
         const esMesa = !!b.mesaId;
+        let unidas = [];
         if (esMesa){
-          const abiertos = await db.collection(col).where("mesa.id", "==", idOk(b.mesaId)).get();
-          if (abiertos.docs.some(d => { const x = d.data(); return x.canal === "local" && !x.cerrado && x.estado !== "cancelado"; }))
+          const abiertas = await cuentasAbiertas();
+          if (ocupante(abiertas, idOk(b.mesaId)))
             return json({ ok: false, error: "Esa mesa ya tiene una cuenta abierta — recarga la caja" }, 409);
+          unidas = (Array.isArray(b.unidas) ? b.unidas : []).slice(0, 8).map(mesaOk).filter(m => m.id && m.id !== idOk(b.mesaId));
+          const oc = unidas.find(m => ocupante(abiertas, m.id));
+          if (oc) return json({ ok: false, error: oc.nombre + " ya tiene una cuenta abierta" }, 409);
         }
-        const items = await validarItems(db, storeId, b.items, 1, ahora);
+        const items = await validarItems(db, storeId, b.items, 1, ahora, cfg);
         const id = idPedido();
         const mesaNombre = limpio(b.mesaNombre, 24) || "Mesa";
         const nombre = esMesa ? mesaNombre : (limpio(b.clienteNombre, 40) || "Para llevar");
@@ -265,6 +378,11 @@ export async function cajaLocal(request, env){
           estado: "preparacion", fecha: ahora, turnoId: t ? t.id : null, creadoPor: quien,
           estadoTimeline: { nuevo: ahora, preparacion: ahora, camino: null, listo: null }
         };
+        if (esMesa){
+          ped.mesasUnidas = unidas;
+          ped.garzon = limpio(b.garzon, 40) || (rol === "propietario" ? "" : limpio(quien, 40));
+          ped.personas = Math.min(60, Math.max(0, num(b.personas)));
+        }
         await pedidoRef(id).set(ped);
         await moverStock(db, storeId, items, -1);
         return json({ ok: true, pedido: ped });
@@ -273,10 +391,10 @@ export async function cajaLocal(request, env){
         const a = await pedidoLocal(b.pedidoId);
         if (a.p.canal !== "local" || a.p.cerrado) return json({ ok: false, error: "Esa cuenta ya está cerrada" }, 409);
         const ronda = (a.p.rondas || 1) + 1;
-        const nuevos = await validarItems(db, storeId, b.items, ronda, ahora);
+        const nuevos = await validarItems(db, storeId, b.items, ronda, ahora, cfg);
         const items = (a.p.items || []).concat(nuevos);
         const sub = subtotalDe(items);
-        await a.ref.set({ items, rondas: ronda, cocinaListo: false, subtotal: sub, total: Math.max(0, sub - (a.p.descuentoLocal || 0)),
+        await a.ref.set({ items, rondas: ronda, cocinaListo: false, cuentaPedida: false, subtotal: sub, total: Math.max(0, sub - (a.p.descuentoLocal || 0)),
                           estado: "preparacion", estadoTimeline: Object.assign({}, a.p.estadoTimeline || {}, { preparacion: ahora, listo: null }) }, { merge: true });
         await moverStock(db, storeId, nuevos, -1);
         return json({ ok: true, ronda });
@@ -285,6 +403,7 @@ export async function cajaLocal(request, env){
         const a = await pedidoLocal(b.pedidoId);
         if (a.p.canal !== "local" || a.p.cerrado) return json({ ok: false, error: "Esa cuenta ya está cerrada" }, 409);
         const items = (a.p.items || []).slice(); const i = num(b.idx);
+        if (cambio(items)) return json({ ok: false, error: CAMBIO }, 409);
         if (!items[i] || items[i].anulado) return json({ ok: false, error: "Producto no encontrado" }, 404);
         items[i] = Object.assign({}, items[i], { anulado: true, anuladoEn: ahora, anuladoPor: quien, motivo: limpio(b.motivo, 80) });
         const sub = subtotalDe(items);
@@ -309,15 +428,23 @@ export async function cajaLocal(request, env){
         if (a.p.canal !== "local" || a.p.cerrado || a.p.pagado) return json({ ok: false, error: "Esa cuenta ya está pagada" }, 409);
         const metodo = METODOS.indexOf(b.metodo) >= 0 ? b.metodo : null;
         if (!metodo) return json({ ok: false, error: "Elige cómo paga" }, 400);
-        const falta = totalAPagar(a.p) - pagadoDe(a.p);
+        /* Cobro por comensal: cada pago puede traer su propia propina, que se suma a la de la cuenta */
+        const extra = Math.max(0, num(b.propina));
+        const propina = extra ? Math.min(Math.round((a.p.subtotal || 0) * 0.5), (a.p.propina || 0) + extra) : (a.p.propina || 0);
+        const pv = Object.assign({}, a.p, { propina });
+        const falta = totalAPagar(pv) - pagadoDe(a.p);
         const monto = Math.min(Math.max(0, num(b.monto)), falta);
         if (!monto) return json({ ok: false, error: "Monto inválido" }, 400);
         const recibido = metodo === "efectivo" ? Math.max(monto, num(b.recibido) || monto) : monto;
-        const pagos = (a.p.pagos || []).concat([{ metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: limpio(b.nota, 60) }]);
+        const pago = { metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: limpio(b.nota, 60) };
+        if (b.com != null && b.com !== "") pago.com = comOk(b.com);
+        if (extra) pago.propina = propina - (a.p.propina || 0);
+        const pagos = (a.p.pagos || []).concat([pago]);
         const pagadoTotal = pagos.reduce((x, p) => x + p.monto, 0);
-        const completo = pagadoTotal >= totalAPagar(a.p);
+        const completo = pagadoTotal >= totalAPagar(pv);
         const metodos = Array.from(new Set(pagos.map(p => p.metodo)));
         const cambios = { pagos, turnoId: t.id, metodoPago: metodos.length > 1 ? "mixto" : metodos[0] };
+        if (extra) cambios.propina = propina;
         if (completo){
           cambios.pagado = true; cambios.cobradoEn = ahora; cambios.cobradoPor = quien;
           cambios.total = Math.max(0, (a.p.subtotal || 0) - (a.p.descuentoLocal || 0));
@@ -327,7 +454,7 @@ export async function cajaLocal(request, env){
           } else if (a.p.estado === "listo" && a.p.entregado){ cambios.cerrado = true; }
         }
         await a.ref.set(cambios, { merge: true });
-        return json({ ok: true, completo, falta: Math.max(0, totalAPagar(a.p) - pagadoTotal), vuelto: recibido - monto });
+        return json({ ok: true, completo, falta: Math.max(0, totalAPagar(pv) - pagadoTotal), vuelto: recibido - monto, propina });
       }
       case "estadoLlevar": {  /* para llevar: listo / entregado */
         const a = await pedidoLocal(b.pedidoId);
@@ -354,11 +481,114 @@ export async function cajaLocal(request, env){
         const a = await pedidoLocal(b.pedidoId);
         if (!a.p.mesa || a.p.cerrado) return json({ ok: false, error: "No corresponde" }, 400);
         const destino = idOk(b.mesaId);
-        const ocup = await db.collection(col).where("mesa.id", "==", destino).get();
-        if (ocup.docs.some(d => { const x = d.data(); return x.canal === "local" && !x.cerrado && x.estado !== "cancelado"; }))
+        if (ocupante(await cuentasAbiertas(), destino, idOk(b.pedidoId)))
           return json({ ok: false, error: "Esa mesa está ocupada" }, 409);
         const nombre = limpio(b.mesaNombre, 24) || "Mesa";
-        await a.ref.set({ mesa: { id: destino, nombre, zona: limpio(b.zona, 24) }, cliente: Object.assign({}, a.p.cliente, { nombre: "🍽️ " + nombre }) }, { merge: true });
+        await a.ref.set({ mesa: { id: destino, nombre, zona: limpio(b.zona, 24) }, mesasUnidas: (a.p.mesasUnidas || []).filter(m => m.id !== destino),
+                          cliente: Object.assign({}, a.p.cliente, { nombre: "🍽️ " + nombre }) }, { merge: true });
+        return json({ ok: true });
+      }
+      case "datosMesa": {  /* garzón asignado y cantidad de personas */
+        const a = await pedidoLocal(b.pedidoId);
+        if (!a.p.mesa || a.p.cerrado) return json({ ok: false, error: "No corresponde" }, 400);
+        const cambios = {};
+        if (b.garzon != null) cambios.garzon = limpio(b.garzon, 40);
+        if (b.personas != null) cambios.personas = Math.min(60, Math.max(0, num(b.personas)));
+        if (Object.keys(cambios).length) await a.ref.set(cambios, { merge: true });
+        return json({ ok: true });
+      }
+      case "pedirCuenta": {  /* la mesa pidió la cuenta (se ve en el plano) */
+        const a = await pedidoLocal(b.pedidoId);
+        if (!a.p.mesa || a.p.cerrado) return json({ ok: false, error: "No corresponde" }, 400);
+        await a.ref.set({ cuentaPedida: b.valor !== false }, { merge: true });
+        return json({ ok: true });
+      }
+      case "asignarComensal": {  /* a qué persona de la mesa pertenece cada producto (0 = compartir) */
+        const a = await pedidoLocal(b.pedidoId);
+        if (a.p.canal !== "local" || a.p.cerrado) return json({ ok: false, error: "Esa cuenta ya está cerrada" }, 409);
+        const items = (a.p.items || []).slice(), com = comOk(b.com);
+        if (cambio(items)) return json({ ok: false, error: CAMBIO }, 409);
+        const idxs = Array.from(new Set((Array.isArray(b.idxs) ? b.idxs : []).map(num))).filter(i => items[i] && !items[i].anulado);
+        if (!idxs.length) return json({ ok: false, error: "Elige al menos un producto" }, 400);
+        idxs.forEach(i => { items[i] = Object.assign({}, items[i], { com }); });
+        const cambios = { items };
+        if (com > (a.p.personas || 0)) cambios.personas = com;
+        await a.ref.set(cambios, { merge: true });
+        return json({ ok: true });
+      }
+      case "moverItems": {  /* pasa productos de una mesa a otra (ocupada o libre) */
+        const a = await pedidoLocal(b.pedidoId);
+        if (a.p.canal !== "local" || !a.p.mesa || a.p.cerrado || a.p.pagado) return json({ ok: false, error: "Esa cuenta ya está cerrada" }, 409);
+        const origenId = idOk(b.pedidoId), items = a.p.items || [];
+        if (cambio(items)) return json({ ok: false, error: CAMBIO }, 409);
+        const idxs = Array.from(new Set((Array.isArray(b.idxs) ? b.idxs : []).map(num))).filter(i => items[i] && !items[i].anulado);
+        if (!idxs.length) return json({ ok: false, error: "Elige al menos un producto" }, 400);
+        const destino = mesaOk({ id: b.mesaId, nombre: b.mesaNombre, zona: b.zona });
+        if (!destino.id || mesasDe(a.p).indexOf(destino.id) >= 0) return json({ ok: false, error: "Elige otra mesa" }, 400);
+        const movidos = idxs.map(i => items[i]), quedan = items.filter((it, i) => idxs.indexOf(i) < 0);
+        const subQ = subtotalDe(quedan);
+        if (pagadoDe(a.p) > Math.max(0, subQ - (a.p.descuentoLocal || 0) + (a.p.propina || 0)))
+          return json({ ok: false, error: "Esta cuenta ya tiene pagos por más de lo que quedaría" }, 409);
+        const extra = { com: comOk(b.com), movidoDe: a.p.mesa.nombre };
+        const dest = ocupante(await cuentasAbiertas(), destino.id, origenId);
+        if (dest){
+          if (dest.p.pagado) return json({ ok: false, error: "Esa mesa ya está pagada" }, 409);
+          const rec = recibirItems(dest.p, movidos, a.p.rondasListas || [], extra);
+          const subD = subtotalDe(rec.items);
+          await dest.ref.set({ items: rec.items, rondas: rec.rondas, rondasListas: rec.rondasListas, cocinaListo: rec.rondasListas.length >= rec.rondas,
+                               cuentaPedida: false, subtotal: subD, total: Math.max(0, subD - (dest.p.descuentoLocal || 0)) }, { merge: true });
+        } else {
+          const rec = recibirItems({ items: [], rondas: 0, rondasListas: [] }, movidos, a.p.rondasListas || [], extra);
+          const t = await turnoAbierto(db, storeId);
+          const ped = cuentaNueva(destino, rec.items, { rondas: rec.rondas, rondasListas: rec.rondasListas, cocinaListo: rec.rondasListas.length >= rec.rondas,
+                                                        turnoId: t ? t.id : null, garzon: a.p.garzon || "", personas: 0, mesasUnidas: [] });
+          await pedidoRef(ped.id).set(ped);
+        }
+        /* el origen: si quedó sin productos ni pagos, la mesa se libera */
+        if (!quedan.some(i => !i.anulado) && !pagadoDe(a.p)){
+          await a.ref.set({ items: quedan, subtotal: 0, total: 0, estado: "cancelado", cerrado: true, movida: true, anuladoEn: ahora, anuladoPor: quien,
+                            motivoAnulacion: "Productos movidos a " + destino.nombre }, { merge: true });
+          return json({ ok: true, liberada: true });
+        }
+        const rl = rondasTrasSacar(a.p, quedan);
+        await a.ref.set({ items: quedan, rondasListas: rl, cocinaListo: rl.length >= (a.p.rondas || 1), subtotal: subQ,
+                          descuentoLocal: Math.min(a.p.descuentoLocal || 0, subQ), total: Math.max(0, subQ - Math.min(a.p.descuentoLocal || 0, subQ)) }, { merge: true });
+        return json({ ok: true, liberada: false });
+      }
+      case "juntarMesas": {  /* suma mesas a una cuenta; si alguna tenía cuenta propia, sus productos pasan a esta */
+        const a = await pedidoLocal(b.pedidoId);
+        if (a.p.canal !== "local" || !a.p.mesa || a.p.cerrado || a.p.pagado) return json({ ok: false, error: "Esa cuenta ya está cerrada" }, 409);
+        const principalId = idOk(b.pedidoId);
+        const pedidas = (Array.isArray(b.mesas) ? b.mesas : []).slice(0, 8).map(mesaOk).filter(m => m.id);
+        if (!pedidas.length) return json({ ok: false, error: "Elige las mesas a juntar" }, 400);
+        const abiertas = await cuentasAbiertas();
+        const unidas = (a.p.mesasUnidas || []).slice();
+        let est = { items: a.p.items || [], rondas: a.p.rondas || 1, rondasListas: a.p.rondasListas || [] };
+        let personas = a.p.personas || 0;
+        const cerrar = [];
+        for (const m of pedidas){
+          if (m.id === a.p.mesa.id || unidas.some(u => u.id === m.id)) continue;
+          const o = ocupante(abiertas, m.id, principalId);
+          if (o && cerrar.indexOf(o) < 0){
+            if (pagadoDe(o.p) > 0) return json({ ok: false, error: o.p.mesa.nombre + " ya tiene pagos registrados: termina de cobrarla antes de juntarla" }, 409);
+            est = recibirItems(est, (o.p.items || []).filter(i => !i.anulado), o.p.rondasListas || [], { movidoDe: o.p.mesa.nombre });
+            personas += o.p.personas || 0;
+            cerrar.push(o);
+            [o.p.mesa].concat(o.p.mesasUnidas || []).forEach(x => { if (x && x.id !== a.p.mesa.id && !unidas.some(u => u.id === x.id)) unidas.push(mesaOk(x)); });
+          } else if (!o) unidas.push(m);
+        }
+        const sub = subtotalDe(est.items);
+        await a.ref.set({ items: est.items, rondas: est.rondas, rondasListas: est.rondasListas, cocinaListo: est.rondasListas.length >= est.rondas,
+                          mesasUnidas: unidas.slice(0, 12), personas, subtotal: sub, total: Math.max(0, sub - (a.p.descuentoLocal || 0)) }, { merge: true });
+        for (const o of cerrar)
+          await o.ref.set({ items: (o.p.items || []).filter(i => i.anulado), subtotal: 0, total: 0, estado: "cancelado", cerrado: true, movida: true, anuladoEn: ahora, anuladoPor: quien,
+                            motivoAnulacion: "Mesa juntada con " + a.p.mesa.nombre }, { merge: true });
+        return json({ ok: true, mesasUnidas: unidas });
+      }
+      case "separarMesas": {  /* la cuenta queda en su mesa principal y las otras se liberan */
+        const a = await pedidoLocal(b.pedidoId);
+        if (!a.p.mesa || a.p.cerrado) return json({ ok: false, error: "No corresponde" }, 400);
+        await a.ref.set({ mesasUnidas: [] }, { merge: true });
         return json({ ok: true });
       }
       case "cerrarTurno": {

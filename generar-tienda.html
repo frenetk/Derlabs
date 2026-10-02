@@ -177,6 +177,23 @@ header p{color:var(--txt2);font-size:14px}
 .modo-dom{flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
 .modo-dom.activo{background:#6C5CE7;border-color:#6C5CE7;color:#fff}
 </style>
+<style id="p28-planes">
+#planes{margin-top:44px;padding-top:28px;border-top:1px solid var(--borde)}
+#planes h2{font-size:19px;font-weight:900;margin-bottom:6px}
+#planes p{color:var(--txt2);font-size:13.5px;margin-bottom:14px;line-height:1.45}
+#btnPlanes{padding:12px 18px;border-radius:12px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-weight:800;cursor:pointer}
+#planesMsg{font-size:13px;color:var(--txt2);min-height:18px;margin:10px 0}
+#planesMsg.error{color:#FF8A80}
+.pl-fila{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;background:var(--card);border:1px solid var(--borde)}
+.pl-txt{flex:1;min-width:0}
+.pl-txt b{display:block;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-txt small{display:block;font-size:12px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--bg2);flex:none}
+.pl-seg button{min-height:40px;padding:0 13px;border-radius:9px;border:0;background:transparent;color:var(--txt2);font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.pl-seg button.activo{background:#F5F5F5;color:#111}
+.pl-seg button:disabled{opacity:.5;cursor:default}
+.pl-nota{font-size:12px;color:var(--txt3);flex:none}
+</style>
 </head>
 <body>
 
@@ -210,8 +227,8 @@ header p{color:var(--txt2);font-size:14px}
     </div>
 
     <div class="campo" id="campoCajaLocal">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="fCajaLocal" style="width:20px;height:20px"> 🧾 Incluir "Caja local"</label>
-      <div class="ayuda">Mesas, pedidos para llevar, cobro con vuelto, propina y cuenta dividida, y turnos de caja con arqueo. Se usa en tutienda.cl/caja. Solo para tiendas de comida.</div>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="fCajaLocal" style="width:20px;height:20px"> 🧾 Plan Pro (caja local, mesas y cocina)</label>
+      <div class="ayuda">Sin marcar queda en plan Básico: tienda online, gestor de pedidos, GPS y repartidores. El Pro agrega la caja del local (tutienda.cl/caja) con mesas, cocina, cobro e impresión. Solo para tiendas de comida. Se puede cambiar después en «Planes de las tiendas», más abajo.</div>
     </div>
 
     <div class="campo">
@@ -295,6 +312,14 @@ header p{color:var(--txt2);font-size:14px}
     <div class="estado-msg" id="estadoMsg"></div>
     <div class="resultado-box" id="resultadoBox" style="display:none"></div>
   </form>
+
+  <section id="planes">
+    <h2>Planes de las tiendas</h2>
+    <p>Básico: tienda online y delivery. Pro: además caja local, mesas y cocina (solo comida).</p>
+    <button type="button" id="btnPlanes">Ver tiendas</button>
+    <div id="planesMsg" role="status"></div>
+    <div id="planesLista"></div>
+  </section>
 </div>
 
 <script>
@@ -827,6 +852,49 @@ qs("#formTienda").addEventListener("submit", async (e) => {
     campo.placeholder = "pizzeriajuan." + base();
   }, 0); });
   sugerir();
+})();
+
+/* ── Planes de las tiendas (Básico / Pro) ── */
+(function(){
+  var btn = qs("#btnPlanes"), msg = qs("#planesMsg"), lista = qs("#planesLista");
+  if (!btn) return;
+  var tiendas = [];
+  function e(t){ return String(t == null ? "" : t).replace(/[&<>"']/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function aviso(t, err){ msg.textContent = t || ""; msg.classList.toggle("error", !!err); }
+  async function api(cuerpo){
+    var r = await fetch("/api/planTienda", { method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Secret": ADMIN_SECRET }, body: JSON.stringify(cuerpo) });
+    var j = await r.json().catch(function(){ return {}; });
+    if (r.status === 401) throw new Error("Clave de administrador incorrecta — recarga la página.");
+    if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
+    return j;
+  }
+  function pintar(){
+    lista.innerHTML = tiendas.map(function(t){
+      var seg = t.comida
+        ? '<div class="pl-seg" role="group" aria-label="Plan de ' + e(t.nombre) + '">' +
+            '<button type="button" data-plan="basico" data-tienda="' + e(t.storeId) + '"' + (t.plan === "basico" ? ' class="activo" aria-pressed="true"' : ' aria-pressed="false"') + '>Básico</button>' +
+            '<button type="button" data-plan="pro" data-tienda="' + e(t.storeId) + '"' + (t.plan === "pro" ? ' class="activo" aria-pressed="true"' : ' aria-pressed="false"') + '>Pro</button></div>'
+        : '<span class="pl-nota">Retail</span>';
+      return '<div class="pl-fila"><div class="pl-txt"><b>' + e(t.nombre) + '</b><small>' + e((t.dominios || [])[0] || t.storeId) + '</small></div>' + seg + '</div>';
+    }).join("") || '<p>No hay tiendas todavía.</p>';
+  }
+  async function cargar(){
+    btn.disabled = true; aviso("Cargando…");
+    try { tiendas = (await api({ accion: "listar" })).tiendas || []; pintar(); aviso(tiendas.length + " tiendas"); btn.textContent = "Actualizar lista"; }
+    catch(err){ aviso(err.message, true); }
+    btn.disabled = false;
+  }
+  btn.addEventListener("click", cargar);
+  lista.addEventListener("click", async function(ev){
+    var b = ev.target.closest("[data-plan]"); if (!b || b.classList.contains("activo")) return;
+    var t = tiendas.find(function(x){ return x.storeId === b.dataset.tienda; }); if (!t) return;
+    var plan = b.dataset.plan;
+    if (!confirm("¿Pasar «" + t.nombre + "» al plan " + (plan === "pro" ? "Pro" : "Básico") + "?" + (plan === "basico" ? "\n\nLa caja local, las mesas y la cocina quedarán bloqueadas en esa tienda." : ""))) return;
+    lista.querySelectorAll("button").forEach(function(x){ x.disabled = true; });
+    try { await api({ accion: "cambiar", storeId: t.storeId, plan: plan }); t.plan = plan; aviso("«" + t.nombre + "» quedó en plan " + (plan === "pro" ? "Pro" : "Básico") + ". Puede tardar un minuto en verse en la tienda."); }
+    catch(err){ aviso(err.message, true); }
+    pintar();
+  });
 })();
 </script>
 </body>

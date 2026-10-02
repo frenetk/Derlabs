@@ -8344,6 +8344,7 @@ function v26PanelHome(){
         return '<button type="button" class="pv-fila" data-pvir="' + it[0] + '"><span class="pv-ico">' + ico + '</span>' +
           '<span class="pv-txt"><b>' + it[2] + '</b><small>' + it[3] + '</small></span><span class="pv-chev">›</span></button>';
       }).join("");
+      if (g.t === "Ventas") filas += v28FilaCaja();
       return filas ? '<div class="pv-grupo"><h5>' + g.t + '</h5>' + filas + '</div>' : "";
     }).join("");
   p.classList.add("en-home");
@@ -8398,6 +8399,7 @@ function v26PanelInit(){
   qs("#pVolver").addEventListener("click", v26PanelHome);
   home.addEventListener("click", function(e){
     var f = e.target.closest("[data-pvir]"); if (f) v26PanelIr(f.dataset.pvir);
+    if (e.target.closest("[data-pvcaja]")) v28AbrirCaja();
   });
   home.addEventListener("change", function(e){
     if (e.target.id !== "pvAbierto") return;
@@ -8414,4 +8416,52 @@ function v26PanelInit(){
   }).observe(p, { attributes: true, attributeFilter: ["class"] });
   v26PanelHome();
 }
+/* ─────────── Planes: acceso a la caja del local (P28) ───────────
+   Básico → la fila se ve, pero al tocarla avisa que es del plan Pro.
+   Pro    → abre /caja. El servidor (cajaLocal.js) revisa el plan igual. */
+var V28_WHATSAPP = "56930025299";
+function v28EsComida(){
+  var c = state.config || {};
+  /* misma regla que el servidor: todo lo que no es retail ni boutique es comida */
+  return c.plantilla !== "boutique" && c.rubro !== "retail" && !window.DERLABS_SKIN;
+}
+function v28EsPro(){ return (state.config || {}).cajaLocal === true; }
+function v28FilaCaja(){
+  if (!v28EsComida()) return "";
+  return '<button type="button" class="pv-fila" data-pvcaja="1"><span class="pv-ico">🧾</span>' +
+    '<span class="pv-txt"><b>Caja y mesas</b><small>Atención en el local: mesas, cocina y cobro</small></span>' +
+    (v28EsPro() ? '<span class="pv-chev">›</span>' : '<span class="pv-pro">Pro</span>') + '</button>';
+}
+function v28AbrirCaja(){
+  if (v28EsPro()){ location.href = "/caja"; return; }
+  var o = qs("#v28Pro"); if (o) o.remove();
+  var msj = "Hola, quiero pasar mi tienda " + ((state.config || {}).nombre || location.hostname) + " (" + location.hostname + ") al plan Pro.";
+  o = document.createElement("div"); o.id = "v28Pro";
+  o.innerHTML = '<div class="v28-hoja" role="dialog" aria-modal="true" aria-labelledby="v28Tit">' +
+    '<h4 id="v28Tit">Caja y mesas</h4>' +
+    '<p><b>Solo disponible en el plan Pro.</b></p>' +
+    '<p>Incluye mesas, comandas a cocina y cobro en el local.</p>' +
+    '<a class="v28-si" target="_blank" rel="noopener" href="https://wa.me/' + V28_WHATSAPP + '?text=' + encodeURIComponent(msj) + '">Pasar al plan Pro</a>' +
+    '<button type="button" class="v28-no">Ahora no</button></div>';
+  o.addEventListener("click", function(e){ if (e.target === o || e.target.closest(".v28-no") || e.target.closest(".v28-si")) o.remove(); });
+  document.body.appendChild(o);
+  var b = o.querySelector(".v28-no"); if (b) b.focus();
+}
+(function(){
+  var st = document.createElement("style");
+  st.textContent = [
+    ".pv-pro{flex:none;font-size:11px;font-weight:900;letter-spacing:.4px;padding:4px 10px;border-radius:999px;background:var(--crema,#F1EFED);color:#555}",
+    "#v28Pro{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}",
+    "@media(min-width:600px){#v28Pro{align-items:center}}",
+    ".v28-hoja{width:100%;max-width:400px;background:#fff;color:#1A1A1A;border-radius:22px 22px 0 0;padding:24px 20px calc(20px + env(safe-area-inset-bottom));text-align:center}",
+    "@media(min-width:600px){.v28-hoja{border-radius:22px}}",
+    ".v28-hoja h4{margin:0 0 10px;font-size:19px;font-weight:900}",
+    ".v28-hoja p{margin:0 0 6px;font-size:14.5px;line-height:1.45;color:#444}",
+    ".v28-hoja p b{color:#1A1A1A}",
+    ".v28-si{display:flex;align-items:center;justify-content:center;min-height:50px;margin-top:18px;border-radius:14px;background:#1A1A1A;color:#fff;font-weight:900;font-size:15px;text-decoration:none}",
+    ".v28-no{display:block;width:100%;min-height:46px;margin-top:6px;border:0;background:none;font:inherit;font-weight:800;font-size:14px;color:#555;cursor:pointer}"
+  ].join("\n");
+  document.head.appendChild(st);
+})();
+
 try { v26PanelInit(); } catch(e){ console.warn("panel v26:", e); }

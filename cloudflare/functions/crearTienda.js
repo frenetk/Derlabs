@@ -10,6 +10,7 @@
    como sí hacía el original de Netlify). */
 
 import { admin, getDb, corsHeaders, autorizarDominio, authRest } from "./_firebase.js";
+import { fijarPlan } from "./planTienda.js";
 
 const RUBROS = {
   "comida": {
@@ -131,7 +132,9 @@ export async function crearTienda(request, env){
       configGeneral.mostrarGPS = false;
     }
     /* Caja local (mesas, para llevar y turnos): solo comida y solo si DerLabs lo activa */
-    if (cajaLocal === true && rubroValido === "comida") configGeneral.cajaLocal = true;
+    const planTienda = (cajaLocal === true && rubroValido === "comida") ? "pro" : "basico";
+    configGeneral.plan = planTienda;
+    if (planTienda === "pro") configGeneral.cajaLocal = true;
     const configPrivado = {
       mpToken: "CONFIGURAR_TOKEN",
       resendApiKey: "",
@@ -141,6 +144,7 @@ export async function crearTienda(request, env){
 
     await db.doc("tiendas/" + storeId + "/config/general").set(configGeneral);
     await db.doc("tiendas/" + storeId + "/config/privado").set(configPrivado);
+    await fijarPlan(db, storeId, planTienda);
     await db.doc("dominios/" + hostnameLimpio).set({ storeId, creadoEn: ahora });
     let avisoDominio = null;
     try { await autorizarDominio(hostnameLimpio); }

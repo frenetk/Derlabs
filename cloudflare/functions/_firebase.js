@@ -135,7 +135,7 @@ export async function validarCuponServidor(db, storeId, codigoCrudo, clienteUid,
    lib = config/general.gruposExtras = [{ id, nombre, tipo, obligatorio, max, opciones:[{id,nombre,precio,activo}] }]
      tipo: "uno" (elige 1) | "varios" (elige hasta max) | "cantidad" (hasta max de cada uno) | "quitar" (sin costo)
    sel = { idGrupo: { idOpcion: cantidad } } */
-function calcularExtras(prod, lib, sel){
+export function calcularExtras(prod, lib, sel){
   var ids = Array.isArray(prod && prod.gruposExtras) ? prod.gruposExtras : [];
   var mapa = {};
   (Array.isArray(lib) ? lib : []).forEach(function(g){ if (g && g.id) mapa[g.id] = g; });
@@ -236,6 +236,7 @@ export async function validarItemsCatalogo(db, storeId, items){
       nombre: prod.nombre,
       precio,
       cantidad,
+      cat: typeof prod.categoria === "string" ? prod.categoria.slice(0, 40) : null,   /* para separar cocina / barra */
       variantes,
       notaPersonal: typeof it.notaPersonal === "string" && it.notaPersonal.trim() ? it.notaPersonal.trim().slice(0, 140) : null,
       extras,
