@@ -533,3 +533,36 @@ funcionamiento sin conexión.
   botón que escribe al WhatsApp de DerLabs. `/caja` y `/cocina` muestran el
   mismo aviso.
 - Pendiente: cobro automático de la suscripción según el plan.
+
+## 18. Panel en tarjetas, horario, barra de pedido y términos (P30) — ✅ hecho
+
+- **Panel (plantilla de comida):** "Datos y estado", "Entrega y mensajes",
+  "Pagos" y "Apariencia" pasan de formularios largos a tarjetas por tema
+  (`.pcard` en `index.html`). Mismos campos y mismos `id`; lo que casi nadie
+  cambia va plegado (`<details>`). En Pagos cada medio muestra su estado
+  (`v30PintarPagos`) y se pliega cuando ya está conectado.
+  Se dejaron ocultos, sin borrar: mensajes de WhatsApp por plantilla (ya no
+  se usan), dirección del backend y el aviso "GPS próximamente" (el
+  seguimiento en vivo ya existe).
+- **Horario de atención:** `config.horario = { activo, dias: { "0".."6":
+  [{ a: "12:00", c: "23:00" }] } }` (0 = domingo, hasta dos tramos por día,
+  un tramo puede cruzar la medianoche). `hrEstado()` decide con la hora de
+  Chile; `tiendaAbierta()` reemplaza las consultas directas a
+  `config.abierto`, que sigue siendo el interruptor manual ("Recibir
+  pedidos"). La portada dice "Abierto ahora" o "Cerrado · abre hoy a las
+  18:00", y la tienda cambia sola cada 30 s aunque la página quede abierta.
+  El inicio del panel avisa si falta el horario.
+  Pendiente: el servidor todavía no rechaza pedidos fuera de horario (una
+  pestaña abierta desde antes del cierre podría pedir).
+- **Barra de pedido en curso:** rediseñada (ícono, pasos, "Ver") y, en el
+  estilo App, ubicada dentro de la ficha bajo el nombre (`v30UbicarBanner`):
+  antes quedaba encima de la portada, tapando los botones. Ya no parpadea
+  con cada consulta del estado.
+- **Términos del servicio:** se pedían cada vez a quien había aceptado la
+  versión 1, porque las reglas de Firestore no dejan modificar
+  `contratos/{uid}`. Ahora la aceptación se registra por
+  `/api/aceptarContrato` (`contrato.js`), que guarda la versión nueva y
+  conserva las anteriores en `historial`. Se agregó contacto@derlabs.cl y
+  las plantillas retail y Tienda Pro dejaron de mostrar el texto de ejemplo.
+- **Flow:** ya no se envía `optional` (Flow se lo mostraba al comprador).
+  Probado con una cuenta real: pago, confirmación y pedido funcionan.

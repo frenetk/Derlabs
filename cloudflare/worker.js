@@ -37,6 +37,7 @@ import { landingEditor, servirImagenLanding } from "./functions/landingEditor.js
 import { dominios, revisarDominios } from "./functions/dominios.js";
 import { planTienda } from "./functions/planTienda.js";
 import { webhookFlow, retornoFlow } from "./functions/flow.js";
+import { aceptarContrato } from "./functions/contrato.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -67,7 +68,8 @@ const FUNCIONES = {
   dominios,
   planTienda,
   webhookFlow,
-  retornoFlow
+  retornoFlow,
+  aceptarContrato
 };
 
 

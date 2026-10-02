@@ -1308,22 +1308,89 @@ body.panel-min-on .float-btn{display:none !important}
 /* ══════════════════════════════════════════════════════════════
    🛵 BANNER PEDIDO EN CURSO (2D)
    ══════════════════════════════════════════════════════════════ */
-#bannerPedidoActivo{margin:16px 16px 0}
+#bannerPedidoActivo{margin:14px 16px 0}
+body.v-app #bannerPedidoActivo{margin:0}
 .ped-activo{
-  border-radius:16px;padding:14px 16px;cursor:pointer;
-  display:flex;align-items:center;gap:12px;color:#fff;
-  box-shadow:0 5px 20px rgba(0,0,0,.2);
+  display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;
+  padding:12px 12px 12px 12px;border-radius:18px;cursor:pointer;text-align:left;
+  font:inherit;color:var(--texto,#1A1A1A);background:#fff;
+  border:1.5px solid #EFE7E2;box-shadow:0 8px 24px rgba(0,0,0,.08);
   animation:pedActivoIn .35s ease;
 }
 @keyframes pedActivoIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.ped-activo.e-nuevo{background:linear-gradient(120deg,#C62828,#E53935)}
-.ped-activo.e-preparacion{background:linear-gradient(120deg,#E65100,#F57C00)}
-.ped-activo.e-camino{background:linear-gradient(120deg,#1565C0,#1E88E5)}
-.ped-activo .pa-ico{font-size:26px;line-height:1;flex-shrink:0}
-.ped-activo .pa-txt{flex:1;min-width:0}
-.ped-activo .pa-titulo{margin:0 0 2px;font-weight:900;font-size:14.5px;line-height:1.2}
-.ped-activo .pa-sub{margin:0;font-size:12px;font-weight:700;opacity:.92}
-.ped-activo .pa-flecha{font-size:18px;font-weight:900;flex-shrink:0;opacity:.9}
+.ped-activo .pa-ico{
+  position:relative;flex:none;width:46px;height:46px;border-radius:15px;
+  display:grid;place-items:center;background:var(--rojo);color:var(--rojo-texto,#fff);
+}
+.ped-activo .pa-ico::after{
+  content:"";position:absolute;top:-3px;right:-3px;width:12px;height:12px;border-radius:50%;
+  background:#2FA84F;border:2px solid #fff;animation:paLatido 1.6s ease-in-out infinite;
+}
+@keyframes paLatido{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+.ped-activo .pa-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ped-activo .pa-titulo{font-weight:800;font-size:14.5px;line-height:1.25}
+.ped-activo .pa-sub{font-size:12px;font-weight:600;color:var(--muted,#6B6B6B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ped-activo .pa-pasos{display:flex;gap:4px;margin-top:7px}
+.ped-activo .pa-pasos i{flex:1;height:4px;border-radius:2px;background:#ECE6E1}
+.ped-activo .pa-pasos i.on{background:var(--rojo)}
+.ped-activo .pa-pasos i.act{animation:paPaso 1.4s ease-in-out infinite}
+@keyframes paPaso{0%,100%{opacity:1}50%{opacity:.35}}
+.ped-activo .pa-ver{
+  flex:none;display:flex;align-items:center;gap:1px;min-height:44px;padding:0 4px 0 8px;
+  font-size:13px;font-weight:800;color:var(--rojo);
+}
+@media (prefers-reduced-motion:reduce){.ped-activo,.ped-activo .pa-ico::after,.ped-activo .pa-pasos i.act{animation:none}}
+
+/* ── Panel: secciones en tarjetas (P30) ── */
+.pcard{border:1px solid #E6E1DD;border-radius:18px;padding:14px;margin:0 0 12px;background:#fff;text-align:left}
+.pcard-h{display:flex;align-items:center;gap:12px}
+.pcard-h>div{flex:1;min-width:0}
+.pcard-h b,.pcard-t{display:block;font-size:15px;font-weight:800;line-height:1.25}
+.pcard-h small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;line-height:1.35}
+.pcard-h+*{margin-top:12px}
+.pcard .panel-full{margin-top:10px}
+.pchip{flex:none;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#EFEBE8;color:#4A4541;white-space:nowrap}
+.pchip.ok{background:#E3F2E8;color:#14562A}
+.pchip.warn{background:#FFF1D6;color:#7A4B00}
+.pgrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pgrid2 .plabel{margin-top:0}
+.presumen{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--crema);font-size:13px;font-weight:700}
+.presumen span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.pcheck{display:flex;align-items:center;gap:10px;min-height:44px;font-size:13px;font-weight:600;cursor:pointer}
+.pcheck input{width:20px;height:20px;flex:none;accent-color:var(--rojo)}
+.pdet summary,.pdetc summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pdet summary::-webkit-details-marker,.pdetc summary::-webkit-details-marker{display:none}
+.pdet summary::after,.pdetc summary::after{content:"";flex:none;width:8px;height:8px;margin-right:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .15s}
+.pdet[open] summary::after,.pdetc[open] summary::after{transform:rotate(-135deg)}
+.pdet{margin-top:6px}
+.pdet summary{min-height:44px;font-size:13px;font-weight:800;color:var(--rojo)}
+.pdetc summary>div{flex:1;min-width:0}
+.pdetc summary b{display:block;font-size:15px;font-weight:800}
+.pdetc summary small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;line-height:1.35}
+.pdetc summary::after{color:#8A8580}
+.pdetc-b{margin-top:12px}
+.psub{margin:18px 0 8px 4px;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:900;text-align:left}
+.pintro{font-size:13px;color:var(--muted);font-weight:600;line-height:1.45;margin:0 0 12px;text-align:left}
+.pv-aviso{border-color:var(--rojo)!important;background:var(--crema)!important;margin-bottom:16px!important}
+/* estilo de la tienda */
+.pest{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 2px}
+.pest button{border:2px solid #E6E1DD;border-radius:14px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:6px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.pest button.on{border-color:var(--rojo);background:var(--crema)}
+.pest b{font-size:14px;font-weight:800}
+.pest small{font-size:12px;color:var(--muted);font-weight:600}
+.pest .mini{height:84px;border-radius:9px;background:#fff;border:1px solid #E6E1DD;overflow:hidden;display:flex;flex-direction:column}
+.pest .mini i{display:block}
+/* horario de atención */
+.hr-dia{padding:8px 0;border-top:1px solid var(--borde);display:grid;gap:6px}
+#hrEditor .hr-dia:first-child{margin-top:12px}
+.hr-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
+.hr-nom{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:800;cursor:pointer;min-height:40px}
+.hr-nom input{width:20px;height:20px;flex:none;accent-color:var(--rojo)}
+.hr-tramo{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.hr-tramo input{flex:1;min-width:0;font:inherit;font-size:14px;font-weight:800;color:var(--texto);padding:8px 8px;border:1.5px solid var(--borde);border-radius:10px;background:#fff;min-height:44px;box-sizing:border-box}
+.hr-cerr{font-size:13px;font-weight:700;color:var(--muted)}
+.hr-mas,.hr-x{border:0;background:none;font:inherit;font-size:13px;font-weight:800;color:var(--rojo);cursor:pointer;min-height:44px;padding:0 4px}
+.hr-x{flex:none;width:36px;color:#8A8580}
 
 /* ══════════════════════════════════════════════════════════════
    BADGES DE ESTADO — cliente (2D: rojo / amarillo / azul / verde)
@@ -2244,7 +2311,7 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
       <p><b>13. Responsabilidad.</b> El servicio se entrega tal como está disponible. En la medida que la ley lo permita, DerLabs no responde por lucro cesante, ventas no realizadas, pérdida de datos causada por terceros ni por actos u omisiones del Comercio o de sus clientes, y su responsabilidad total queda limitada a lo que hayas pagado por el servicio en los 3 meses anteriores al hecho. Tú mantendrás indemne a DerLabs frente a reclamos de tus clientes o de terceros originados en tu actividad o tu contenido.</p>
       <p><b>14. Cambios a estos términos.</b> Podemos actualizar estos términos. Cuando lo hagamos, te pediremos aceptarlos nuevamente al entrar a tu panel; si no los aceptas, puedes dar de baja el servicio.</p>
       <p><b>15. Ley aplicable.</b> Estos términos se rigen por las leyes de la República de Chile. Cualquier diferencia se someterá a los tribunales ordinarios de justicia competentes.</p>
-      <p><b>16. Contacto.</b> Para consultas sobre el servicio o estos términos, escríbenos por los canales publicados en derlabs.cl.</p>
+      <p><b>16. Contacto.</b> Para consultas sobre el servicio o estos términos, escríbenos a <b>contacto@derlabs.cl</b> o por los canales publicados en derlabs.cl.</p>
     </div>
     <label style="display:flex;align-items:flex-start;gap:8px;text-align:left;font-size:13px;font-weight:700;cursor:pointer">
       <input type="checkbox" id="contratoCheck" style="margin-top:3px">
@@ -2336,22 +2403,25 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
     </div>
 
     <div class="psec active" id="pt-tienda">
-      <h4>Datos del negocio</h4>
-      <label class="plabel" for="pNombre">Nombre del negocio</label>
-      <input class="field" id="pNombre" type="text">
-      <label class="plabel" for="pTagline">Tagline</label>
-      <input class="field" id="pTagline" type="text">
-      <button class="pill pill-outline pill-sm panel-full" id="btnLogo" style="margin-top:8px">🖼 Cambiar logo</button>
-      <p class="pnota">Recomendado: PNG transparente, ~240×88 px. Si no subís logo, se muestra el nombre como texto.</p>
-      <label class="plabel" for="pRubro">Rubro</label>
-      <select class="field" id="pRubro"></select>
-      <p class="pnota" id="pRubroNota">Cambiar el rubro actualiza el color de marca a la paleta sugerida para ese rubro. Si ya personalizaste el color, se conserva tu elección — no se pisa sola.</p>
-      <h4>Estado</h4>
-      <div class="switch-row">
-        <span>Tienda abierta</span>
-        <label class="switch"><input type="checkbox" id="pAbierto"><span class="slider"></span></label>
+      <div class="pcard">
+        <b class="pcard-t">Datos del negocio</b>
+        <label class="plabel" for="pNombre">Nombre del negocio</label>
+        <input class="field" id="pNombre" type="text">
+        <label class="plabel" for="pTagline">Frase corta (opcional)</label>
+        <input class="field" id="pTagline" type="text">
+        <button class="pill pill-outline pill-sm panel-full" id="btnLogo" style="margin-top:8px">🖼 Cambiar logo</button>
+        <p class="pnota">Recomendado: PNG transparente, ~240×88 px. Si no subes logo, se muestra el nombre como texto.</p>
+        <label class="plabel" for="pRubro">Rubro</label>
+        <select class="field" id="pRubro"></select>
+        <p class="pnota" id="pRubroNota">Cambiar el rubro actualiza el color de marca a la paleta sugerida para ese rubro. Si ya personalizaste el color, se conserva tu elección.</p>
       </div>
-      <p class="pnota">Si la cierras, la web muestra un aviso y no permite agregar productos ni confirmar pedidos.</p>
+      <div class="pcard">
+        <div class="pcard-h"><div><b>Recibir pedidos</b><small>Apágalo para cerrar la tienda ahora mismo, aunque sea horario de atención.</small></div><label class="switch"><input type="checkbox" id="pAbierto"><span class="slider"></span></label></div>
+      </div>
+      <div class="pcard" id="hrCard">
+        <div class="pcard-h"><div><b>Horario de atención</b><small>La tienda abre y cierra sola, según la hora de Chile.</small></div><label class="switch"><input type="checkbox" id="hrActivo"><span class="slider"></span></label></div>
+        <div id="hrEditor"></div>
+      </div>
     </div>
 
     <!-- TAB PRODUCTOS -->
@@ -2506,112 +2576,144 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
     </div>
 
     <div class="psec" id="pt-envio">
-      <h4>Configuración delivery</h4>
-      <label class="plabel" for="pWhats">WhatsApp del negocio</label>
-      <input class="field" id="pWhats" type="text" placeholder="569XXXXXXXX">
-      <p class="pnota">Formato: 569XXXXXXXX — sin + ni espacios.</p>
-      <button class="pill pill-outline pill-sm panel-full" id="btnProbarWa">Probar conexión</button>
-      <label class="plabel" for="pEmailNotif">Email de notificaciones</label>
-      <input class="field" id="pEmailNotif" type="email" placeholder="pedidos@tutienda.cl">
-      <p class="pnota">Recibirás un correo con cada pedido nuevo (requiere configurar el tab 📧 Emails).</p>
-      <button class="pill pill-outline pill-sm panel-full" id="btnGuardarEmail">Guardar email</button>
-      <label class="plabel" for="pDelCosto">Costo delivery $</label>
-      <input class="field" id="pDelCosto" type="number" inputmode="numeric">
-      <label class="plabel" for="pDelMin">Monto mínimo delivery gratis $</label>
-      <input class="field" id="pDelMin" type="number" inputmode="numeric">
-      <label class="plabel" for="pTiempo">Tiempo estimado</label>
-      <input class="field" id="pTiempo" type="text" placeholder="30-45 min">
-      <div class="switch-row">
-        <span>Delivery activado</span>
-        <label class="switch"><input type="checkbox" id="pDeliveryOn"><span class="slider"></span></label>
+      <div class="pcard">
+        <div class="pcard-h"><div><b>Delivery</b><small>Llevas el pedido a la dirección del cliente.</small></div><label class="switch"><input type="checkbox" id="pDeliveryOn"><span class="slider"></span></label></div>
+        <div class="pgrid2">
+          <div><label class="plabel" for="pDelCosto">Costo del despacho $</label><input class="field" id="pDelCosto" type="number" inputmode="numeric"></div>
+          <div><label class="plabel" for="pDelMin">Gratis desde $</label><input class="field" id="pDelMin" type="number" inputmode="numeric"></div>
+        </div>
+        <label class="plabel" for="pTiempo">Tiempo estimado de entrega</label>
+        <input class="field" id="pTiempo" type="text" placeholder="30-45 min">
       </div>
-      <div class="switch-row">
-        <span>Retiro en local activado</span>
-        <label class="switch"><input type="checkbox" id="pRetiroOn"><span class="slider"></span></label>
+      <div class="pcard">
+        <div class="pcard-h"><div><b>Retiro en local</b><small>El cliente pasa a buscar su pedido.</small></div><label class="switch"><input type="checkbox" id="pRetiroOn"><span class="slider"></span></label></div>
       </div>
 
-      <h4>Mensajes automáticos</h4>
-      <p class="pnota">Toca una variable para insertarla donde esté el cursor. La vista previa usa datos de ejemplo.</p>
+      <h5 class="psub">Contacto del negocio</h5>
+      <div class="pcard">
+        <label class="plabel" for="pWhats" style="margin-top:0">WhatsApp donde te escriben los clientes</label>
+        <div class="token-row">
+          <input class="field" id="pWhats" type="text" inputmode="numeric" placeholder="569XXXXXXXX">
+          <button class="pill pill-outline-muted pill-sm" id="btnProbarWa" style="flex-shrink:0;margin:0">Probar</button>
+        </div>
+        <p class="pnota">Con 569 adelante, sin + ni espacios.</p>
+        <label class="plabel" for="pEmailNotif">Correo donde te avisamos cada pedido</label>
+        <div class="token-row">
+          <input class="field" id="pEmailNotif" type="email" placeholder="pedidos@tutienda.cl">
+          <button class="pill pill-outline-muted pill-sm" id="btnGuardarEmail" style="flex-shrink:0;margin:0">Guardar</button>
+        </div>
+      </div>
 
-      <label class="plabel" for="msjConf">Confirmación de pedido</label>
-      <textarea class="field msj" id="msjConf" data-mkey="confirmacion"></textarea>
-      <div class="varpills" data-for="msjConf"></div>
-      <div class="msj-preview" id="prevConf"></div>
+      <h5 class="psub">Textos que ve el cliente</h5>
+      <details class="pcard pdetc">
+        <summary><div><b>Pantalla después de comprar</b><small>Título, subtítulo y los cuatro pasos del pedido.</small></div></summary>
+        <div class="pdetc-b">
+          <label class="plabel" for="pConfTitulo">Título</label>
+          <input class="field" id="pConfTitulo" type="text">
+          <label class="plabel" for="pConfSub">Subtítulo</label>
+          <input class="field" id="pConfSub" type="text">
+          <span class="plabel">Pasos del pedido</span>
+          <div class="pgrid2">
+            <input class="field" id="pTl1" type="text" aria-label="Paso 1">
+            <input class="field" id="pTl2" type="text" aria-label="Paso 2">
+            <input class="field" id="pTl3" type="text" aria-label="Paso 3">
+            <input class="field" id="pTl4" type="text" aria-label="Paso 4">
+          </div>
+        </div>
+      </details>
 
-      <label class="plabel" for="msjPrep">"En preparación"</label>
-      <textarea class="field msj" id="msjPrep" data-mkey="preparacion"></textarea>
-      <div class="varpills" data-for="msjPrep"></div>
-      <div class="msj-preview" id="prevPrep"></div>
-
-      <label class="plabel" for="msjCamino">"En camino"</label>
-      <textarea class="field msj" id="msjCamino" data-mkey="camino"></textarea>
-      <div class="varpills" data-for="msjCamino"></div>
-      <div class="msj-preview" id="prevCamino"></div>
-
-      <label class="plabel" for="msjListo">"Listo para retirar"</label>
-      <textarea class="field msj" id="msjListo" data-mkey="listo"></textarea>
-      <div class="varpills" data-for="msjListo"></div>
-      <div class="msj-preview" id="prevListo"></div>
-
-      <button class="pill pill-outline-muted pill-sm panel-full" id="btnRestaurarMsjs">Restaurar mensajes por defecto</button>
-
-      <h4>Pantalla post-compra</h4>
-      <label class="plabel" for="pConfTitulo">Título confirmación</label>
-      <input class="field" id="pConfTitulo" type="text">
-      <label class="plabel" for="pConfSub">Subtítulo</label>
-      <input class="field" id="pConfSub" type="text">
-      <label class="plabel" for="pTl1">Paso 1 timeline</label>
-      <input class="field" id="pTl1" type="text">
-      <label class="plabel" for="pTl2">Paso 2 timeline</label>
-      <input class="field" id="pTl2" type="text">
-      <label class="plabel" for="pTl3">Paso 3 timeline</label>
-      <input class="field" id="pTl3" type="text">
-      <label class="plabel" for="pTl4">Paso 4 timeline</label>
-      <input class="field" id="pTl4" type="text">
-      <div class="switch-row">
-        <span>Mostrar card GPS Próximamente</span>
-        <label class="switch"><input type="checkbox" id="pMostrarGPS"><span class="slider"></span></label>
+      <!-- Fuera de uso (se conservan para que el resto del panel siga funcionando):
+           mensajes de WhatsApp por plantilla y el aviso "GPS próximamente". -->
+      <div style="display:none">
+        <h4>Mensajes automáticos</h4>
+        <textarea class="field msj" id="msjConf" data-mkey="confirmacion"></textarea>
+        <div class="varpills" data-for="msjConf"></div>
+        <div class="msj-preview" id="prevConf"></div>
+        <textarea class="field msj" id="msjPrep" data-mkey="preparacion"></textarea>
+        <div class="varpills" data-for="msjPrep"></div>
+        <div class="msj-preview" id="prevPrep"></div>
+        <textarea class="field msj" id="msjCamino" data-mkey="camino"></textarea>
+        <div class="varpills" data-for="msjCamino"></div>
+        <div class="msj-preview" id="prevCamino"></div>
+        <textarea class="field msj" id="msjListo" data-mkey="listo"></textarea>
+        <div class="varpills" data-for="msjListo"></div>
+        <div class="msj-preview" id="prevListo"></div>
+        <button class="pill pill-outline-muted pill-sm panel-full" id="btnRestaurarMsjs">Restaurar mensajes por defecto</button>
+        <input type="checkbox" id="pMostrarGPS">
       </div>
     </div>
 
     <!-- TAB PAGOS -->
     <div class="psec" id="pt-pagos">
-      <h4>💳 Configurar MercadoPago</h4>
-      <div class="mp-guia">
-        Paso 1: Ve a mercadopago.cl<br>
-        Paso 2: Inicia sesión con tu cuenta<br>
-        Paso 3: Ve a "Tu negocio" → "Credenciales"<br>
-        Paso 4: Copia tu Access Token de producción
-      </div>
-      <label class="plabel" for="mpToken">Access Token</label>
-      <div class="token-row">
-        <input class="field" id="mpToken" type="text"
-               autocomplete="off" data-lpignore="true" data-form-type="other"
-               style="-webkit-text-security:disc;text-security:disc">
-        <button class="ibtn" id="btnEyeToken" title="Mostrar / ocultar">👁</button>
-      </div>
-      <button class="pill pill-solid pill-sm panel-full" id="btnGuardarMP">Guardar y probar conexión</button>
-      <div class="mp-estado" id="mpEstado">⚠️ No configurado</div>
-      <h4>⚙️ Backend (Netlify Functions)</h4>
-      <label class="plabel" for="pFunctionsUrl">FUNCTIONS_URL <span style="font-weight:400;opacity:.7">(opcional)</span></label>
-      <input class="field" id="pFunctionsUrl" type="url" placeholder="/.netlify/functions" spellcheck="false">
-      <p class="pnota">Las funciones ya están incluidas en este mismo sitio, en <code>/.netlify/functions</code> — no necesitas configurar nada acá salvo que uses otro hosting.</p>
-      <button class="pill pill-outline pill-sm panel-full" id="btnVerificarFn">Verificar conexión</button>
-      <div class="mp-estado" id="fnEstado"></div>
-      <p class="pnota">El token se usa solo desde las Netlify Functions del backend — nunca se expone a los clientes. El código de las funciones está en <code>netlify/functions/</code>.</p>
+      <p class="pintro">Así pueden pagarte tus clientes. La plata llega directo a tu cuenta de cada servicio.</p>
 
-      <h4>⚠️ Intentos de pago sin confirmar</h4>
-      <p class="pnota">
-        Cada vez que alguien inicia un pago con MercadoPago, se guarda un
-        registro acá antes de que se cree el pedido. Si todo funciona
-        bien, este registro se marca "confirmado" apenas el pedido se
-        crea, y no necesitas hacer nada. Si algo falla del lado del
-        webhook (poco común, pero puede pasar), el registro queda en
-        "iniciado" o "error" aunque el cliente sí haya pagado — revisa
-        acá si un cliente dice haber pagado pero no ves su pedido.
-      </p>
-      <button class="pill pill-outline pill-sm panel-full" id="btnRevisarIntentos">🔍 Revisar intentos de las últimas 24h</button>
-      <div id="intentosPagoList" style="margin-top:12px"></div>
+      <div class="pcard">
+        <div class="pcard-h"><div><b>Efectivo</b><small>El cliente paga al recibir o al retirar.</small></div><span class="pchip ok">Activo</span></div>
+      </div>
+
+      <div class="pcard" id="mpCard">
+        <div class="pcard-h"><div><b>Mercado Pago</b><small>Tarjetas y saldo de Mercado Pago.</small></div><span class="pchip" id="mpChip">Sin configurar</span></div>
+        <div class="presumen" id="mpResumen" style="display:none"><span id="mpResumenTxt"></span><button type="button" class="pill pill-outline-muted pill-sm" id="mpCambiar" style="margin:0">Cambiar</button></div>
+        <div id="mpForm">
+          <label class="plabel" for="mpToken">Access Token</label>
+          <div class="token-row">
+            <input class="field" id="mpToken" type="text"
+                   autocomplete="off" data-lpignore="true" data-form-type="other"
+                   style="-webkit-text-security:disc;text-security:disc">
+            <button class="ibtn" id="btnEyeToken" title="Mostrar / ocultar">👁</button>
+          </div>
+          <button class="pill pill-solid pill-sm panel-full" id="btnGuardarMP">Guardar Mercado Pago</button>
+          <details class="pdet">
+            <summary>¿Dónde saco el token?</summary>
+            <div class="mp-guia">
+              Paso 1: Entra a mercadopago.cl con tu cuenta.<br>
+              Paso 2: Ve a "Tu negocio" → "Credenciales".<br>
+              Paso 3: Copia tu Access Token de producción y pégalo aquí.
+            </div>
+          </details>
+        </div>
+        <div class="mp-estado" id="mpEstado" style="display:none">⚠️ No configurado</div>
+      </div>
+
+      <div class="pcard" id="flowCard">
+        <div class="pcard-h"><div><b>Webpay (Flow)</b><small>Débito, crédito y transferencia.</small></div><span class="pchip" id="flowChip">Sin configurar</span></div>
+        <div class="presumen" id="flowResumen" style="display:none"><span id="flowResumenTxt"></span><button type="button" class="pill pill-outline-muted pill-sm" id="flowCambiar" style="margin:0">Cambiar</button></div>
+        <div id="flowForm">
+          <label class="plabel" for="flowApiKey">API Key</label>
+          <input class="field" id="flowApiKey" type="text" autocomplete="off" data-lpignore="true" data-form-type="other" spellcheck="false">
+          <label class="plabel" for="flowSecret">Secret Key</label>
+          <input class="field" id="flowSecret" type="text" autocomplete="off" data-lpignore="true" data-form-type="other" spellcheck="false"
+                 style="-webkit-text-security:disc;text-security:disc">
+          <label class="pcheck"><input type="checkbox" id="flowSandbox"> Modo de pruebas (llaves del sandbox de Flow)</label>
+          <button class="pill pill-solid pill-sm panel-full" id="btnGuardarFlow" type="button">Guardar Webpay</button>
+          <details class="pdet">
+            <summary>¿Dónde saco estas llaves?</summary>
+            <div class="mp-guia">
+              Paso 1: Crea tu cuenta en flow.cl con los datos de tu negocio.<br>
+              Paso 2: En el menú de Flow entra a "Integraciones" y luego a "Integración por API".<br>
+              Paso 3: Copia la API Key y la Secret Key y pégalas aquí.
+            </div>
+          </details>
+        </div>
+        <div class="mp-estado" id="flowEstado" style="display:none"></div>
+        <button class="pill pill-outline-muted pill-sm panel-full" id="btnQuitarFlow" type="button" style="display:none;margin-top:10px">Dejar de ofrecer Webpay</button>
+      </div>
+
+      <!-- Fuera de uso: dirección del backend (las funciones van en el mismo sitio) -->
+      <div style="display:none">
+        <h4>Backend</h4>
+        <input class="field" id="pFunctionsUrl" type="url" spellcheck="false">
+        <button class="pill pill-outline pill-sm panel-full" id="btnVerificarFn">Verificar conexión</button>
+        <div class="mp-estado" id="fnEstado"></div>
+      </div>
+
+      <h5 class="psub">Si algo falla</h5>
+      <div class="pcard">
+        <b class="pcard-t">¿Un cliente pagó y no ves su pedido?</b>
+        <p class="pnota" style="font-size:12.5px">Pasa muy poco. Aquí aparecen los pagos en línea de las últimas 24 horas que no terminaron en pedido.</p>
+        <button class="pill pill-outline pill-sm panel-full" id="btnRevisarIntentos">Revisar pagos sin pedido</button>
+        <div id="intentosPagoList" style="margin-top:12px"></div>
+      </div>
     </div>
 
     <!-- TAB EMAILS (Resend) -->
@@ -2651,24 +2753,27 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 
     <!-- TAB CONFIG -->
     <div class="psec" id="pt-config">
-      <h4>Apariencia</h4>
-      <div class="color-row">
-        <input type="color" id="pColor" value="#9B1B30">
-        <span style="font-size:13px;font-weight:800">Color primario</span>
+      <div id="pEstiloSlot"></div>
+      <div class="pcard">
+        <b class="pcard-t">Color de tu marca</b>
+        <p class="pnota" style="font-size:12.5px;margin-top:2px">Se usa en botones, títulos y detalles.</p>
+        <div class="token-row">
+          <input type="color" id="pColor" value="#9B1B30" aria-label="Elegir color" style="width:46px;height:42px;padding:0;border:1.5px solid var(--borde);border-radius:10px;background:#fff;flex-shrink:0">
+          <span style="font-size:13px;font-weight:800;color:var(--muted)">#</span>
+          <input type="text" class="field" id="pColorHex" maxlength="6" placeholder="9B1B30" aria-label="Código del color"
+                 style="font-family:monospace;font-size:14px;font-weight:800;letter-spacing:1px;text-transform:uppercase">
+          <button id="btnAplicarColor" class="pill pill-solid pill-sm" style="flex-shrink:0;margin:0">Aplicar</button>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;margin-bottom:2px">
-        <span style="font-size:12px;font-weight:800;color:var(--muted)">#</span>
-        <input type="text" id="pColorHex" maxlength="6" placeholder="9B1B30"
-               style="flex:1;font-family:monospace;font-size:14px;font-weight:800;
-                      letter-spacing:1px;text-transform:uppercase;padding:8px 10px;
-                      border:1.5px solid var(--borde);border-radius:10px;outline:none;
-                      background:#fff;color:var(--texto)">
-        <button id="btnAplicarColor" class="pill pill-solid pill-sm" style="flex-shrink:0;margin:0">Aplicar</button>
+      <div class="pcard">
+        <div class="pcard-h"><div><b>Dirección de tu tienda</b><small id="pDominioTxt"></small></div><span class="pchip ok">Activa</span></div>
+        <a class="pill pill-outline pill-sm panel-full" id="btnMiDominio" href="/dominio" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">Conectar mi dominio (mitienda.cl)</a>
       </div>
-      <p class="pnota" style="margin-top:4px">Ingresa el código hex directamente (ej: 9B1B30) o usa el selector.</p>
-      <h4>Herramientas</h4>
-      <button class="pill pill-outline pill-sm panel-full" id="btnPreview">👁 Vista previa cliente</button>
-      <p class="pnota">Oculta la barra dev y los bordes de edición para ver la web como la ve un cliente.</p>
+      <div class="pcard">
+        <b class="pcard-t">Ver la tienda como cliente</b>
+        <p class="pnota" style="font-size:12.5px;margin-top:2px">Oculta la barra de edición y los bordes por un momento.</p>
+        <button class="pill pill-outline pill-sm panel-full" id="btnPreview">Vista previa</button>
+      </div>
     </div>
 
   </div>

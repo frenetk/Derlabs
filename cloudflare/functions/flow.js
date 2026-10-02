@@ -79,7 +79,8 @@ export async function iniciarPagoFlow(d){
     email,
     urlConfirmation: urlTienda + "/api/webhookFlow?storeId=" + enc(storeId),
     urlReturn: urlTienda + "/api/retornoFlow?storeId=" + enc(storeId) + "&pid=" + enc(id),
-    optional: JSON.stringify({ pedidoId: id, storeId }),
+    /* sin "optional": Flow se lo muestra al comprador en la página de pago. El pedido se
+       reconoce por el número de orden (<pedido>-<azar>) y la tienda viene en la dirección. */
     timeout: 1500     /* la orden vence a los 25 min, antes de que limpiarPendientes borre el intento (30 min) */
   });
   if (!r.url || !r.token) return { st: 502, error: "Flow no devolvió la dirección de pago" };
