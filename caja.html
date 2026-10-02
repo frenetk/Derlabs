@@ -719,7 +719,7 @@ function renderOnline(){
     let sig = SIG[p.estado];
     if (sig && sig[0] === "__listo") sig = p.tipo === "delivery" ? ["camino", "🛵 Salió"] : ["listo", "✅ Entregado"];
     return '<div class="card"><div class="card-top"><b>#' + esc(p.id) + ' · ' + esc(cl.nombre || "") + '</b><span>' + (p.cocinaListo && p.estado === "preparacion" ? '<span class="badge ok">👨‍🍳 Cocina lista</span> ' : '') + '<span class="badge ' + e[1] + '">' + e[0] + '</span></span></div>' +
-      '<span class="muted small">' + (p.tipo === "delivery" ? "🛵 Delivery · " + esc(cl.direccion || "") : "🏠 Retiro") + ' · ' + minutos(p.fecha) + ' min · ' + (p.metodoPago === "mercadopago" ? "Pagado online" : "Efectivo") + '</span>' +
+      '<span class="muted small">' + (p.tipo === "delivery" ? "🛵 Delivery · " + esc(cl.direccion || "") : "🏠 Retiro") + ' · ' + minutos(p.fecha) + ' min · ' + (p.metodoPago === "mercadopago" || p.metodoPago === "flow" ? "Pagado online" : "Efectivo") + '</span>' +
       '<div class="card-top"><span class="muted small">' + esc((p.items || []).map(i => i.cantidad + "× " + i.nombre).join(", ")) + '</span><b>' + $$(p.total) + '</b></div>' +
       '<div class="acciones"><button class="btn btn-sm" data-impon="' + esc(p._docId) + '">🖨 Comanda</button></div>' +
       (sig && !(p.envio && p.envio.metodo === "repartidor" && p.estado !== "nuevo") ? '<div class="acciones solo-caja"><button class="btn btn-sm btn-info" data-avanza="' + esc(p._docId) + '" data-a="' + sig[0] + '">' + sig[1] + '</button></div>' : '') + '</div>';

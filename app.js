@@ -2014,7 +2014,7 @@ function initCarrito(){
    CHECKOUT
    ════════════════════════════════════════════════════════════════ */
 let tipoEntrega = "delivery";
-let metodoPago  = "mercadopago"; /* "efectivo" | "mercadopago" */
+let metodoPago  = "mercadopago"; /* "efectivo" | "mercadopago" | "flow" (Webpay vía Flow) */
 let _pagoElegido = false;         /* true cuando el cliente toca una forma de pago */
 
 function renderSelectorDirecciones(){
@@ -2167,6 +2167,7 @@ function evaluarGate(){
    El servidor aplica la misma regla al enviar (enviarEmails.js). */
 function pideCorreoCheckout(){
   if (clienteUser && clienteUser.email) return false;
+  if (metodoPago === "flow") return true;   /* Flow exige el correo del pagador */
   return !(typeof _vtEsComida === "function" && _vtEsComida());
 }
 var _DOMINIOS_MAL = { "gmial.com":"gmail.com", "gmai.com":"gmail.com", "gamil.com":"gmail.com", "gmail.con":"gmail.com", "gmail.co":"gmail.com", "gmal.com":"gmail.com", "gmil.com":"gmail.com", "gnail.com":"gmail.com", "gmail.cm":"gmail.com", "gmaill.com":"gmail.com",
@@ -2194,7 +2195,7 @@ function actualizarCampoEmail(){
     if (em.dataset.auto){ em.value = ""; em.classList.remove("lleno"); delete em.dataset.auto; }
     if (campo) campo.style.display = "";
     const lab = campo ? campo.querySelector('label[for="fEmail"]') : null;
-    if (lab && !/opcional/i.test(lab.textContent)) lab.textContent = "Correo (opcional, para tu comprobante)";
+    if (lab) lab.textContent = metodoPago === "flow" ? "Correo (Webpay envía ahí tu comprobante)" : "Correo (opcional, para tu comprobante)";
   }
 }
 
@@ -2413,6 +2414,7 @@ function renderCheckout(){
     if (noteMP) noteMP.style.display = "block";
     if (btnConf && !btnConf.disabled) btnConf.textContent = _txt("btnMP", "Ir a MercadoPago →");
   }
+  v29AjustarPago(mpDisponible);
 
   actualizarZonaBadge();
 }
@@ -2438,6 +2440,9 @@ function validarCheckout(){
     } else if (_sug){
       marcarError("fEmail"); toast("¿Quisiste decir " + _sug + "? Corrige el correo"); ok = false;
     }
+  }
+  if (metodoPago === "flow" && !(clienteUser && clienteUser.email) && !_email){
+    marcarError("fEmail"); toast("Para pagar con Webpay escribe tu correo: ahí llega el comprobante"); ok = false;
   }
   if (tipoEntrega === "delivery" && !qs("#fDireccion").value.trim()){ marcarError("fDireccion"); ok = false; }
   /* Solo exigir comuna si hay zonas configuradas Y el campo es visible */
@@ -2534,25 +2539,9 @@ function initCheckout(){
   if (btnQ) btnQ.addEventListener("click", quitarCupon);
 
   /* Forma de pago */
+  v29OpcionFlow();   /* la opción de Webpay (Flow) se crea antes de enlazar los toques */
   document.querySelectorAll(".pago-opt").forEach(function(opt){
-    opt.addEventListener("click", function(){
-      _pagoElegido = true;
-      document.querySelectorAll(".pago-opt").forEach(function(o){ o.classList.remove("sel"); });
-      opt.classList.add("sel");
-      metodoPago = opt.dataset.pago;
-      var noteEf = qs("#pagoEfectivoNote");
-      var noteMP = qs("#pagoMPNote");
-      var btnConf = qs("#btnConfirmar");
-      if (metodoPago === "efectivo"){
-        if(noteEf) noteEf.style.display = "block";
-        if(noteMP) noteMP.style.display = "none";
-        if(btnConf) btnConf.textContent = _txt("btnEfectivo", "Confirmar pedido →");
-      } else {
-        if(noteEf) noteEf.style.display = "none";
-        if(noteMP) noteMP.style.display = "block";
-        if(btnConf) btnConf.textContent = _txt("btnMP", "Ir a MercadoPago →");
-      }
-    });
+    opt.addEventListener("click", function(){ _pagoElegido = true; v29ElegirPago(opt.dataset.pago); });
   });
 }
 
@@ -2655,8 +2644,8 @@ async function confirmarPedido(){
 
   /* ── EFECTIVO ── */
   if (metodoPago === "efectivo" || !functionsListas()){
-    if (metodoPago === "mercadopago"){
-      toast("⚙️ MercadoPago aún no está configurado en esta tienda");
+    if (metodoPago !== "efectivo"){
+      toast("⚙️ El pago en línea aún no está configurado en esta tienda");
       return;
     }
     const pedidoIdLocal = "TB" + Date.now().toString().slice(-5);
@@ -2748,7 +2737,9 @@ async function confirmarPedido(){
      formas. El pedido en sí nunca lo crea el cliente — nace en
      webhookPago.js recién cuando MercadoPago confirma el pago. */
   const btn = qs("#btnConfirmar");
-  btn.disabled = true; btn.textContent = "Conectando con MercadoPago…";
+  const esFlow = metodoPago === "flow";
+  const txtBtnPago = esFlow ? "Ir a pagar con Webpay →" : _txt("btnMP", "Ir a MercadoPago →");
+  btn.disabled = true; btn.textContent = esFlow ? "Conectando con Webpay…" : "Conectando con MercadoPago…";
   try {
     const pedidoId = "TB" + Date.now().toString().slice(-5);
     const ped = construirPedido(pedidoId, cliente);
@@ -2759,6 +2750,7 @@ async function confirmarPedido(){
       body: JSON.stringify({
         storeId: STORE_ID,
         pedidoId: pedidoId,
+        pasarela: esFlow ? "flow" : "mercadopago",
         items: ped.items.map(function(i){ return { id: i.id, cantidad: i.cantidad, variantes: i.variantes || null, notaPersonal: i.notaPersonal || null, extras: i.extras || null }; }),
         cliente: cliente,
         cuponAplicado: ped.cuponAplicado,
@@ -2774,7 +2766,7 @@ async function confirmarPedido(){
          confirmó (producto agotado, cupón vencido justo ahora), acá
          llega el motivo real en vez de un error genérico de red. */
       toast(j.error || ("No se pudo iniciar el pago (HTTP " + res.status + ")"));
-      btn.disabled = false; btn.textContent = _txt("btnMP", "Ir a MercadoPago →");
+      btn.disabled = false; btn.textContent = txtBtnPago;
       return;
     }
     if (j.pedidoId && j.pedidoId !== ped.id){ ped.id = j.pedidoId; guardarUltimoPedido(ped); }
@@ -2782,7 +2774,7 @@ async function confirmarPedido(){
   } catch(e){
     console.error("Error creando pago:", e);
     toast("No se pudo iniciar el pago. Intenta de nuevo.");
-    btn.disabled = false; btn.textContent = _txt("btnMP", "Ir a MercadoPago →");
+    btn.disabled = false; btn.textContent = txtBtnPago;
   }
 }
 
@@ -2942,7 +2934,7 @@ function actualizarTimeline(estado){
   if (!cont) return;
   if (estado === "esperando" || estado === "pendiente_pago"){
     const sub = qs("#confSub");
-    if (sub) sub.textContent = "⏳ Verificando tu pago con MercadoPago…";
+    if (sub) sub.textContent = "⏳ Verificando tu pago…";
     return;
   }
   const est = normEstado(estado);
@@ -3136,7 +3128,7 @@ function _pintarCliPedBase(p){
       (p.tipo === "delivery" ? '<div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-weight:600"><span>Delivery</span><span>' + fmtPrecio(p.costoDelivery || 0) + '</span></div>' : "") +
       '<div style="display:flex;justify-content:space-between;font-size:14.5px;font-weight:900;margin-top:6px;padding-top:8px;border-top:1px dashed var(--borde)"><span>Total</span><span>' + fmtPrecio(p.total) + '</span></div>' +
       '<div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:8px">' +
-        (p.metodoPago === "mercadopago" ? "💳 MercadoPago" : "💵 Efectivo") + " · " +
+        (p.metodoPago === "mercadopago" ? "💳 MercadoPago" : p.metodoPago === "flow" ? "💳 Webpay" : "💵 Efectivo") + " · " +
         (p.tipo === "retiro" ? "Retiro en " + esc((p.cliente && p.cliente.local) || "local")
                              : "Delivery a " + esc((p.cliente && p.cliente.direccion) || "")) +
       '</div>';
@@ -4443,6 +4435,7 @@ function renderMpEstado(){
   qs("#mpEstado").textContent = (!t || t === "CONFIGURAR_TOKEN")
     ? "⚠️ No configurado"
     : "✅ Conectado correctamente";
+  try { v29PanelFlow(); v29PintarFlow(); } catch(e){ console.warn("flow:", e); }
 }
 
 /* Editor de grupos de variantes — hasta 3 grupos por producto (ej.
@@ -8465,3 +8458,105 @@ function v28AbrirCaja(){
 })();
 
 try { v26PanelInit(); } catch(e){ console.warn("panel v26:", e); }
+
+/* ─────────── P29 · Segunda pasarela: Flow (Webpay, tarjetas y transferencia) ───────────
+   config/privado: flowApiKey, flowSecretKey, flowSandbox · config/general: flowActivo.
+   El cobro lo hace el servidor (crearPago.js → flow.js); aquí solo va la opción en el
+   checkout y la tarjeta para pegar las llaves en el panel. */
+var V29_NOTA_FLOW = "🔒 Serás redirigido a Webpay (Flow) para pagar de forma segura y vuelves aquí al terminar.";
+function v29OpcionFlow(){
+  var ya = document.querySelector('.pago-opt[data-pago="flow"]'); if (ya) return ya;
+  var mp = document.querySelector('.pago-opt[data-pago="mercadopago"]'), ef = document.querySelector('.pago-opt[data-pago="efectivo"]');
+  if (!mp || !ef) return null;
+  var op = mp.cloneNode(true);
+  op.dataset.pago = "flow"; op.classList.remove("sel"); op.style.display = "none";
+  var t = op.querySelector(".pago-label, .pay-title"), sb = op.querySelector(".pago-sub, .pay-sub");
+  if (t) t.textContent = "Webpay";
+  if (sb) sb.textContent = "Débito, crédito o transferencia";
+  ef.parentNode.insertBefore(op, ef);
+  return op;
+}
+function v29ElegirPago(m){
+  metodoPago = m;
+  document.querySelectorAll(".pago-opt").forEach(function(o){
+    o.classList.toggle("sel", o.dataset.pago === m);
+    if (o.hasAttribute("role")) o.setAttribute("aria-checked", o.dataset.pago === m ? "true" : "false");
+  });
+  var noteEf = qs("#pagoEfectivoNote"), noteMP = qs("#pagoMPNote"), btn = qs("#btnConfirmar");
+  if (noteEf) noteEf.style.display = m === "efectivo" ? "block" : "none";
+  if (noteMP){
+    if (noteMP.dataset.mp == null){
+      noteMP.dataset.mp = noteMP.innerHTML;
+      /* en las plantillas donde la nota va pegada a su opción, se mueve junto a la elegida */
+      var prev = noteMP.previousElementSibling;
+      noteMP.dataset.pegada = prev && prev.classList.contains("pago-opt") ? "1" : "";
+    }
+    noteMP.style.display = m === "efectivo" ? "none" : "block";
+    noteMP.innerHTML = m === "flow" ? V29_NOTA_FLOW : noteMP.dataset.mp;
+    if (noteMP.dataset.pegada && m !== "efectivo"){
+      var dueno = document.querySelector('.pago-opt[data-pago="' + m + '"]');
+      if (dueno && dueno.nextElementSibling !== noteMP) dueno.parentNode.insertBefore(noteMP, dueno.nextSibling);
+    }
+  }
+  if (btn && !btn.disabled) btn.textContent = m === "efectivo" ? _txt("btnEfectivo", "Confirmar pedido →") : m === "flow" ? "Ir a pagar con Webpay →" : _txt("btnMP", "Ir a MercadoPago →");
+  if (typeof actualizarCampoEmail === "function") actualizarCampoEmail();
+}
+/* Muestra u oculta Webpay según la tienda y deja elegida una forma de pago que exista */
+function v29AjustarPago(mpDisponible){
+  var op = v29OpcionFlow(); if (!op) return;
+  var disp = functionsListas() && state.config.flowActivo === true;
+  op.style.display = disp ? "" : "none";
+  if (!disp && metodoPago === "flow") v29ElegirPago(mpDisponible ? "mercadopago" : "efectivo");
+  else if (disp && !mpDisponible && !_pagoElegido && metodoPago !== "flow") v29ElegirPago("flow");
+}
+/* Panel → Pagos: tarjeta de Flow, debajo de la de Mercado Pago */
+function v29PanelFlow(){
+  if (qs("#flowApiKey")) return;
+  var ref = qs("#btnGuardarMP"); if (!ref) return;
+  var tarjeta = ref.closest(".acard"), div = document.createElement("div");
+  var oculto = ' autocomplete="off" data-lpignore="true" data-form-type="other" spellcheck="false"';
+  var disco = ' style="-webkit-text-security:disc;text-security:disc"';
+  var pasos = ["Crea tu cuenta de comercio en flow.cl y completa los datos de tu negocio.", "En tu cuenta de Flow, busca los datos de integración: API Key y Secret Key.", "Pégalas aquí y guarda. Tus clientes verán la opción «Webpay» al pagar."];
+  var check = '<label style="display:flex;align-items:center;gap:8px;margin:10px 0;font-size:13px;cursor:pointer"><input type="checkbox" id="flowSandbox" style="width:18px;height:18px;flex:none"> Modo de pruebas (llaves del sandbox de Flow)</label>';
+  if (tarjeta){
+    div.className = "acard";
+    div.innerHTML = '<h3 class="acard-title">Webpay con Flow</h3><ol class="mp-guia">' + pasos.map(function(x){ return "<li>" + x + "</li>"; }).join("") + '</ol>' +
+      '<div class="ffield"><label for="flowApiKey">API Key</label><input id="flowApiKey" type="text"' + oculto + '></div>' +
+      '<div class="ffield"><label for="flowSecret">Secret Key</label><input id="flowSecret" type="text"' + oculto + disco + '></div>' + check +
+      '<div class="save-bar"><button id="btnGuardarFlow" class="btn btn-primary" type="button">Guardar Flow</button></div>' +
+      '<p class="mp-estado" id="flowEstado"></p><button id="btnQuitarFlow" class="btn" type="button" style="display:none">Dejar de ofrecer Webpay</button>' +
+      '<p class="pnota">Las llaves se usan solo en el servidor: nunca llegan al navegador de tus clientes.</p>';
+    tarjeta.parentNode.insertBefore(div, tarjeta.nextSibling);
+  } else {
+    var est = qs("#mpEstado") || ref;
+    div.innerHTML = '<h4>💳 Configurar Webpay (Flow)</h4><div class="mp-guia">' + pasos.map(function(x, i){ return "Paso " + (i + 1) + ": " + x; }).join("<br>") + '</div>' +
+      '<label class="plabel" for="flowApiKey">API Key</label><input class="field" id="flowApiKey" type="text"' + oculto + '>' +
+      '<label class="plabel" for="flowSecret">Secret Key</label><input class="field" id="flowSecret" type="text"' + oculto + disco + '>' + check +
+      '<button class="pill pill-solid pill-sm panel-full" id="btnGuardarFlow" type="button">Guardar Flow</button>' +
+      '<div class="mp-estado" id="flowEstado"></div><button class="pill pill-sm panel-full" id="btnQuitarFlow" type="button" style="display:none;margin-top:8px">Dejar de ofrecer Webpay</button>';
+    est.parentNode.insertBefore(div, est.nextSibling);
+  }
+  qs("#btnGuardarFlow").addEventListener("click", async function(){
+    var k = qs("#flowApiKey").value.trim(), sk = qs("#flowSecret").value.trim();
+    if (!k || !sk){ qs("#flowEstado").textContent = "❌ Faltan la API Key o la Secret Key"; return; }
+    var ok = await saveConfigPrivado("flowApiKey", k);
+    if (ok) ok = await saveConfigPrivado("flowSecretKey", sk);
+    if (ok) ok = await saveConfigPrivado("flowSandbox", qs("#flowSandbox").checked);
+    if (ok) await saveConfig("flowActivo", true);
+    v29PintarFlow();
+    if (ok) toast(DEMO ? "💳 Demo: llaves guardadas en esta sesión" : "💳 Flow guardado — haz una compra de prueba para confirmar que conecta");
+  });
+  qs("#btnQuitarFlow").addEventListener("click", async function(){
+    await saveConfig("flowActivo", false); v29PintarFlow(); toast("Webpay ya no se ofrece en el checkout");
+  });
+}
+function v29PintarFlow(){
+  var k = qs("#flowApiKey"); if (!k) return;
+  var cp = state.configPrivado || {}, sk = qs("#flowSecret"), sb = qs("#flowSandbox");
+  if (document.activeElement !== k && !k.value) k.value = cp.flowApiKey || "";
+  if (document.activeElement !== sk && !sk.value) sk.value = cp.flowSecretKey || "";
+  if (cp.flowSandbox != null && document.activeElement !== sb) sb.checked = cp.flowSandbox === true;
+  var listo = !!(cp.flowApiKey && cp.flowSecretKey), activo = listo && state.config.flowActivo === true;
+  qs("#flowEstado").textContent = activo ? "✅ Activo en el checkout" + (cp.flowSandbox === true ? " (modo de pruebas)" : "") : listo ? "⏸ Llaves guardadas, pero Webpay no se ofrece" : "⚠️ No configurado";
+  qs("#btnQuitarFlow").style.display = activo ? "" : "none";
+}

@@ -14,6 +14,7 @@
 
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { getDb, corsHeaders, getStoreConfig, validarPedidoCompleto } from "./_firebase.js";
+import { iniciarPagoFlow } from "./flow.js";
 
 export async function crearPago(request, env){
   const headers = corsHeaders();
@@ -36,7 +37,9 @@ export async function crearPago(request, env){
 
     const db = getDb(env);
     const config = await getStoreConfig(db, storeId);
-    if (!config.mpToken) {
+    /* pasarela: "flow" → Webpay vía Flow (flow.js); sin ese campo, Mercado Pago como siempre */
+    const esFlow = body.pasarela === "flow";
+    if (!esFlow && !config.mpToken) {
       return new Response(JSON.stringify({ ok: false, error: "MercadoPago no está configurado en esta tienda" }), { status: 400, headers });
     }
 
@@ -48,12 +51,17 @@ export async function crearPago(request, env){
     const { itemsValidados, subtotal: subtotalReal, costoDelivery: costoDeliveryReal,
             descuento: descuentoReal, cuponFinal, total: totalReal } = val;
 
-    const mp = new MercadoPagoConfig({ accessToken: config.mpToken });
+    const mp = esFlow ? null : new MercadoPagoConfig({ accessToken: config.mpToken });
     const id = pedidoId || ("TB" + Date.now().toString().slice(-6));
     const url = new URL(request.url);
     const urlTienda = (url.origin || config.url || "").replace(/\/+$/, "");
     if (!urlTienda) {
       return new Response(JSON.stringify({ ok: false, error: "No se pudo determinar la URL del sitio" }), { status: 500, headers });
+    }
+
+    if (esFlow) {
+      const rf = await iniciarPagoFlow({ db, storeId, config, id, urlTienda, cliente, tipo, val, seguimiento });
+      return new Response(JSON.stringify(rf.st === 200 ? { ok: true, init_point: rf.init_point, pedidoId: rf.pedidoId } : { ok: false, error: rf.error }), { status: rf.st, headers });
     }
 
     const mpItems = itemsValidados.map(function(i){

@@ -1668,7 +1668,7 @@ function cardHTML(p){
     (cl.direccion ? '<div class="card-dir">📍 ' + esc(cl.direccion) + (cl.comuna ? ", " + esc(cl.comuna) : "") + '</div>' : ''),
     '<div class="card-footer">',
       '<div class="card-total">' + fmtPrecio(p.total) + '</div>',
-      '<div class="card-pago">' + esc(p.metodoPago === "mercadopago" ? "MercadoPago" : "Efectivo") + '</div>',
+      '<div class="card-pago">' + esc(p.metodoPago === "mercadopago" ? "MercadoPago" : p.metodoPago === "flow" ? "Webpay · Flow" : "Efectivo") + '</div>',
     '</div>',
     hayBoton ? [
       '<div class="card-acciones">',
@@ -1928,7 +1928,7 @@ function renderDetalle(){
     var ev = p.envio || {};
     if(ev.salioEn)     body.push(detalleRow(iconSVG("clock"), "Salió", fmtFecha(ev.salioEn)));
     if(ev.entregadoEn) body.push(detalleRow(iconSVG("clock"), "Entregado", fmtFecha(ev.entregadoEn)));
-    if(ev.entregadoEn && p.metodoPago !== "mercadopago") body.push(detalleRow(iconSVG("card"), "Cobró", fmtPrecio(ev.cobrado || 0)));
+    if(ev.entregadoEn && p.metodoPago !== "mercadopago" && p.metodoPago !== "flow") body.push(detalleRow(iconSVG("card"), "Cobró", fmtPrecio(ev.cobrado || 0)));
     if(p.estado === "nuevo" || p.estado === "preparacion"){
       body.push('<button class="rep-btn" id="detBtnEnviar" style="margin-top:10px">🛵 Enviar con…</button>');
     }
@@ -1992,7 +1992,7 @@ function renderDetalle(){
   // Pago
   body.push('<div class="det-section">');
   body.push('<div class="det-section-tit">Pago</div>');
-  body.push(detalleRow(iconSVG("card"), "Método", esc(p.metodoPago === "mercadopago" ? "MercadoPago" : "Efectivo al entregar")));
+  body.push(detalleRow(iconSVG("card"), "Método", esc(p.metodoPago === "mercadopago" ? "MercadoPago" : p.metodoPago === "flow" ? "Webpay · Flow (pagado)" : "Efectivo al entregar")));
   body.push(detalleRow(iconSVG("clock"), "Pedido el", fmtFecha(p.fecha)));
   body.push('</div>');
 
@@ -2454,7 +2454,7 @@ function renderCaja(){
         '<tr class="tot"><td>Total</td><td>' + suma.entregas + '</td><td>' + fmtPrecio(suma.ventas) + '</td><td>' + fmtPrecio(suma.efectivo) + '</td></tr></table>';
     } else {
       cuerpo = '<div class="caja-lin">' + suma.entregas + ' entregas · ventas ' + fmtPrecio(suma.ventas) + ' · efectivo cobrado <b style="color:var(--txt)">' + fmtPrecio(suma.efectivo) + '</b></div>' +
-        (r.entregas || []).map(function(e){ return '<div class="caja-lin" style="margin-top:2px">· ' + esc(e.pedidoId) + ' · ' + _hora(e.hora) + ' · ' + (e.metodoPago === "mercadopago" ? "pagado online" : "efectivo " + fmtPrecio(e.efectivo)) + '</div>'; }).join("");
+        (r.entregas || []).map(function(e){ return '<div class="caja-lin" style="margin-top:2px">· ' + esc(e.pedidoId) + ' · ' + _hora(e.hora) + ' · ' + (e.metodoPago === "mercadopago" || e.metodoPago === "flow" ? "pagado online" : "efectivo " + fmtPrecio(e.efectivo)) + '</div>'; }).join("");
     }
     var movs = (r.movimientos || []).map(function(m){
       return '<div class="caja-mov">' + (m.tipo === "cuadre" ? "✅ Cuadre " + fmtPrecio(m.monto) : "✏️ Ajuste " + (m.monto > 0 ? "+" : "−") + fmtPrecio(Math.abs(m.monto))) +

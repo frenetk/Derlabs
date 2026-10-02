@@ -75,7 +75,7 @@ export async function enviarCorreosPedido(db, env, storeId, ped, origin, opts){
         const r = await resend.emails.send({
           from, to: emailVendedor,
           replyTo: emailOk(cl.email) ? String(cl.email).trim() : undefined, reply_to: emailOk(cl.email) ? String(cl.email).trim() : undefined,
-          subject: (opts.prueba ? "[Prueba] " : "") + "🛍️ Nuevo pedido #" + ped.id + " — " + fmtPrecio(ped.total) + (ped.metodoPago === "mercadopago" ? " (pagado)" : ""),
+          subject: (opts.prueba ? "[Prueba] " : "") + "🛍️ Nuevo pedido #" + ped.id + " — " + fmtPrecio(ped.total) + (ped.metodoPago === "mercadopago" || ped.metodoPago === "flow" ? " (pagado)" : ""),
           html: plantillaVendedor(ped, nombreTienda, color, urlTienda)
         });
         res.vendedor = r && r.error ? { ok: false, error: String(r.error.message || r.error) } : { ok: true };
@@ -174,7 +174,7 @@ export function plantillaCliente(pedido, nombreTienda, color){
           '<tr><td style="padding:10px 0 0;font-size:17px;font-weight:bold;color:#111;border-top:1px solid #eee">Total</td><td style="padding:10px 0 0;font-size:17px;font-weight:bold;color:#111;text-align:right;border-top:1px solid #eee">' + fmtPrecio(pedido.total) + '</td></tr>' +
         '</table>' +
         '<p style="font-size:13px;color:#666;margin-top:20px"><strong>Entrega:</strong> ' + esc(direccion) + '</p>' +
-        '<p style="font-size:13px;color:#666"><strong>Pago:</strong> ' + (pedido.metodoPago === "mercadopago" ? "Mercado Pago (pagado)" : "Efectivo al recibir") + '</p>' +
+        '<p style="font-size:13px;color:#666"><strong>Pago:</strong> ' + (pedido.metodoPago === "mercadopago" ? "Mercado Pago (pagado)" : pedido.metodoPago === "flow" ? "Webpay / Flow (pagado)" : "Efectivo al recibir") + '</p>' +
         '<p style="font-size:13px;color:#999;margin-top:24px;text-align:center">Te avisaremos cuando tu pedido esté en camino. Si tienes dudas, responde este correo y le llegará directo a ' + esc(nombreTienda) + '.</p>' +
       '</td></tr>' +
       '<tr><td style="padding:16px 24px;background:#fafafa;text-align:center">' +
@@ -204,7 +204,7 @@ export function plantillaVendedor(pedido, nombreTienda, color, urlTienda){
         '<p style="font-size:13px;color:#333;margin:16px 0 4px"><strong>Productos:</strong></p>' +
         '<p style="font-size:13px;color:#666;margin:0 0 16px">' + esc(items) + '</p>' +
         (cl.notas ? '<p style="font-size:13px;color:#333;margin:0 0 16px"><strong>Notas:</strong> ' + esc(cl.notas) + '</p>' : '') +
-        '<p style="font-size:12px;color:#999;margin:0 0 20px">Pago: ' + (pedido.metodoPago === "mercadopago" ? "Mercado Pago (pagado)" : "Efectivo") + '</p>' +
+        '<p style="font-size:12px;color:#999;margin:0 0 20px">Pago: ' + (pedido.metodoPago === "mercadopago" ? "Mercado Pago (pagado)" : pedido.metodoPago === "flow" ? "Webpay / Flow (pagado)" : "Efectivo") + '</p>' +
         '<table cellpadding="0" cellspacing="0"><tr><td style="background:' + color + ';border-radius:10px">' +
           '<a href="' + esc(urlGestion) + '" style="display:block;padding:14px 24px;color:#fff;font-weight:bold;font-size:14px;text-decoration:none">Ver en gestión de pedidos →</a>' +
         '</td></tr></table>' +

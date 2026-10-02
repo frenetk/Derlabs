@@ -341,13 +341,29 @@ En modo DEV: "Elegir destacados" y "Elegir promociones" en el inicio. El
 estilo Clásico solo cambia el título a "Promociones". Las barras del
 carrusel ahora van dentro de cada tarjeta.
 
-## 12. Segunda pasarela: Flow (P25) y camino a Webpay directo
+## 12. Segunda pasarela: Flow (P29) — ✅ hecho · camino a Webpay directo
 
-Flow primero: el comercio se registra en flow.cl y pega apiKey + secretKey
-en el panel (igual que el token de MP). Flujo: `payment/create` firmado con
-HMAC-SHA256 → redirigir a `url?token=` → Flow llama a `urlConfirmation` →
-`payment/getStatus` → pedido "nuevo". Cobra con Webpay, tarjetas y
-transferencias.
+**Flow (Webpay, tarjetas y transferencia): hecho, falta probarlo con una
+cuenta real de Flow** (sandbox primero). El comercio pega su API Key y
+Secret Key en Panel → Pagos (`config/privado`: `flowApiKey`,
+`flowSecretKey`, `flowSandbox`; `config/general.flowActivo` muestra la
+opción "Webpay" en el checkout). Se puede tener Mercado Pago, Flow o ambos.
+- `crearPago.js` recibe `pasarela: "flow"` y llama a `flow.js` →
+  `iniciarPagoFlow()`: `payment/create` firmado (parámetros ordenados,
+  nombre+valor, HMAC-SHA256 en `s`), orden única `<pedido>-<azar>`,
+  `timeout` de 25 min, y guarda el intento con `flowToken`.
+- `/api/webhookFlow` (urlConfirmation): token → `payment/getStatus` → si
+  `status == 2` (pagada) crea el pedido (`metodoPago: "flow"`). Revisa que
+  el token sea el del intento y que el monto pagado sea el del pedido.
+- `/api/retornoFlow` (urlReturn, el navegador llega por POST): consulta el
+  estado y redirige a `/?status=approved|pending|failure&pedido_id=`. Si
+  la confirmación no llegó, espera 2,5 s y crea el pedido ahí mismo.
+- Flow exige el correo del pagador: con Webpay el checkout lo pide también
+  a invitados de tiendas de comida (solo con esa forma de pago). Los
+  correos de compra de DerLabs siguen la regla del punto 14.
+- Mercado Pago no se tocó (`webhookPago.js` igual que antes). La creación
+  del pedido está repetida en `flow.js`; unificar ambas más adelante.
+- Repartidor, gestor y caja tratan `flow` como pagado en línea.
 
 Webpay Plus directo (para tiendas que ya tienen convenio con Transbank):
 - Datos por tienda en `config/privado`: código de comercio + API Key Secret.

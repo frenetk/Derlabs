@@ -288,7 +288,7 @@ function tarjeta(p){
   const q = encodeURIComponent(dir + ", Chile");
   let tel = String(c.telefono || "").replace(/\D/g, "");
   if (tel.length === 9 && tel[0] === "9") tel = "56" + tel;
-  const efectivo = p.metodoPago !== "mercadopago";
+  const efectivo = p.metodoPago !== "mercadopago" && p.metodoPago !== "flow";   /* Mercado Pago y Flow ya vienen pagados */
   const items = (p.items || []).map(i => i.cantidad + "× " + i.nombre).join(" · ");
   let boton = "";
   if (p.estado === "camino") boton = `<button class="btn btn-entregar principal" data-entregar="${esc(p.id)}">✅ Entregado</button>`;
@@ -341,7 +341,7 @@ $("#lista").addEventListener("click", async e => {
   if (be){
     const p = pedidos.find(x => x.id === be.dataset.entregar); if (!p) return;
     cobrando = p;
-    const efectivo = p.metodoPago !== "mercadopago";
+    const efectivo = p.metodoPago !== "mercadopago" && p.metodoPago !== "flow";   /* Mercado Pago y Flow ya vienen pagados */
     $("#cobroTit").textContent = "Entregar " + p.id;
     $("#cobroTxt").textContent = efectivo ? "¿Cuánto cobraste? El total del pedido es " + precio(p.total) + "." : "Este pedido ya está pagado. Confirma que lo entregaste.";
     $("#cobroMonto").classList.toggle("oculto", !efectivo);
