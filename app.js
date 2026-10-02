@@ -2160,26 +2160,41 @@ function evaluarGate(){
   actualizarCampoEmail();
 }
 
-/* 2A — email obligatorio: con cuenta Google se pre-rellena y bloquea */
+/* P27 — política de correo en el checkout:
+     · con cuenta Google: no se pide (se usa el de la cuenta, ya verificado)
+     · invitado en tienda de comida: no se pide ni se envía correo al cliente
+     · invitado en retail/boutique: opcional, con detección de errores de tipeo
+   El servidor aplica la misma regla al enviar (enviarEmails.js). */
+function pideCorreoCheckout(){
+  if (clienteUser && clienteUser.email) return false;
+  return !(typeof _vtEsComida === "function" && _vtEsComida());
+}
+var _DOMINIOS_MAL = { "gmial.com":"gmail.com", "gmai.com":"gmail.com", "gamil.com":"gmail.com", "gmail.con":"gmail.com", "gmail.co":"gmail.com", "gmal.com":"gmail.com", "gmil.com":"gmail.com", "gnail.com":"gmail.com", "gmail.cm":"gmail.com", "gmaill.com":"gmail.com",
+  "hotmial.com":"hotmail.com", "hotmai.com":"hotmail.com", "hotmail.con":"hotmail.com", "hotmal.com":"hotmail.com", "hotnail.com":"hotmail.com", "hotmail.co":"hotmail.com",
+  "outlok.com":"outlook.com", "outlook.con":"outlook.com", "outloo.com":"outlook.com", "yaho.com":"yahoo.com", "yahoo.con":"yahoo.com", "yahooo.com":"yahoo.com", "icloud.con":"icloud.com", "iclod.com":"icloud.com" };
+function correoSugerido(email){
+  var p = String(email || "").trim().toLowerCase().split("@");
+  return (p.length === 2 && _DOMINIOS_MAL[p[1]]) ? p[0] + "@" + _DOMINIOS_MAL[p[1]] : "";
+}
 function actualizarCampoEmail(){
   const em = qs("#fEmail");
   if (!em) return;
-  const campo = em.closest(".ffield");
-  let lock = campo ? campo.querySelector(".lock-tag") : null;
+  const campo = qs("#campoEmail") || em.closest(".ffield") || em.parentElement;
+  const lock = campo ? campo.querySelector(".lock-tag") : null;
+  if (lock) lock.remove();
+  em.readOnly = false; em.classList.remove("bloqueado");
   if (clienteUser && clienteUser.email){
-    em.value = clienteUser.email;
-    em.readOnly = true;
-    em.classList.add("bloqueado","lleno");
-    if (campo && !lock){
-      lock = document.createElement("span");
-      lock.className = "lock-tag";
-      lock.textContent = "🔒";
-      campo.appendChild(lock);
-    }
+    em.value = clienteUser.email; em.classList.add("lleno"); em.dataset.auto = "1";
+    if (campo) campo.style.display = "none";
+  } else if (!pideCorreoCheckout()){
+    em.value = ""; em.classList.remove("lleno");
+    if (campo) campo.style.display = "none";
   } else {
-    em.readOnly = false;
-    em.classList.remove("bloqueado");
-    if (lock) lock.remove();
+    /* venía con el correo de una cuenta que ya cerró sesión: no dejarlo puesto */
+    if (em.dataset.auto){ em.value = ""; em.classList.remove("lleno"); delete em.dataset.auto; }
+    if (campo) campo.style.display = "";
+    const lab = campo ? campo.querySelector('label[for="fEmail"]') : null;
+    if (lab && !/opcional/i.test(lab.textContent)) lab.textContent = "Correo (opcional, para tu comprobante)";
   }
 }
 
@@ -2414,12 +2429,15 @@ function validarCheckout(){
   qsa(".ffield").forEach(f => f.classList.remove("error"));
   if (!qs("#fNombre").value.trim()){ marcarError("fNombre"); ok = false; }
   if (!qs("#fTelefono").value.trim()){ marcarError("fTelefono"); ok = false; }
-  /* 2A — email obligatorio para todos (invitados y registrados), con formato válido */
-  var _email = qs("#fEmail") ? qs("#fEmail").value.trim() : "";
-  if (!_email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(_email)){
-    marcarError("fEmail");
-    if (_email) toast("Revisa el formato del correo electrónico");
-    ok = false;
+  /* P27 — el correo solo se pide (opcional) a invitados de retail/boutique */
+  var _email = (pideCorreoCheckout() && qs("#fEmail")) ? qs("#fEmail").value.trim() : "";
+  if (_email){
+    var _sug = correoSugerido(_email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(_email)){
+      marcarError("fEmail"); toast("Revisa el formato del correo, o déjalo vacío"); ok = false;
+    } else if (_sug){
+      marcarError("fEmail"); toast("¿Quisiste decir " + _sug + "? Corrige el correo"); ok = false;
+    }
   }
   if (tipoEntrega === "delivery" && !qs("#fDireccion").value.trim()){ marcarError("fDireccion"); ok = false; }
   /* Solo exigir comuna si hay zonas configuradas Y el campo es visible */
@@ -2440,7 +2458,7 @@ function datosCliente(){
   return {
     nombre:      qs("#fNombre").value.trim(),
     telefono:    qs("#fTelefono").value.trim(),
-    email:       qs("#fEmail") ? qs("#fEmail").value.trim() : "",
+    email:       (clienteUser && clienteUser.email) ? clienteUser.email : ((pideCorreoCheckout() && qs("#fEmail")) ? qs("#fEmail").value.trim() : ""),
     direccion:   tipoEntrega === "delivery" ? dirCompletaCheckout() : "",
     comuna:      tipoEntrega === "delivery" ? comunaSeleccionada(qs("#fComuna")) : "",
     local:       tipoEntrega === "retiro" ? (qs("#selLocal").selectedOptions[0]?.textContent || "") : "",

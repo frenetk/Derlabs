@@ -53,7 +53,13 @@ export async function enviarCorreosPedido(db, env, storeId, ped, origin, opts){
     const resend = new Resend(key);
     const urlTienda = (config.url || origin || "").replace(/\/+$/, "");
 
-    if (emailOk(cl.email) && !opts.soloVendedor){
+    /* P27 — al cliente solo se le escribe si compró con su cuenta (correo
+       verificado por Google) o si la tienda no es de comida. Un invitado en
+       tienda de comida no recibe correo: evita rebotes por direcciones mal
+       escritas. El aviso al dueño de la tienda se envía siempre. */
+    const esComida = config.plantilla !== "boutique" && config.rubro !== "retail";
+    const conCuenta = !!(ped.uid || cl.uid);
+    if (emailOk(cl.email) && !opts.soloVendedor && (conCuenta || !esComida)){
       try {
         const r = await resend.emails.send({
           from, to: String(cl.email).trim(),

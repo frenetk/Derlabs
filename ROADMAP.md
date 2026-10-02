@@ -403,3 +403,13 @@ plataforma de roofburger.cl): portada con corte diagonal, splash con el
 logo sobre la tienda oscurecida, hoja de producto con grupos
 Requerido/Opcional y barra "Agregar $X" fija abajo. Ante la duda en un
 diseño nuevo, replicar ese estilo.
+
+## 14. Correo en el checkout (P27) — ✅ hecho
+
+- Con cuenta Google: no se pide; se usa el de la cuenta (verificado).
+- Invitado en tienda de comida: no se pide y no se le envía correo.
+- Invitado en retail/boutique: opcional, con aviso de errores de tipeo
+  comunes (gmial.com, hotmail.con, …).
+- `enviarEmails.js` aplica la misma regla en el servidor; el aviso al dueño
+  se envía siempre. Motivo: evitar rebotes que dañan la reputación del
+  dominio de envío.
