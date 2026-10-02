@@ -6574,7 +6574,7 @@ function ocultarSplash(){
   if (!s) return;
   /* Con logo: se muestra al menos un instante desde que abrió la página,
      para que se vea como presentación y no como un parpadeo. */
-  var falta = s.classList.contains("con-logo") ? 650 - (window.performance ? performance.now() : 9999) : 0;
+  var falta = s.classList.contains("con-logo") ? 700 - (window.performance ? performance.now() : 9999) : 0;
   if (falta > 0) setTimeout(function(){ s.classList.add("oculto"); }, falta);
   else s.classList.add("oculto");
 }
@@ -6757,7 +6757,14 @@ async function boot(){
   detectarRetornoPago();
   router();
   renderAll();
-  if (window._dlDesdeCache) ocultarSplash();
+  /* Ya está pintada la tienda real: el splash pasa a transparente (logo
+     sobre la tienda) y se retira. Sin datos reales todavía, queda blanco
+     hasta que cargarFirebase() termine. */
+  if (window._dlDesdeCache){
+    var _sp = document.getElementById("splashScreen");
+    if (_sp && _sp.classList.contains("con-logo")){ _sp.classList.add("sobre-tienda"); setTimeout(ocultarSplash, 520); }
+    else ocultarSplash();
+  }
   cargarFirebase();
   try { escucharPedidos(); } catch(e){ console.warn(e); }
   try { initCuenta(); } catch(e){ console.warn(e); }
@@ -8244,9 +8251,18 @@ function _v26Clave(){ return "dl_tienda_v1_" + STORE_ID; }
 function v26Hidratar(){
   if (DEMO || snapshotData) return;
   var c = null;
-  try { c = JSON.parse(localStorage.getItem(_v26Clave()) || "null"); } catch(e){ c = null; }
-  if (!c || !c.config || !Array.isArray(c.productos) || !c.productos.length) return;
-  if (Date.now() - (Number(c.t) || 0) > 7 * 864e5) return;
+  /* 1º: los datos que el servidor incrustó en la página (recientes) */
+  try {
+    var el = document.getElementById("dl-datos");
+    var inj = el ? JSON.parse(el.textContent) : null;
+    if (inj && inj.host === location.hostname && inj.storeId === STORE_ID && inj.config && Array.isArray(inj.productos) && inj.productos.length) c = inj;
+  } catch(e){ c = null; }
+  /* 2º: la copia guardada en este teléfono */
+  if (!c){
+    try { c = JSON.parse(localStorage.getItem(_v26Clave()) || "null"); } catch(e){ c = null; }
+    if (!c || !c.config || !Array.isArray(c.productos) || !c.productos.length) return;
+    if (Date.now() - (Number(c.t) || 0) > 7 * 864e5) return;
+  }
   state.config    = Object.assign({}, DEMO_DATA.config, c.config);
   state.productos = normalizarOrden(c.productos);
   state.cupones   = Array.isArray(c.cupones) ? c.cupones : [];

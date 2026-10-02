@@ -567,19 +567,22 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
   transition:opacity .6s ease .1s,visibility .6s ease .1s;
 }
 #splashScreen.oculto{opacity:0;visibility:hidden;pointer-events:none}
-/* Splash con logo (estilo Ágil / Roof Burger): la tienda se ve detrás,
-   oscurecida, con el logo grande al centro. El servidor agrega la clase
-   .con-logo cuando la tienda tiene logo; sin logo queda el splash blanco. */
-#splashScreen.con-logo{background:rgba(18,18,18,.46);transition:opacity .35s ease,visibility .35s ease}
+/* Splash con logo (estilo Ágil / Roof Burger). El servidor agrega .con-logo
+   cuando la tienda tiene logo. Parte con fondo blanco y el logo grande; la
+   página le agrega .sobre-tienda cuando lo de atrás YA es la tienda real, y
+   recién ahí el fondo pasa a transparente oscurecido. Así nunca se ve la
+   página de muestra detrás. */
+#splashScreen.con-logo{transition:background-color .3s ease,opacity .35s ease,visibility .35s ease}
 #splashScreen.con-logo .splash-titulo,
 #splashScreen.con-logo .splash-subtitulo{display:none}
 #splashScreen.con-logo .splash-icon{
   width:min(64vw,300px);max-width:none;height:auto;max-height:38vh;margin-bottom:22px;
-  mix-blend-mode:normal;opacity:1;
-  filter:drop-shadow(0 2px 16px rgba(255,255,255,.35));
+  mix-blend-mode:normal;opacity:1;border-radius:14px;
   animation:splashLogoIn .45s ease-out both, splashLogoPulso 1.8s ease-in-out .45s infinite;
 }
-#splashScreen.con-logo .splash-dots span{background:#fff;opacity:.9}
+#splashScreen.con-logo.sobre-tienda{background-color:rgba(18,18,18,.46)}
+#splashScreen.con-logo.sobre-tienda .splash-icon{filter:drop-shadow(0 2px 16px rgba(255,255,255,.3))}
+#splashScreen.con-logo.sobre-tienda .splash-dots span{background:#fff;opacity:.9}
 @keyframes splashLogoIn{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
 @keyframes splashLogoPulso{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 /* Overlay oscuro — se activa solo cuando el splash usa una foto real
@@ -2808,6 +2811,50 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
     <div class="splash-dots"><span></span><span></span><span></span></div>
   </div>
 </div>
+<script>
+/* Logo del splash: si viene con fondo blanco, se le quita (solo el fondo
+   que toca los bordes; lo blanco de adentro del logo se conserva). */
+(function(){
+  try {
+    var sp = document.getElementById("splashScreen"), im = sp && sp.querySelector(".splash-icon");
+    if (!sp || !im || sp.className.indexOf("con-logo") < 0) return;
+    function proc(){
+      try {
+        var w = im.naturalWidth, h = im.naturalHeight; if (!w || !h) return;
+        var e = Math.min(1, 640 / Math.max(w, h)), cw = Math.max(1, Math.round(w * e)), ch = Math.max(1, Math.round(h * e));
+        var c = document.createElement("canvas"); c.width = cw; c.height = ch;
+        var x = c.getContext("2d"); x.drawImage(im, 0, 0, cw, ch);
+        var d = x.getImageData(0, 0, cw, ch), p = d.data;
+        var esq = [0, cw - 1, (ch - 1) * cw, ch * cw - 1];
+        for (var k = 0; k < 4; k++){ var o = esq[k] * 4; if (p[o + 3] < 250 || p[o] < 236 || p[o + 1] < 236 || p[o + 2] < 236) return; }
+        var fondo = function(i){ var o = i * 4; return p[o + 3] > 200 && p[o] > 228 && p[o + 1] > 228 && p[o + 2] > 228; };
+        var vis = new Uint8Array(cw * ch), pila = [], i, y, xx;
+        for (xx = 0; xx < cw; xx++){ pila.push(xx, (ch - 1) * cw + xx); }
+        for (y = 0; y < ch; y++){ pila.push(y * cw, y * cw + cw - 1); }
+        while (pila.length){
+          i = pila.pop(); if (vis[i] || !fondo(i)) continue;
+          vis[i] = 1; p[i * 4 + 3] = 0;
+          var px = i % cw, py = (i - px) / cw;
+          if (px > 0) pila.push(i - 1); if (px < cw - 1) pila.push(i + 1);
+          if (py > 0) pila.push(i - cw); if (py < ch - 1) pila.push(i + cw);
+        }
+        /* suavizar el borde: los píxeles claros pegados al fondo quedan semitransparentes */
+        for (i = 0; i < cw * ch; i++){
+          if (vis[i]) continue;
+          var bx = i % cw, by = (i - bx) / cw;
+          if ((bx > 0 && vis[i - 1]) || (bx < cw - 1 && vis[i + 1]) || (by > 0 && vis[i - cw]) || (by < ch - 1 && vis[i + cw])){
+            var q = i * 4, claro = Math.min(p[q], p[q + 1], p[q + 2]);
+            if (claro > 150) p[q + 3] = Math.round(p[q + 3] * (255 - claro) / 105);
+          }
+        }
+        x.putImageData(d, 0, 0);
+        im.onload = null; im.src = c.toDataURL("image/png");
+      } catch(err){}
+    }
+    if (im.complete && im.naturalWidth) proc(); else im.onload = proc;
+  } catch(err){}
+})();
+</script>
 
 <div id="toast" role="status"></div>
 

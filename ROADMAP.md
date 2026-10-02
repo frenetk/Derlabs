@@ -375,10 +375,19 @@ Webpay Plus directo (para tiendas que ya tienen convenio con Transbank):
   color; se ahorra la consulta a "dominios". Copia local de la tienda en
   `localStorage` (`dl_tienda_v1_<storeId>`): en la segunda visita se pinta al
   instante y Firestore la actualiza por detrás.
-- Splash estilo Ágil / Roof Burger: la tienda se ve detrás, oscurecida, con
-  el logo grande al centro (`#splashScreen.con-logo`). El Worker inyecta el
-  logo (`/splash-logo`, desde `config.logoBase64`) y la clase. Sin logo queda
-  el splash blanco con el ícono genérico.
+- La tienda ya no espera a Firebase para pintarse: el Worker incrusta
+  config, productos, cupones y locales en el HTML (`<script id="dl-datos">`,
+  caché de 60 s) y `v26Hidratar()` los usa al arrancar. Las fotos guardadas
+  como data: en Firestore se sirven como imágenes normales en `/timg/<c|p|l>/
+  <id>/<campo>` (caché de 7 días). Firebase se conecta después y deja todo al
+  día. Si el Worker no puede incrustar los datos, se usa la copia local; si
+  tampoco hay, el splash queda blanco hasta que Firebase responda.
+- Splash estilo Ágil / Roof Burger (`#splashScreen.con-logo`): parte blanco
+  con el logo grande; cuando la tienda real ya está pintada pasa a
+  transparente oscurecido (`.sobre-tienda`) y se retira. Nunca se ve la
+  página de muestra detrás. Al logo se le quita el fondo blanco
+  automáticamente (script junto al splash en index.html). Sin logo queda el
+  splash blanco con el ícono genérico.
 - "Club <nombre>" en Mi cuenta sale del nombre de la tienda (Worker + app.js).
 - Términos del servicio definitivos (CONTRATO_VERSION = 2: cada dueño los
   acepta de nuevo al entrar al panel). Pendiente: revisión de un abogado y

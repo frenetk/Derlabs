@@ -120,6 +120,91 @@ async function leerConfigTenant(hostname, env, ctx) {
   }
 }
 
+/* ════════════════════════════════════════════════════════════════
+   DATOS DE LA TIENDA DENTRO DE LA PÁGINA (P26c)
+   Para que la tienda se pinte completa sin esperar a Firebase: se leen
+   config, productos, cupones y locales, y se incrustan en el HTML. Las
+   fotos (guardadas como data: en Firestore) NO se incrustan: se cambian
+   por una dirección /timg/... que este mismo Worker sirve como imagen
+   normal y que el navegador guarda en caché.
+   Firebase se conecta igual después y deja todo al día.
+   ════════════════════════════════════════════════════════════════ */
+function _vImg(s){ return s.length + "-" + s.slice(-10).replace(/[^A-Za-z0-9]/g, ""); }
+function _aliviar(obj, tipo, id){
+  const out = {};
+  Object.keys(obj || {}).forEach(function(k){
+    const v = obj[k];
+    if (typeof v === "string" && v.length > 1500 && v.indexOf("data:image/") === 0 && /^[A-Za-z0-9_]{1,40}$/.test(k)) {
+      out[k] = "/timg/" + tipo + "/" + encodeURIComponent(id) + "/" + k + "?v=" + _vImg(v);
+    } else if (v && typeof v === "object") {
+      /* fotos dentro de listas (ej. banners): no se incrustan; llegan con Firebase */
+      out[k] = JSON.parse(JSON.stringify(v, function(_k, x){ return (typeof x === "string" && x.length > 1500 && x.indexOf("data:") === 0) ? "" : x; }));
+    } else out[k] = v;
+  });
+  return out;
+}
+async function leerDatosTienda(storeId, hostname, env, ctx){
+  try {
+    const cacheKey = new Request("https://cache.local/datos1/" + hostname + "/" + storeId);
+    const cache = caches.default;
+    const cached = await cache.match(cacheKey);
+    if (cached) return await cached.text();
+
+    const db = getDb(env), base = "tiendas/" + storeId;
+    const [cf, pr, cu, lo] = await Promise.all([
+      db.doc(base + "/config/general").get(),
+      db.collection(base + "/productos").get(),
+      db.collection(base + "/cupones").get(),
+      db.collection(base + "/locales").get()
+    ]);
+    if (!cf.exists) return null;
+    const lista = function(snap, tipo){ return (snap.docs || []).map(function(d){ return _aliviar(Object.assign({ id: d.id }, d.data()), tipo, d.id); }); };
+    const datos = {
+      host: hostname, storeId: storeId, t: Date.now(),
+      config: _aliviar(cf.data(), "c", "general"),
+      productos: lista(pr, "p"), cupones: lista(cu, "u"), locales: lista(lo, "l")
+    };
+    if (!datos.productos.length) return null;          /* tienda recién creada: que la arme la página */
+    const texto = JSON.stringify(datos).replace(/</g, "\\u003c");
+    if (texto.length > 450000) return null;            /* demasiado grande para incrustar */
+    ctx.waitUntil(cache.put(cacheKey, new Response(texto, { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=60" } })));
+    return texto;
+  } catch(e) {
+    console.error("leerDatosTienda:", e.message);
+    return null;
+  }
+}
+/* GET /timg/<c|p|l>/<id>/<campo> — una foto de la tienda como imagen normal */
+async function servirImagenTienda(request, url, env, ctx){
+  const no = function(){ return new Response("No encontrado", { status: 404 }); };
+  try {
+    const m = /^\/timg\/([cpl])\/([^\/]{1,80})\/([A-Za-z0-9_]{1,40})$/.exec(url.pathname);
+    if (!m) return no();
+    const cacheKey = new Request("https://cache.local/timg1/" + url.hostname + url.pathname + url.search);
+    const cache = caches.default;
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+    const cfg = await leerConfigTenant(url.hostname, env, ctx);
+    const storeId = cfg && cfg.dom && cfg.dom.storeId;
+    if (!storeId) return no();
+    const id = decodeURIComponent(m[2]);
+    if (!/^[A-Za-z0-9_.-]{1,80}$/.test(id)) return no();
+    const ruta = "tiendas/" + storeId + (m[1] === "c" ? "/config/general" : m[1] === "p" ? "/productos/" + id : "/locales/" + id);
+    const doc = await getDb(env).doc(ruta).get();
+    const valor = doc.exists ? doc.data()[m[3]] : null;
+    const d = typeof valor === "string" ? /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(valor) : null;
+    if (!d) return no();
+    const bin = atob(d[2]); const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const resp = new Response(bytes, { headers: { "Content-Type": d[1], "Cache-Control": "public, max-age=604800" } });
+    ctx.waitUntil(cache.put(cacheKey, resp.clone()));
+    return resp;
+  } catch(e) {
+    console.error("timg:", e.message);
+    return no();
+  }
+}
+
 /* Plantilla de la tienda: config.plantilla manda ("boutique"); si no, el rubro */
 function archivoPlantilla(cfg){
   if (cfg && cfg.plantilla === "boutique") return "/index-boutique.html";
@@ -255,6 +340,9 @@ export default {
       return manifestTienda(request, env);
     }
 
+    /* ── Fotos de la tienda como imágenes normales (ver leerDatosTienda) ── */
+    if (url.pathname.startsWith("/timg/")) return servirImagenTienda(request, url, env, ctx);
+
     /* ── Logo de la tienda para el splash (se cachea 1 día en el navegador) ── */
     if (url.pathname === "/splash-logo") {
       try {
@@ -357,7 +445,15 @@ export default {
         urlIndex.pathname = archivoTpl;
         const respuesta = await env.ASSETS.fetch(new Request(urlIndex, request));
         const html = await respuesta.text();
-        const htmlInyectado = await inyectarNombreReal(html, url.hostname, env, ctx, cfgTpl);
+        let htmlInyectado = await inyectarNombreReal(html, url.hostname, env, ctx, cfgTpl);
+        /* Datos de la tienda dentro de la página (solo plantilla principal) */
+        if (archivoTpl === "/index.html" && cfgTpl && cfgTpl.dom && cfgTpl.dom.storeId) {
+          const datosTxt = await leerDatosTienda(cfgTpl.dom.storeId, url.hostname, env, ctx);
+          const iHd = htmlInyectado.indexOf("</head>");
+          if (datosTxt && iHd > -1) {
+            htmlInyectado = htmlInyectado.slice(0, iHd) + '<script type="application/json" id="dl-datos">' + datosTxt + "</script>" + htmlInyectado.slice(iHd);
+          }
+        }
         return new Response(htmlInyectado, {
           status: respuesta.status,
           headers: {
