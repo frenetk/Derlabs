@@ -813,8 +813,8 @@ function actualizarFaviconConConfig(){
 
 let _cargaFirebaseLista = false;
 async function cargarFirebase(){
-  /* Mostrar skeletons mientras carga Firestore */
-  mostrarSkeletons();
+  /* Mostrar skeletons mientras carga Firestore (salvo que ya se pintó la copia local) */
+  if (!window._dlDesdeCache) mostrarSkeletons();
   const conSesion = _haySesionDevmode();
   try {
     const [cf, pr, cu, lo] = await Promise.all([
@@ -845,15 +845,16 @@ async function cargarFirebase(){
     renderAll();
     /* Ocultar splash cuando Firebase terminó de cargar el nombre real */
     ocultarSplash();
+    v26GuardarCache();
   } catch(e){
     console.error("Error leyendo Firestore:", e);
     toast("Error al conectar con Firebase");
     ocultarSplash(); /* Ocultar también si hay error para no quedar bloqueado */
   }
-  col("config").doc("general").onSnapshot(d => { if (d.exists){ state.config = Object.assign({}, DEMO_DATA.config, d.data()); renderAll(); } });
-  col("productos").onSnapshot(s => { state.productos = normalizarOrden(mapDocs(s)); renderAll(); });
-  col("cupones").onSnapshot(s => { state.cupones = mapDocs(s); renderAll(); });
-  col("locales").onSnapshot(s => { state.locales = mapDocs(s); renderAll(); });
+  col("config").doc("general").onSnapshot(d => { if (d.exists){ state.config = Object.assign({}, DEMO_DATA.config, d.data()); v26RenderPronto(); } });
+  col("productos").onSnapshot(s => { state.productos = normalizarOrden(mapDocs(s)); v26RenderPronto(); });
+  col("cupones").onSnapshot(s => { state.cupones = mapDocs(s); v26RenderPronto(); });
+  col("locales").onSnapshot(s => { state.locales = mapDocs(s); v26RenderPronto(); });
   /* dispositivos y config/privado se suscriben desde cargarConfigPrivada(),
      solo cuando hay sesión devmode — ver comentario al inicio del bloque. */
 }
@@ -1045,8 +1046,9 @@ function renderAll(){
 
 function renderNombre(){
   /* Mientras Firestore no responde, no pisar el nombre real (ya viene en el HTML) con el de muestra */
-  if (db && !_cargaFirebaseLista) return;
+  if (db && !_cargaFirebaseLista && !window._dlDesdeCache) return;
   const n = state.config.nombre || "TEST BURGERS";
+  const _club = qs("#clubTitulo"); if (_club) _club.textContent = "Club " + n;
   const logo = state.config.logoBase64;
   const imgEl = qs("#logoImg");
   const txtEl = qs("#logoTexto");
@@ -3404,7 +3406,7 @@ function tieneAccesoDevmode(){
    contrato real antes de usar esto con un cliente real; esto solo
    resuelve el mecanismo (bloquear, registrar quién/cuándo/qué
    versión), no reemplaza la revisión legal del contenido. */
-const CONTRATO_VERSION = 1;
+const CONTRATO_VERSION = 2;
 async function yaAceptoContrato(uid){
   try {
     const doc = await db.doc("tiendas/" + STORE_ID + "/contratos/" + uid).get();
@@ -4854,9 +4856,17 @@ async function _commitPending(){
   const btn = qs("#btnSave");
   if (btn){ btn.disabled = true; btn.textContent = "Guardando…"; }
   try {
-    for (const ch of lista){
-      await col(ch.col).doc(ch.doc).set({ [ch.field]: ch.value }, { merge:true });
-    }
+    /* Un solo viaje: los cambios se agrupan por documento y se envían
+       juntos (antes era una escritura por campo, una tras otra). */
+    const porDoc = {};
+    lista.forEach(function(ch){
+      const k = ch.col + "/" + ch.doc;
+      if (!porDoc[k]) porDoc[k] = { col: ch.col, doc: ch.doc, datos: {} };
+      porDoc[k].datos[ch.field] = ch.value;
+    });
+    const lote = db.batch();
+    Object.keys(porDoc).forEach(function(k){ lote.set(col(porDoc[k].col).doc(porDoc[k].doc), porDoc[k].datos, { merge:true }); });
+    await lote.commit();
     _pendingChanges = [];
     _actualizarPendingBar();
     if (btn){ btn.disabled = false; btn.textContent = "Guardar"; }
@@ -6561,7 +6571,12 @@ function initCkResumen(){
 /* ═══ SPLASH SCREEN ═══ */
 function ocultarSplash(){
   const s = document.getElementById("splashScreen");
-  if (s) s.classList.add("oculto");
+  if (!s) return;
+  /* Con logo: se muestra al menos un instante desde que abrió la página,
+     para que se vea como presentación y no como un parpadeo. */
+  var falta = s.classList.contains("con-logo") ? 650 - (window.performance ? performance.now() : 9999) : 0;
+  if (falta > 0) setTimeout(function(){ s.classList.add("oculto"); }, falta);
+  else s.classList.add("oculto");
 }
 
 /* Protección básica de imágenes: sin "Guardar imagen" al mantener presionado,
@@ -6641,10 +6656,19 @@ async function boot(){
      es intencional: nunca debe romperse el sitio actual por un
      dominio nuevo mal configurado o por un fallo de red puntual. */
   try {
-    const domDoc = await db.collection("dominios").doc(location.hostname).get();
+    /* Deja que termine de evaluarse todo app.js antes de seguir (los módulos
+       del final del archivo todavía no existen en este punto). */
+    await null;
+    /* P26: el servidor ya inyecta la tienda de este dominio (window.__DL_DOM);
+       solo si no viene se consulta "dominios" (un viaje menos al arrancar). */
+    const _inj = window.__DL_DOM;
+    let _dom = (_inj && _inj.host === location.hostname && _inj.dom && _inj.dom.storeId) ? _inj.dom : null;
+    if (!_dom){
+      const domDoc = await db.collection("dominios").doc(location.hostname).get();
+      _dom = domDoc.exists ? domDoc.data() : null;
+    }
     /* Con plantilla (ej. "retail"), el mismo dominio puede apuntar a otra
        tienda con el campo storeId_retail; si no existe, se usa storeId. */
-    const _dom = domDoc.exists ? domDoc.data() : null;
     const _sid = _dom && ((SKIN.plantilla && _dom["storeId_" + SKIN.plantilla]) || _dom.storeId);
     if (_sid) {
       STORE_ID = _sid;
@@ -6729,9 +6753,11 @@ async function boot(){
   });
   if (snapshotData) estadoDesdeSnapshot(snapshotData);
   /* Detectar retorno de MercadoPago DESPUÉS de tener db (finaliza el pedido) */
+  try { v26Hidratar(); } catch(e){ console.warn("copia local:", e); }
   detectarRetornoPago();
   router();
   renderAll();
+  if (window._dlDesdeCache) ocultarSplash();
   cargarFirebase();
   try { escucharPedidos(); } catch(e){ console.warn(e); }
   try { initCuenta(); } catch(e){ console.warn(e); }
@@ -8193,3 +8219,165 @@ function v25Restaurar(){
   if (p){ abrirDetProducto(p.id); return; }
   if (state.productos.length || !id) irPagina("inicio");
 }
+
+/* ════════════════════════════════════════════════════════════════
+   P26 — VELOCIDAD + PANEL ORDENADO
+   · v26RenderPronto: las 4 escuchas de Firestore redibujan una sola
+     vez (antes, una vez cada una).
+   · Copia local de la tienda (localStorage): en la segunda visita la
+     tienda se pinta al instante y Firestore la actualiza por detrás.
+     Los precios que se cobran siempre los valida el servidor.
+   · Panel: pantalla de inicio por grupos en vez de 13 pestañas en fila.
+     Las secciones y sus funciones son las mismas de siempre.
+   ════════════════════════════════════════════════════════════════ */
+var _v26T = 0, _v26TC = 0;
+function v26RenderPronto(){
+  if (_v26T) return;
+  _v26T = setTimeout(function(){
+    _v26T = 0;
+    renderAll();
+    clearTimeout(_v26TC); _v26TC = setTimeout(v26GuardarCache, 2500);
+  }, 40);
+}
+
+function _v26Clave(){ return "dl_tienda_v1_" + STORE_ID; }
+function v26Hidratar(){
+  if (DEMO || snapshotData) return;
+  var c = null;
+  try { c = JSON.parse(localStorage.getItem(_v26Clave()) || "null"); } catch(e){ c = null; }
+  if (!c || !c.config || !Array.isArray(c.productos) || !c.productos.length) return;
+  if (Date.now() - (Number(c.t) || 0) > 7 * 864e5) return;
+  state.config    = Object.assign({}, DEMO_DATA.config, c.config);
+  state.productos = normalizarOrden(c.productos);
+  state.cupones   = Array.isArray(c.cupones) ? c.cupones : [];
+  state.locales   = Array.isArray(c.locales) ? c.locales : [];
+  if (state.config.colorPrimario) document.documentElement.style.setProperty("--splash-color", state.config.colorPrimario);
+  window._dlDesdeCache = true;
+}
+function v26GuardarCache(){
+  if (DEMO || !_cargaFirebaseLista || !state.productos.length) return;
+  var base = { t: Date.now(), config: state.config, cupones: state.cupones, locales: state.locales };
+  var intentos = [
+    function(){ return state.productos; },
+    /* si no cabe: sin las fotos de los productos (llegan con Firestore un momento después) */
+    function(){ return state.productos.map(function(p){ var q = Object.assign({}, p); if (String(q.imagen || "").indexOf("data:") === 0) q.imagen = ""; return q; }); }
+  ];
+  for (var i = 0; i < intentos.length; i++){
+    try { localStorage.setItem(_v26Clave(), JSON.stringify(Object.assign({ productos: intentos[i]() }, base))); return; }
+    catch(e){ /* sin espacio: probar la versión liviana */ }
+  }
+  try { localStorage.removeItem(_v26Clave()); } catch(e){}
+}
+
+/* ─────────── Panel: inicio por grupos ─────────── */
+var V26_GRUPOS = [
+  { t: "Ventas", items: [
+    ["pedidos", "🛍", "Pedidos", "Pedidos recientes y su estado"],
+    ["finanzas", "💰", "Finanzas", "Ganancias y ventas por día"],
+    ["inventario", "📦", "Inventario", "Stock y alertas"] ] },
+  { t: "Catálogo", items: [
+    ["productos", "🍔", "Productos", "Precios, fotos, extras y armado"],
+    ["promos", "📢", "Banners", "Banners promocionales del inicio"],
+    ["cupones", "🎟", "Cupones", "Códigos de descuento"] ] },
+  { t: "Entrega y cobro", items: [
+    ["zonas", "📍", "Zonas de despacho", "Dónde repartes y cuánto cobras"],
+    ["envio", "🛵", "Entrega y mensajes", "Delivery, retiro, WhatsApp y post-compra"],
+    ["pagos", "💳", "Pagos", "Mercado Pago y medios de pago"] ] },
+  { t: "Avisos", items: [
+    ["emails", "📧", "Correos", "Correos al cliente y al local"],
+    ["notif", "🔔", "Notificaciones", "Alertas de pedidos en tus dispositivos"] ] },
+  { t: "Mi tienda", items: [
+    ["tienda", "🏪", "Datos y estado", "Nombre, horario, abrir o cerrar"],
+    ["config", "🎨", "Apariencia y herramientas", "Colores, estilo de la tienda, dominio"] ] }
+];
+function _v26Titulo(pt){
+  for (var i = 0; i < V26_GRUPOS.length; i++) for (var j = 0; j < V26_GRUPOS[i].items.length; j++)
+    if (V26_GRUPOS[i].items[j][0] === pt) return V26_GRUPOS[i].items[j][2];
+  return "Panel";
+}
+function v26PanelHome(){
+  var p = qs("#adminPanel"), h = qs("#pHome"); if (!p || !h) return;
+  var abierta = state.config.abierto !== false;
+  h.innerHTML =
+    '<div class="pv-estado"><div><b>' + (abierta ? "Tienda abierta" : "Tienda cerrada") + '</b><small>' + (abierta ? "Estás recibiendo pedidos" : "Los clientes no pueden pedir") + '</small></div>' +
+      '<label class="switch"><input type="checkbox" id="pvAbierto"' + (abierta ? " checked" : "") + '><span class="slider"></span></label></div>' +
+    V26_GRUPOS.map(function(g){
+      var filas = g.items.filter(function(it){
+        var tab = qs('.ptab[data-pt="' + it[0] + '"]');
+        return tab && tab.style.display !== "none";
+      }).map(function(it){
+        var ico = (it[0] === "productos" && !(typeof _vtEsComida === "function" && _vtEsComida())) ? "🛒" : it[1];
+        return '<button type="button" class="pv-fila" data-pvir="' + it[0] + '"><span class="pv-ico">' + ico + '</span>' +
+          '<span class="pv-txt"><b>' + it[2] + '</b><small>' + it[3] + '</small></span><span class="pv-chev">›</span></button>';
+      }).join("");
+      return filas ? '<div class="pv-grupo"><h5>' + g.t + '</h5>' + filas + '</div>' : "";
+    }).join("");
+  p.classList.add("en-home");
+  var b = qs("#adminPanel .panel-body"); if (b) b.scrollTop = 0;
+  if (typeof aplicarIconosGlobal === "function") try { aplicarIconosGlobal(); } catch(e){}
+}
+function v26PanelIr(pt){
+  var tab = qs('.ptab[data-pt="' + pt + '"]'); if (!tab) return;
+  tab.click();
+}
+function v26PanelInit(){
+  var p = qs("#adminPanel"), body = p && p.querySelector(".panel-body");
+  if (!p || !body || qs("#pHome")) return;
+  var st = document.createElement("style");
+  st.textContent = [
+    "#adminPanel.v26 .ptabs{display:none!important}",
+    "#adminPanel.v26.en-home .psec{display:none!important}",
+    "#adminPanel.v26:not(.en-home) #pHome{display:none}",
+    "#adminPanel.v26.en-home #pNav{display:none}",
+    "#pNav{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--borde,#eee);flex-shrink:0}",
+    "#pNav button{border:0;background:var(--crema,#F5F5F5);border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;color:inherit}",
+    "#pNav b{font-size:15px;font-weight:900}",
+    ".pv-estado{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-radius:16px;background:var(--crema,#F7F5F3);margin-bottom:16px}",
+    ".pv-estado b{display:block;font-size:15px}.pv-estado small{display:block;font-size:12.5px;color:var(--muted,#666);margin-top:2px}",
+    ".pv-grupo{margin-bottom:18px}",
+    ".pv-grupo h5{margin:0 0 6px 4px;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted,#666);font-weight:900}",
+    ".pv-fila{display:flex;align-items:center;gap:12px;width:100%;padding:12px;margin:0 0 6px;border:1px solid var(--borde,#eee);border-radius:16px;background:#fff;font:inherit;color:inherit;text-align:left;cursor:pointer}",
+    ".pv-fila:active{background:var(--crema,#F7F5F3)}",
+    ".pv-ico{flex:none;width:40px;height:40px;border-radius:12px;background:var(--crema,#F7F5F3);display:flex;align-items:center;justify-content:center;font-size:19px}",
+    ".pv-txt{flex:1;min-width:0}.pv-txt b{display:block;font-size:14.5px;font-weight:800}",
+    ".pv-txt small{display:block;font-size:12.5px;color:var(--muted,#666);margin-top:1px}",
+    ".pv-chev{flex:none;font-size:22px;color:#B5B0AC;line-height:1}"
+  ].join("\n");
+  document.head.appendChild(st);
+  var nav = document.createElement("div"); nav.id = "pNav";
+  nav.innerHTML = '<button type="button" id="pVolver">‹ Panel</button><b id="pNavTit"></b>';
+  body.parentNode.insertBefore(nav, body);
+  var home = document.createElement("div"); home.id = "pHome";
+  body.insertBefore(home, body.firstChild);
+  p.classList.add("v26");
+
+  /* cualquier pestaña que se active (también las que abre el propio sistema) sale del inicio */
+  var ultClic = 0;
+  qsa(".ptab").forEach(function(t){
+    t.addEventListener("click", function(){
+      ultClic = Date.now();
+      p.classList.remove("en-home");
+      qs("#pNavTit").textContent = _v26Titulo(t.dataset.pt);
+      body.scrollTop = 0;
+    });
+  });
+  qs("#pVolver").addEventListener("click", v26PanelHome);
+  home.addEventListener("click", function(e){
+    var f = e.target.closest("[data-pvir]"); if (f) v26PanelIr(f.dataset.pvir);
+  });
+  home.addEventListener("change", function(e){
+    if (e.target.id !== "pvAbierto") return;
+    var v = e.target.checked;
+    Promise.resolve(saveConfig("abierto", v)).then(function(){ renderAll(); v26PanelHome(); });
+  });
+  /* cada vez que se abre el panel, parte en el inicio */
+  var estaba = p.classList.contains("open");
+  new MutationObserver(function(){
+    var ahora = p.classList.contains("open");
+    /* si el sistema abrió el panel directo en una sección (ej. aviso de pedido), se respeta */
+    if (ahora && !estaba && Date.now() - ultClic > 400) v26PanelHome();
+    estaba = ahora;
+  }).observe(p, { attributes: true, attributeFilter: ["class"] });
+  v26PanelHome();
+}
+try { v26PanelInit(); } catch(e){ console.warn("panel v26:", e); }

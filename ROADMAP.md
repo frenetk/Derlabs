@@ -366,3 +366,31 @@ Webpay Plus directo (para tiendas que ya tienen convenio con Transbank):
   validar por separado una integración propia como la nuestra.
 - Verificar rutas y versión de la API en transbankdevelopers.cl antes de
   programar (no se pudo leer la referencia oficial al investigar).
+
+## 13. Velocidad, splash y panel ordenado (P26) — ✅ hecho
+
+- Guardar del panel: un solo envío (batch) agrupado por documento, en vez de
+  una escritura por campo. Las escuchas de Firestore redibujan una vez.
+- Arranque: el Worker inyecta la tienda del dominio (`window.__DL_DOM`) y el
+  color; se ahorra la consulta a "dominios". Copia local de la tienda en
+  `localStorage` (`dl_tienda_v1_<storeId>`): en la segunda visita se pinta al
+  instante y Firestore la actualiza por detrás.
+- Splash estilo Ágil / Roof Burger: la tienda se ve detrás, oscurecida, con
+  el logo grande al centro (`#splashScreen.con-logo`). El Worker inyecta el
+  logo (`/splash-logo`, desde `config.logoBase64`) y la clase. Sin logo queda
+  el splash blanco con el ícono genérico.
+- "Club <nombre>" en Mi cuenta sale del nombre de la tienda (Worker + app.js).
+- Términos del servicio definitivos (CONTRATO_VERSION = 2: cada dueño los
+  acepta de nuevo al entrar al panel). Pendiente: revisión de un abogado y
+  agregar razón social y RUT de DerLabs.
+- Panel: inicio por grupos (Ventas, Catálogo, Entrega y cobro, Avisos, Mi
+  tienda) con interruptor Tienda abierta/cerrada. Las secciones son las
+  mismas. Pendiente: ordenar el interior de cada sección.
+
+## Referencia de diseño (pedido del dueño)
+
+La referencia visual y de flujo para las tiendas de comida es **Ágil** (la
+plataforma de roofburger.cl): portada con corte diagonal, splash con el
+logo sobre la tienda oscurecida, hoja de producto con grupos
+Requerido/Opcional y barra "Agregar $X" fija abajo. Ante la duda en un
+diseño nuevo, replicar ese estilo.

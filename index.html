@@ -6,6 +6,8 @@
 <meta name="color-scheme" content="only light">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>TEST BURGERS</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <meta name="description" content="Hamburguesería — pide online, junta puntos y canjea cupones.">
 <meta name="theme-color" content="#9B1B30">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -565,6 +567,21 @@ body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
   transition:opacity .6s ease .1s,visibility .6s ease .1s;
 }
 #splashScreen.oculto{opacity:0;visibility:hidden;pointer-events:none}
+/* Splash con logo (estilo Ágil / Roof Burger): la tienda se ve detrás,
+   oscurecida, con el logo grande al centro. El servidor agrega la clase
+   .con-logo cuando la tienda tiene logo; sin logo queda el splash blanco. */
+#splashScreen.con-logo{background:rgba(18,18,18,.46);transition:opacity .35s ease,visibility .35s ease}
+#splashScreen.con-logo .splash-titulo,
+#splashScreen.con-logo .splash-subtitulo{display:none}
+#splashScreen.con-logo .splash-icon{
+  width:min(64vw,300px);max-width:none;height:auto;max-height:38vh;margin-bottom:22px;
+  mix-blend-mode:normal;opacity:1;
+  filter:drop-shadow(0 2px 16px rgba(255,255,255,.35));
+  animation:splashLogoIn .45s ease-out both, splashLogoPulso 1.8s ease-in-out .45s infinite;
+}
+#splashScreen.con-logo .splash-dots span{background:#fff;opacity:.9}
+@keyframes splashLogoIn{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
+@keyframes splashLogoPulso{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 /* Overlay oscuro — se activa solo cuando el splash usa una foto real
    (ver actualizarSplashConConfig), para que el texto blanco siga
    siendo legible sin importar qué tan clara sea la imagen del
@@ -1433,7 +1450,7 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   position:relative;z-index:2;padding:0 24px;text-align:center;
 }
 .splash-icon{
-  width:110px;height:110px;object-fit:contain;
+  width:auto;max-width:220px;height:110px;object-fit:contain;
   margin-bottom:32px;
   animation:splashIconFloat 2.4s ease-in-out infinite;
   opacity:.95;
@@ -1997,7 +2014,7 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
              color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;
              margin:0 auto 14px;box-shadow:0 4px 16px rgba(212,160,23,.4)">👑</div>
         <h3 style="margin:0 0 4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
-             font-size:26px;letter-spacing:.5px;text-transform:uppercase">Club Test Burgers</h3>
+             font-size:26px;letter-spacing:.5px;text-transform:uppercase" id="clubTitulo">Club</h3>
         <p style="margin:0 0 18px;font-size:13.5px;color:var(--muted);font-weight:600;line-height:1.4">
           Acumula puntos con cada pedido y canjéalos por descuentos exclusivos.</p>
         <div style="background:var(--crema);border-radius:14px;padding:16px;margin-bottom:18px">
@@ -2196,22 +2213,35 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 <!-- Modal de aceptación de contrato — se muestra UNA VEZ, tras un login
      válido, antes de dejar entrar al devmode, si esa cuenta todavía no
      aceptó la versión vigente de CONTRATO_VERSION (ver más abajo en el
-     script). El TEXTO de acá es un placeholder — reemplazar por el
-     contrato real que arme el abogado antes de usar esto con un
-     cliente real; esta pantalla solo resuelve el mecanismo (bloquear
-     hasta aceptar, guardar quién/cuándo/qué versión), no el contenido
-     legal en sí. -->
+     script). Al cambiar el texto, subir CONTRATO_VERSION en app.js para
+     que cada dueño lo acepte de nuevo. Conviene que un abogado revise
+     el texto antes de cambios de fondo. -->
 <div class="overlay" id="contratoModal">
   <div class="modal-card" style="max-width:480px">
     <h3>📋 Términos del servicio</h3>
-    <div id="contratoTexto" style="max-height:280px;overflow-y:auto;text-align:left;font-size:13.5px;line-height:1.6;color:var(--texto);border:1px solid var(--borde);border-radius:12px;padding:14px;margin:14px 0;background:var(--crema)">
-      <p><b>⚠️ TEXTO DE EJEMPLO — reemplazar por el contrato real.</b></p>
-      <p>Esta plataforma (en adelante, "el proveedor") entrega a el/la usuario/a (en adelante, "el cliente") acceso a un sitio de comercio electrónico y, si corresponde, un nombre de dominio asociado, bajo la modalidad de arriendo/servicio.</p>
-      <p>El cliente declara conocer y aceptar que:</p>
-      <p>1. Es el único responsable del contenido que publique, los productos que ofrezca, y el cumplimiento de la normativa vigente aplicable a su actividad comercial.</p>
-      <p>2. El proveedor actúa únicamente como intermediario técnico, sin responsabilidad sobre las transacciones, productos o servicios ofrecidos por el cliente.</p>
-      <p>3. El proveedor se reserva el derecho de suspender el servicio ante incumplimiento de estos términos o de la normativa vigente.</p>
-      <p>[... resto del contrato real, provisto por el abogado ...]</p>
+    <p style="margin:6px 0 0;font-size:12.5px;color:var(--muted)">Léelos y acéptalos para administrar tu tienda.</p>
+    <div id="contratoTexto" style="max-height:46vh;overflow-y:auto;text-align:left;font-size:13.5px;line-height:1.6;color:var(--texto);border:1px solid var(--borde);border-radius:12px;padding:14px;margin:14px 0;background:var(--crema)">
+      <p><b>Términos y condiciones del servicio DerLabs</b><br>Versión 2 · vigente desde octubre de 2026</p>
+      <p><b>1. Quiénes somos y qué es este servicio.</b> DerLabs ("DerLabs", "nosotros") entrega una plataforma en línea para crear y administrar una tienda de comercio electrónico: catálogo, pedidos, panel de administración, herramientas de cobro y, cuando corresponde, un subdominio o la conexión de un dominio propio. Quien acepta estos términos ("el Comercio", "tú") es el titular de la tienda y contrata el servicio para su negocio.</p>
+      <p><b>2. Aceptación.</b> Al marcar la casilla y continuar declaras que leíste estos términos, que los aceptas y que tienes facultades para obligar al negocio que representas. Guardamos la fecha, la cuenta y la versión aceptada. Si no estás de acuerdo, no uses el servicio.</p>
+      <p><b>3. Tu cuenta.</b> Eres responsable de mantener en reserva tu correo y contraseña de administración y de todo lo que se haga con ellos. Avísanos de inmediato si crees que alguien más accedió a tu cuenta. Podemos pedirte verificar tu identidad antes de hacer cambios sensibles.</p>
+      <p><b>4. Plan y pago del servicio.</b> El servicio se presta contra el pago del plan contratado, en el valor y la periodicidad informados al contratar. Los precios pueden cambiar con aviso previo de al menos 30 días. Si un pago no se recibe en su fecha, podemos suspender la tienda hasta que se regularice; los pagos ya realizados no se devuelven por períodos usados.</p>
+      <p><b>5. Tu tienda es tu negocio.</b> Tú vendes; DerLabs solo entrega la herramienta. Eres el único responsable de:</p>
+      <p>a) los productos y servicios que ofreces, sus precios, stock, calidad, despacho, cambios y devoluciones;<br>
+      b) el contenido que publicas (textos, fotos, marcas, promociones), que debe ser verdadero y tuyo o estar autorizado;<br>
+      c) cumplir la ley que aplique a tu actividad: protección al consumidor, obligaciones tributarias y emisión de boletas o facturas, permisos sanitarios o municipales y cualquier otra autorización;<br>
+      d) atender a tus clientes y responder sus reclamos.</p>
+      <p><b>6. Cobros a tus clientes.</b> Los pagos de tus clientes se procesan por medio de los proveedores de pago que tú conectas a tu tienda (por ejemplo, Mercado Pago) y llegan directamente a tu cuenta con ese proveedor. DerLabs no recibe, retiene ni administra ese dinero y no es parte de esas transacciones. Las comisiones, contracargos, retenciones y condiciones de cada proveedor de pago son un asunto entre tú y ese proveedor.</p>
+      <p><b>7. Datos personales.</b> Los datos de tus clientes (nombre, teléfono, dirección, pedidos) son tuyos como responsable de ellos; DerLabs los trata por encargo tuyo y solo para operar el servicio. Debes informar a tus clientes cómo usas sus datos y usarlos únicamente para gestionar sus pedidos y la relación comercial con ellos, conforme a la legislación chilena sobre protección de datos personales. Aplicamos medidas razonables de seguridad y no vendemos esos datos.</p>
+      <p><b>8. Usos no permitidos.</b> No puedes usar la plataforma para vender productos o servicios ilegales o que requieran una autorización que no tienes, publicar contenido engañoso, ofensivo o que infrinja derechos de terceros, enviar comunicaciones no solicitadas, intentar acceder a tiendas o datos ajenos, ni interferir con el funcionamiento del servicio.</p>
+      <p><b>9. Dominio.</b> El subdominio que te entregamos pertenece a DerLabs y se asigna a tu tienda mientras el servicio esté vigente. Si conectas un dominio propio, ese dominio es tuyo: su registro, renovación y configuración ante el registrador son de tu cargo.</p>
+      <p><b>10. Disponibilidad y cambios.</b> Trabajamos para que el servicio esté disponible de forma continua, pero puede haber interrupciones por mantención, actualizaciones o fallas de terceros (alojamiento, redes, proveedores de pago, mensajería o mapas). Podemos mejorar, modificar o retirar funciones; si un cambio te afecta de manera importante, te avisaremos con anticipación razonable.</p>
+      <p><b>11. Propiedad intelectual.</b> La plataforma, su diseño, su código y la marca DerLabs son de DerLabs; te damos un derecho de uso no exclusivo e intransferible mientras dure el servicio. El contenido que subes es tuyo; nos autorizas a alojarlo y mostrarlo únicamente para operar tu tienda.</p>
+      <p><b>12. Suspensión y término.</b> Puedes dar de baja el servicio cuando quieras, avisándonos. Podemos suspender o terminar el servicio si no pagas, si incumples estos términos o la ley, o si tu tienda pone en riesgo a otros usuarios o a la plataforma. Al terminar, la tienda deja de estar disponible; puedes pedirnos una copia de tus productos y pedidos dentro de los 30 días siguientes, y después de ese plazo podemos eliminarlos.</p>
+      <p><b>13. Responsabilidad.</b> El servicio se entrega tal como está disponible. En la medida que la ley lo permita, DerLabs no responde por lucro cesante, ventas no realizadas, pérdida de datos causada por terceros ni por actos u omisiones del Comercio o de sus clientes, y su responsabilidad total queda limitada a lo que hayas pagado por el servicio en los 3 meses anteriores al hecho. Tú mantendrás indemne a DerLabs frente a reclamos de tus clientes o de terceros originados en tu actividad o tu contenido.</p>
+      <p><b>14. Cambios a estos términos.</b> Podemos actualizar estos términos. Cuando lo hagamos, te pediremos aceptarlos nuevamente al entrar a tu panel; si no los aceptas, puedes dar de baja el servicio.</p>
+      <p><b>15. Ley aplicable.</b> Estos términos se rigen por las leyes de la República de Chile. Cualquier diferencia se someterá a los tribunales ordinarios de justicia competentes.</p>
+      <p><b>16. Contacto.</b> Para consultas sobre el servicio o estos términos, escríbenos por los canales publicados en derlabs.cl.</p>
     </div>
     <label style="display:flex;align-items:flex-start;gap:8px;text-align:left;font-size:13px;font-weight:700;cursor:pointer">
       <input type="checkbox" id="contratoCheck" style="margin-top:3px">

@@ -78,7 +78,7 @@ const FUNCIONES = {
    ════════════════════════════════════════════════════════════════ */
 async function leerConfigTenant(hostname, env, ctx) {
   try {
-    const cacheKey = new Request("https://cache.local/tenant/" + hostname);
+    const cacheKey = new Request("https://cache.local/tenant2/" + hostname);
     const cache = caches.default;
     const cached = await cache.match(cacheKey);
     if (cached) return await cached.json();
@@ -86,8 +86,13 @@ async function leerConfigTenant(hostname, env, ctx) {
     const db = getDb(env);
     const domSnap = await db.collection("dominios").doc(hostname).get();
     if (!domSnap.exists) return null;
-    const storeId = domSnap.data().storeId;
+    const domData = domSnap.data() || {};
+    const storeId = domData.storeId;
     if (!storeId) return null;
+    /* Campos storeId / storeId_<plantilla> del dominio: se inyectan en el HTML
+       para que la tienda no tenga que consultarlos de nuevo al arrancar. */
+    const dom = {};
+    Object.keys(domData).forEach(function(k){ if (k === "storeId" || k.indexOf("storeId_") === 0) dom[k] = String(domData[k] || ""); });
 
     const cfgSnap = await db.collection("tiendas").doc(storeId)
       .collection("config").doc("general").get();
@@ -99,7 +104,9 @@ async function leerConfigTenant(hostname, env, ctx) {
       logoBase64: data.logoBase64 || "",
       rubro: data.rubro || "comida",
       plantilla: data.plantilla || "",
-      dominioPrincipal: data.dominioPrincipal || ""
+      dominioPrincipal: data.dominioPrincipal || "",
+      colorPrimario: data.colorPrimario || "",
+      dom: dom
     };
 
     const respCache = new Response(JSON.stringify(config), {
@@ -119,43 +126,9 @@ function archivoPlantilla(cfg){
   return (cfg && cfg.rubro === "retail") ? "/index-retail.html" : "/index.html";
 }
 
-async function inyectarNombreReal(html, hostname, env, ctx) {
+async function inyectarNombreReal(html, hostname, env, ctx, cfgYaLeida) {
   try {
-    /* Caché de 5 min para no golpear Firestore en cada visita */
-    const cacheKey = new Request("https://cache.local/tenant/" + hostname);
-    const cache = caches.default;
-    let config = null;
-
-    const cached = await cache.match(cacheKey);
-    if (cached) {
-      config = await cached.json();
-    } else {
-      /* Resolver storeId desde el hostname */
-      const db = getDb(env);
-      const domSnap = await db.collection("dominios").doc(hostname).get();
-      if (!domSnap.exists) return html; /* dominio no registrado — devolver HTML original */
-      const storeId = domSnap.data().storeId;
-      if (!storeId) return html;
-
-      /* Leer config/general de esa tienda */
-      const cfgSnap = await db.collection("tiendas").doc(storeId).collection("config").doc("general").get();
-      if (!cfgSnap.exists) return html;
-      const data = cfgSnap.data();
-
-      config = {
-        nombre: data.nombre || "",
-        logoBase64: data.logoBase64 || "",
-        rubro: data.rubro || "comida",
-        plantilla: data.plantilla || "",
-      dominioPrincipal: data.dominioPrincipal || ""
-      };
-
-      /* Guardar en caché del edge 5 min */
-      const respCache = new Response(JSON.stringify(config), {
-        headers: { "Content-Type": "application/json", "Cache-Control": "max-age=300" }
-      });
-      ctx.waitUntil(cache.put(cacheKey, respCache));
-    }
+    const config = cfgYaLeida || await leerConfigTenant(hostname, env, ctx);
 
     if (!config || !config.nombre) return html;
 
@@ -184,6 +157,28 @@ async function inyectarNombreReal(html, hostname, env, ctx) {
       /(<meta[^>]*property="og:title"[^>]*content=")[^"]*(")/,
       "$1" + nombreSeguro + "$2"
     );
+
+    /* 5. "Club <nombre>" en Mi cuenta */
+    html = html.replace(
+      /(<[^>]*id="clubTitulo"[^>]*>)[^<]*(<\/[^>]+>)/,
+      "$1Club " + nombreSeguro + "$2"
+    );
+
+    /* 6. Splash: logo propio de la tienda (transparente) en vez del ícono genérico */
+    if (config.logoBase64 && /^data:image\//.test(config.logoBase64)) {
+      const v = config.logoBase64.length + "-" + config.logoBase64.slice(-8).replace(/[^A-Za-z0-9]/g, "");
+      html = html.replace('src="/img-splash.png"', 'src="/splash-logo?v=' + v + '"');
+      html = html.replace('<div id="splashScreen">', '<div id="splashScreen" class="con-logo">');
+    }
+
+    /* 7. Tienda del dominio + color: la página arranca sin consultar "dominios" */
+    if (config.dom && config.dom.storeId) {
+      const inj = "<script>window.__DL_DOM=" + JSON.stringify({ host: hostname, dom: config.dom }).replace(/</g, "\\u003c") + ";"
+        + (/^#[0-9a-fA-F]{3,8}$/.test(config.colorPrimario || "") ? "document.documentElement.style.setProperty('--splash-color','" + config.colorPrimario + "');" : "")
+        + "</script>";
+      const iH = html.indexOf("</head>");
+      if (iH > -1) html = html.slice(0, iH) + inj + html.slice(iH);
+    }
 
     return html;
   } catch(e) {
@@ -258,6 +253,21 @@ export default {
     /* ── Ruta especial: /manifest.json ── */
     if (url.pathname === "/manifest.json") {
       return manifestTienda(request, env);
+    }
+
+    /* ── Logo de la tienda para el splash (se cachea 1 día en el navegador) ── */
+    if (url.pathname === "/splash-logo") {
+      try {
+        const cfgL = await leerConfigTenant(url.hostname, env, ctx);
+        const m = cfgL && /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(cfgL.logoBase64 || "");
+        if (m) {
+          const bin = atob(m[2]); const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return new Response(bytes, { headers: { "Content-Type": m[1], "Cache-Control": "public, max-age=86400" } });
+        }
+      } catch(e) { console.error("splash-logo:", e.message); }
+      const urlSp = new URL(request.url); urlSp.pathname = "/img-splash.png"; urlSp.search = "";
+      return env.ASSETS.fetch(new Request(urlSp, request));
     }
 
     /* ── www.dominio-del-cliente → dominio sin www (los de DerLabs se manejan aparte) ── */
@@ -347,7 +357,7 @@ export default {
         urlIndex.pathname = archivoTpl;
         const respuesta = await env.ASSETS.fetch(new Request(urlIndex, request));
         const html = await respuesta.text();
-        const htmlInyectado = await inyectarNombreReal(html, url.hostname, env, ctx);
+        const htmlInyectado = await inyectarNombreReal(html, url.hostname, env, ctx, cfgTpl);
         return new Response(htmlInyectado, {
           status: respuesta.status,
           headers: {
