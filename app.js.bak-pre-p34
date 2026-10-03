@@ -805,7 +805,7 @@ function actualizarFaviconConConfig(){
   /* Prioridad: el logo real que el cliente subió (guardado como
      logoBase64 al crear la tienda, ver crearTienda.js) > el emoji
      genérico del rubro como respaldo. */
-  const logoReal = state.config && (state.config.faviconBase64 || state.config.logoBase64);
+  const logoReal = state.config && state.config.logoBase64;
   if (logoReal) { aplicarFaviconDesdeURL(logoReal); return; }
   const rubroId = (state.config && (state.config.subrubro || state.config.rubro)) || SKIN.rubroPorDefecto || "hamburguesas";
   aplicarFavicon(rubroPorId(rubroId).ico);
@@ -3920,7 +3920,6 @@ async function confirmarImagen(){
     const u = qs("#imgUrl").value.trim();
     if (!u){ toast("Pega una URL de imagen"); return; }
     await guardarInline(c, d, f, u);
-    if (f === "logoBase64"){ await guardarInline(c, d, "faviconBase64", ""); actualizarFaviconConConfig(); }
     cerrarImgModal(); renderAll();
     toast("🖼 Imagen actualizada");
     return;
@@ -3947,8 +3946,6 @@ async function confirmarImagen(){
         /* Comprimir si es muy grande (max ~800px ancho) */
         const compressed = f === "logoBase64" ? await procesarLogo(base64url) : await comprimirImagen(base64url, 800, 0.82);
         await guardarInline(c, d, f, compressed);
-        /* el logo también es el ícono de la pestaña y del acceso directo */
-        if (f === "logoBase64"){ await guardarInline(c, d, "faviconBase64", await iconoDeLogo(compressed)); actualizarFaviconConConfig(); }
         cerrarImgModal(); renderAll();
         toast("🖼 Imagen guardada");
       } catch(e2){
@@ -4086,26 +4083,6 @@ function procesarLogo(dataURL){
       resolve(out);
     };
     img.onerror = function(){ reject(new Error("No se pudo cargar la imagen")); };
-    img.src = dataURL;
-  });
-}
-
-/* Ícono cuadrado a partir del logo (pestaña del navegador y acceso directo):
-   el logo completo, centrado sobre fondo transparente y sin deformarlo. */
-function iconoDeLogo(dataURL, lado){
-  return new Promise(function(resolve){
-    const img = new Image();
-    img.onload = function(){
-      try {
-        const L = lado || 256, c = document.createElement("canvas"); c.width = L; c.height = L;
-        const x = c.getContext("2d"); x.imageSmoothingQuality = "high";
-        const m = Math.round(L * 0.04), e = Math.min((L - 2*m) / img.width, (L - 2*m) / img.height);
-        const w = img.width * e, h = img.height * e;
-        x.drawImage(img, (L - w) / 2, (L - h) / 2, w, h);
-        resolve(c.toDataURL("image/png"));
-      } catch(err){ resolve(""); }
-    };
-    img.onerror = function(){ resolve(""); };
     img.src = dataURL;
   });
 }
@@ -6810,9 +6787,7 @@ async function boot(){
      storeId no lo revela), así que se usa el ícono neutro de "otro"
      como respaldo temporal. La Capa 2 (rubro real) se aplica en
      actualizarFaviconConConfig() dentro de cargarFirebase(). */
-  /* Si el servidor ya puso el ícono de la tienda (su logo), no se pisa con el genérico */
-  var _icoSrv = document.querySelector('link[rel="icon"]');
-  if (!(_icoSrv && /\/favicon\.png\?v=/.test(_icoSrv.getAttribute("href") || ""))) aplicarFavicon(rubroPorId(SKIN.rubroPorDefecto || "otro").ico);
+  aplicarFavicon(rubroPorId(SKIN.rubroPorDefecto || "otro").ico);
 
   /* App secundaria SOLO para verificar la cuenta de propietario en
      acciones sensibles (cupones, precios, caja) sin cerrar la sesión

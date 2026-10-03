@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Alta de tu tienda — DerLabs</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#14121F">
+<link rel="icon" href="/favicon-landing.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--
+  ALTA DE TIENDA — lo llena un negocio que YA contrató DerLabs.
+  DerLabs crea el alta en /altas.html y le manda este enlace: derlabs.cl/alta/<código>.
+  Aquí el negocio deja sus datos y sube su carta, fotos y logo. Todo se guarda en
+  /api/alta (cloudflare/functions/altas.js) a medida que avanza.
+  No confundir con formulario.html, que es el contacto ANTES de contratar.
+-->
+<style>
+:root{--tinta:#14121F;--gris:#55516A;--linea:#E7E4EF;--borde:#CFCADF;--suave:#F6F5FB;--morado:#4A3BC0;--verde:#12703A;--verde-suave:#E3F6EA;--rojo:#B3261E;--rojo-suave:#FCE8E6}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#fff;color:var(--tinta);font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;cursor:pointer;background:none;padding:0}
+input,textarea{font:inherit;color:inherit}
+h1,h2,p{margin:0}
+.pagina{max-width:560px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+.cab{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--linea)}
+.cab img{height:26px;width:auto;display:block}
+.cab span{font-size:13px;font-weight:600;color:var(--gris);padding-left:12px;border-left:1px solid #D9D5E6}
+.prog{padding:16px 20px 14px;border-bottom:1px solid var(--linea);position:sticky;top:0;background:#fff;z-index:5}
+.prog-f{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.prog-f b{flex:1;font-size:13px;font-weight:700;color:var(--gris)}
+.prog-e{font-size:13px;font-weight:600;color:var(--gris)}
+.prog-e.ok{color:var(--verde)}.prog-e.mal{color:var(--rojo)}
+.prog-b{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.prog-b i{height:5px;border-radius:999px;background:var(--linea)}
+.prog-b i.on{background:var(--tinta)}
+.cuerpo{padding:24px 20px 20px;flex:1}
+.tit{font-size:24px;line-height:1.2;font-weight:700;letter-spacing:-.4px}
+.sub{font-size:14.5px;color:var(--gris);margin-top:6px}
+.campos{display:flex;flex-direction:column;gap:16px;margin-top:20px}
+.campo{display:flex;flex-direction:column;gap:6px}
+.campo label,.rot{font-size:13px;font-weight:700}
+.campo label span{font-weight:500;color:var(--gris)}
+.inp{min-height:48px;width:100%;padding:0 14px;border-radius:10px;border:1.5px solid var(--borde);background:#fff}
+textarea.inp{padding:12px 14px;min-height:96px;resize:vertical}
+.inp:focus{outline:2px solid var(--morado);outline-offset:1px;border-color:var(--morado)}
+.ayuda{font-size:12.5px;color:var(--gris)}
+.campo.mal .inp{border-color:var(--rojo)}
+.err{display:none;font-size:12.5px;font-weight:600;color:var(--rojo)}
+.campo.mal .err,.err.ver{display:block}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;padding:0 16px;border-radius:999px;background:#fff;border:1.5px solid var(--borde);font-weight:700;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.btn{display:flex;align-items:center;justify-content:center;min-height:50px;padding:0 20px;border-radius:10px;font-weight:700;font-size:15.5px}
+.btn-1{background:var(--tinta);color:#fff}
+.btn-1:disabled{opacity:.55;cursor:default}
+.btn-2{background:#fff;border:1.5px solid var(--borde)}
+.btn-agr{width:100%;min-height:48px;border-radius:10px;background:#fff;border:1.5px dashed #9B95B5;font-weight:700;font-size:14.5px}
+.enl{min-height:44px;font-weight:700;font-size:14px;color:var(--morado)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--morado);outline-offset:2px}
+.nav{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--linea);padding:14px 20px calc(14px + env(safe-area-inset-bottom));display:flex;gap:10px}
+.nav .btn-1{flex:1}
+.lista{margin-top:22px}
+.lista h2{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--gris);padding-bottom:8px}
+.lista-i{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--linea)}
+.lista-i:last-child{border-bottom:1px solid var(--linea)}
+.lista-i svg{flex:none;margin-top:2px}
+.lista-i b{display:block}
+.lista-i span{font-size:14px;color:var(--gris)}
+.eti{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--morado);margin-bottom:10px}
+.inicio-pie{padding:20px;display:flex;flex-direction:column;gap:12px}
+/* horario */
+.dia{padding:14px 0;border-top:1px solid var(--linea)}
+.dia:last-child{border-bottom:1px solid var(--linea)}
+.dia-c{display:flex;align-items:center;gap:12px}
+.dia-c b{flex:1}
+.dia-c small{font-size:13px;color:var(--gris)}
+.sw{width:52px;height:30px;border-radius:999px;background:#B9B4C9;padding:3px;display:flex;justify-content:flex-start;flex:none}
+.sw::after{content:"";width:24px;height:24px;border-radius:50%;background:#fff}
+.sw[aria-pressed="true"]{background:var(--verde);justify-content:flex-end}
+.tramo{display:flex;align-items:center;gap:8px;margin-top:10px}
+.tramo .inp{flex:1;min-width:0;max-width:150px;font-weight:700;text-align:center;padding:0 6px}
+.tramo span{color:var(--gris)}
+.x{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.tramo .x{background:var(--suave)}
+.dia-acc{display:flex;flex-wrap:wrap;gap:0 18px;margin-top:4px}
+.nota{margin-top:16px;padding:14px 16px;border-radius:12px;background:var(--suave);font-size:13.5px;color:var(--gris)}
+/* archivos */
+.bloque{margin-top:24px}
+.bloque-c{display:flex;align-items:flex-end;gap:12px;margin-bottom:10px}
+.bloque-c div{flex:1}
+.bloque-c b{font-size:16px;display:block}
+.bloque-c span{font-size:13.5px;color:var(--gris)}
+.bloque-c em{font-style:normal;font-size:13px;font-weight:700;color:var(--gris)}
+.arch{display:flex;align-items:center;gap:12px;padding:10px 6px 10px 12px;border:1px solid var(--linea);border-radius:12px;margin-bottom:8px}
+.arch-i{flex:none;width:40px;height:40px;border-radius:10px;background:var(--suave);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--morado);overflow:hidden}
+.arch-i img{width:100%;height:100%;object-fit:cover}
+.arch-t{flex:1;min-width:0}
+.arch-t b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arch-t small{font-size:12.5px;font-weight:600;color:var(--verde)}
+.arch-t small.gris{color:var(--gris)}
+.arch-t small.mal{color:var(--rojo)}
+.barra{height:5px;border-radius:999px;background:#D9D5E6;overflow:hidden;margin-top:6px}
+.barra i{display:block;height:100%;width:0;background:var(--morado);border-radius:999px;transition:width .2s}
+.fotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.foto{position:relative;aspect-ratio:1/1;border-radius:10px;background:#E9E6F3;overflow:hidden}
+.foto img{width:100%;height:100%;object-fit:cover;display:block}
+.foto .x{position:absolute;top:0;right:0;color:#fff}
+.foto .x::before{content:"";position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(20,18,31,.78)}
+.foto .x svg{position:relative;width:14px;height:14px}
+.foto-sub{position:absolute;inset:0;background:rgba(255,255,255,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px;font-size:11.5px;font-weight:700;color:var(--gris);text-align:center}
+.foto-sub .barra{width:70%;margin:0}
+.foto-sub.mal{color:var(--rojo);background:rgba(255,255,255,.94);justify-content:flex-end;font-size:11px;line-height:1.25;padding:36px 6px 4px}
+.foto-agr{aspect-ratio:1/1;border-radius:10px;border:1.5px dashed #9B95B5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:13px;width:100%}
+.logo-v{flex:none;width:64px;height:64px;border-radius:14px;background:#E9E6F3;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.logo-v img{width:100%;height:100%;object-fit:contain}
+/* opciones */
+.op{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--linea)}
+.op div{flex:1}
+.op b{display:block}
+.op span{font-size:13.5px;color:var(--gris)}
+.grupo{margin-top:24px}
+.grupo>h2{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--gris);margin-bottom:6px}
+/* revisar */
+.rev{border:1px solid var(--linea);border-radius:14px;padding:4px 16px;margin-top:14px}
+.rev-c{display:flex;align-items:center;gap:10px;padding:8px 0 4px}
+.rev-c b{flex:1;font-size:16px}
+.rev-f{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--linea);font-size:14px}
+.rev-f span{flex:none;width:92px;color:var(--gris);font-weight:600}
+.rev-f div{flex:1;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.aviso{margin-top:14px;padding:12px 14px;border-radius:12px;background:#FFF4DC;color:#5F4200;font-size:13.5px;font-weight:600}
+.aviso.mal{background:var(--rojo-suave);color:var(--rojo)}
+/* estados */
+.centro{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:12px}
+.centro p{color:var(--gris);max-width:360px}
+.ok-ico{width:64px;height:64px;border-radius:50%;background:var(--verde-suave);display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+.gira{width:34px;height:34px;border-radius:50%;border:3px solid var(--linea);border-top-color:var(--tinta);animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.gira{animation-duration:2.4s}.barra i{transition:none}}
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header class="cab"><img src="/derlabs-firma.png" alt="DerLabs" width="133" height="26"><span>Alta de tienda</span></header>
+  <div id="app" style="display:flex;flex-direction:column;flex:1"><div class="centro"><div class="gira" role="status" aria-label="Cargando"></div></div></div>
+</div>
+<input type="file" id="fCarta" accept="application/pdf,image/*" multiple hidden>
+<input type="file" id="fFotos" accept="image/*" multiple hidden>
+<input type="file" id="fLogo" accept="image/*" hidden>
+
+<script>
+(function(){
+"use strict";
+var COD = ((location.pathname.match(/\/alta\/([A-Za-z0-9]{8})(?:\/|$)/) || [])[1] || new URLSearchParams(location.search).get("c") || "").toUpperCase();
+var WSP_DERLABS = "56930025299";
+var A = null;          /* el alta, como la devuelve el servidor */
+var D = {};            /* lo que el negocio va llenando */
+var ARCH = [];         /* archivos ya subidos */
+var COLA = [];         /* archivos esperando o subiendo */
+var paso = 0, nTmp = 0, subiendo = false;
+var DIAS = [[1, "Lunes"], [2, "Martes"], [3, "Miércoles"], [4, "Jueves"], [5, "Viernes"], [6, "Sábado"], [0, "Domingo"]];
+var TIPOS_NEG = [["comida", "Comida"], ["retail", "Tienda o retail"], ["ropa", "Ropa"], ["otro", "Otro"]];
+var OP_PAGO = [["tengo", "Ya tengo cuenta"], ["ayuda", "Necesito ayuda"], ["no", "No lo usaré"]];
+
+function $(s){ return document.querySelector(s); }
+function esc(s){ return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function peso(b){ return b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+function urlArch(a){ return "/api/alta?accion=archivo&codigo=" + COD + "&id=" + a.id; }
+var ICO = {
+  x: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  mas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  ok: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#12703A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>'
+};
+
+/* ── servidor ── */
+function api(cuerpo){
+  return fetch("/api/alta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){
+      if (!r.ok || !j.ok){ var e = new Error(j.error || "No se pudo conectar"); e.cerrada = !!j.cerrada; e.servidor = r.status >= 400 && r.status < 500; throw e; }
+      return j; }); });
+}
+
+/* ── guardado automático ── */
+var tGuardar = null, guardando = false, pendiente = false, txtEstado = "", clsEstado = "";
+function marcar(t, cls){ txtEstado = t; clsEstado = cls || ""; var e = $("#estado"); if (e && !enCola()){ e.textContent = t; e.className = "prog-e " + clsEstado; } }
+function enCola(){ return COLA.filter(function(x){ return x.estado !== "error"; }).length; }
+function pintarEstado(){
+  var e = $("#estado"); if (!e) return;
+  var n = enCola();
+  if (n){ e.textContent = "Subiendo " + n + (n === 1 ? " archivo…" : " archivos…"); e.className = "prog-e"; }
+  else { e.textContent = txtEstado; e.className = "prog-e " + clsEstado; }
+}
+function respaldo(){ try { localStorage.setItem("dl_alta_" + COD, JSON.stringify({ t: Date.now(), datos: D })); } catch(e){} }
+function cambio(){ respaldo(); pendiente = true; marcar("Guardando…"); clearTimeout(tGuardar); tGuardar = setTimeout(guardar, 900); }
+function guardar(){
+  clearTimeout(tGuardar); tGuardar = null;
+  if (guardando) return Promise.resolve();
+  guardando = true; pendiente = false; D.paso = Math.max(D.paso || 0, Math.min(5, paso));
+  return api({ accion: "guardar", codigo: COD, datos: paraEnviar() }).then(function(){
+    guardando = false; if (pendiente) return guardar(); marcar("Guardado", "ok");
+  }).catch(function(e){
+    guardando = false;
+    if (e.cerrada){ pantalla("Alta cerrada", e.message); return; }
+    pendiente = true; marcar("Sin conexión: se guardará sola", "mal"); tGuardar = setTimeout(guardar, 5000);
+  });
+}
+
+/* Lo que viaja al servidor: el despacho como número (o nada) */
+function paraEnviar(){
+  var c = String(D.costoDespacho == null ? "" : D.costoDespacho).replace(/\D/g, "");
+  return Object.assign({}, D, { costoDespacho: c === "" ? null : Number(c) });
+}
+
+/* ── arranque ── */
+function pantalla(titulo, texto, reintentar){
+  $("#app").innerHTML = '<div class="centro"><h1 class="tit">' + esc(titulo) + '</h1><p>' + esc(texto) + '</p>'
+    + (reintentar ? '<button class="btn btn-1" id="bRe" style="margin-top:8px">Reintentar</button>' : '<a class="enl" style="display:flex;align-items:center" href="https://wa.me/' + WSP_DERLABS + '" target="_blank" rel="noopener">Escribir a DerLabs por WhatsApp</a>') + '</div>';
+  var b = $("#bRe"); if (b) b.onclick = iniciar;
+}
+function iniciar(){
+  if (!COD){ pantalla("Enlace incompleto", "Abre el enlace tal como te lo envió DerLabs."); return; }
+  $("#app").innerHTML = '<div class="centro"><div class="gira" role="status" aria-label="Cargando"></div></div>';
+  fetch("/api/alta?codigo=" + COD).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { r: r, j: j }; }); }).then(function(x){
+    if (!x.j.ok){ pantalla(x.j.cerrada ? "Alta cerrada" : "Enlace no válido", x.j.error || "Pídele a DerLabs que te envíe el enlace de nuevo."); return; }
+    A = x.j.alta; ARCH = A.archivos || [];
+    var nuevo = !A.guardadoEn, s = A.datos || {};
+    D = { negocio: s.negocio || A.negocio || "", tipo: s.tipo || "", whatsapp: s.whatsapp || "", correo: s.correo || "", direccion: s.direccion || "",
+      instagram: s.instagram || "", responsable: s.responsable || "", horario: s.horario || { activo: true, dias: {} },
+      delivery: nuevo ? true : s.delivery === true, retiro: nuevo ? true : s.retiro === true, costoDespacho: s.costoDespacho == null ? "" : s.costoDespacho,
+      zonas: s.zonas || "", tiempo: s.tiempo || "", pagoEfectivo: nuevo ? true : s.pagoEfectivo === true, pagoMP: s.pagoMP || "", pagoWebpay: s.pagoWebpay || "",
+      dominio: s.dominio || "", dominioCual: s.dominioCual || "", notas: s.notas || "", paso: s.paso || 0 };
+    /* lo escrito sin conexión en este teléfono gana si es más nuevo que lo guardado */
+    try { var loc = JSON.parse(localStorage.getItem("dl_alta_" + COD) || "null");
+      if (loc && loc.datos && loc.t > (Date.parse(A.guardadoEn || 0) || 0) + 1500){ var p0 = D.paso; D = Object.assign(D, loc.datos); D.paso = Math.max(p0, D.paso || 0); pendiente = true; }
+    } catch(e){}
+    if (!D.horario || !D.horario.dias) D.horario = { activo: true, dias: {} };
+    marcar(A.guardadoEn ? "Guardado" : "", "ok");
+    paso = A.estado === "completa" ? 6 : 0;
+    pintar(); if (pendiente) guardar();
+  }).catch(function(){ pantalla("Sin conexión", "Revisa tu internet e inténtalo de nuevo.", true); });
+}
+
+/* ── armado de pantallas ── */
+function cabPaso(){
+  var b = ""; for (var i = 1; i <= 5; i++) b += '<i' + (i <= paso ? ' class="on"' : '') + '></i>';
+  return '<div class="prog"><div class="prog-f"><b>Paso ' + paso + ' de 5</b><span class="prog-e" id="estado" role="status"></span></div><div class="prog-b">' + b + '</div></div>';
+}
+function navPaso(){
+  return '<div class="nav"><button class="btn btn-2" id="bAtras">Atrás</button><button class="btn btn-1" id="bSig">' + (paso === 5 ? "Enviar a DerLabs" : "Siguiente") + '</button></div>';
+}
+function campo(k, rotulo, tipo, extra){
+  extra = extra || {};
+  return '<div class="campo" id="c-' + k + '"><label for="i-' + k + '">' + esc(rotulo) + (extra.opcional ? ' <span>(opcional)</span>' : '') + '</label>'
+    + (tipo === "area" ? '<textarea class="inp" id="i-' + k + '" data-k="' + k + '" rows="3" placeholder="' + esc(extra.ph || "") + '">' + esc(D[k]) + '</textarea>'
+      : '<input class="inp" id="i-' + k + '" data-k="' + k + '" type="' + tipo + '" value="' + esc(D[k]) + '" placeholder="' + esc(extra.ph || "") + '"' + (extra.modo ? ' inputmode="' + extra.modo + '"' : '') + (extra.auto ? ' autocomplete="' + extra.auto + '"' : '') + '>')
+    + (extra.ayuda ? '<div class="ayuda">' + esc(extra.ayuda) + '</div>' : '') + '<div class="err">' + esc(extra.err || "Completa este campo") + '</div></div>';
+}
+function chips(k, ops){
+  return '<div class="chips">' + ops.map(function(o){ return '<button type="button" class="chip" data-chip="' + k + '" data-v="' + o[0] + '" aria-pressed="' + (D[k] === o[0]) + '">' + esc(o[1]) + '</button>'; }).join("") + '</div>';
+}
+function sw(k, rotulo){ return '<button type="button" class="sw" data-sw="' + k + '" aria-pressed="' + (D[k] === true) + '" aria-label="' + esc(rotulo) + '"></button>'; }
+
+function pintar(){
+  var h = "";
+  if (paso === 0) h = vInicio();
+  else if (paso === 6) h = vListo();
+  else h = cabPaso() + '<div class="cuerpo">' + [null, vNegocio, vHorario, vArchivos, vEntrega, vRevisar][paso]() + '</div>' + navPaso();
+  $("#app").innerHTML = h;
+  enlazar(); pintarEstado();
+  if (paso === 3) pintarArchivos();
+  window.scrollTo(0, 0);
+}
+function ir(n){ paso = n; pintar(); if (n >= 1 && n <= 5 && n > (D.paso || 0)){ D.paso = n; cambio(); } }
+
+function vInicio(){
+  var sigue = (D.paso || 0) > 0;
+  function it(svg, t, s){ return '<div class="lista-i"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A3BC0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + svg + '</svg><div><b>' + t + '</b><span>' + s + '</span></div></div>'; }
+  return '<div class="cuerpo"><div class="eti">' + esc((A.negocio || "").toUpperCase()) + '</div>'
+    + '<h1 class="tit" style="font-size:28px">Bienvenido a DerLabs. Armemos tu tienda.</h1>'
+    + '<p class="sub" style="font-size:16px">Sube tu carta y los datos de tu negocio. Con eso dejamos tu tienda lista para vender.</p>'
+    + '<div class="lista"><h2>TEN A MANO</h2>'
+    + it('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>', "Tu carta o menú", "En PDF o en fotos, con los precios.")
+    + it('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/>', "Fotos de tus productos", "Las que tengas. Se pueden agregar más después.")
+    + it('<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>', "Tu logo", "En la mejor calidad que tengas.")
+    + it('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', "Datos de tu negocio", "WhatsApp, correo, dirección y horario de atención.")
+    + '</div></div><div class="inicio-pie"><p class="ayuda" style="font-size:13.5px">Toma unos 10 minutos. Lo que avances se guarda solo y puedes seguir después con este mismo enlace.</p>'
+    + '<button class="btn btn-1" id="bEmp">' + (sigue ? "Continuar" : "Empezar") + '</button></div>';
+}
+
+function vNegocio(){
+  return '<h1 class="tit">Tu negocio y cómo contactarte</h1><p class="sub">Estos datos aparecen en tu tienda. Los puedes cambiar después.</p><div class="campos">'
+    + campo("negocio", "Nombre del negocio", "text", { err: "Escribe el nombre de tu negocio", auto: "organization" })
+    + '<div class="campo"><div class="rot" id="r-tipo">Tipo de negocio</div>' + chips("tipo", TIPOS_NEG) + '</div>'
+    + campo("whatsapp", "WhatsApp del negocio", "tel", { ph: "+56 9", ayuda: "Aquí te escriben tus clientes.", err: "Revisa el número de WhatsApp", auto: "tel" })
+    + campo("correo", "Correo", "email", { ph: "tunegocio@correo.cl", ayuda: "Te avisamos cada pedido y con él entras a administrar tu tienda.", err: "Revisa el correo", auto: "email" })
+    + campo("direccion", "Dirección del local", "text", { ph: "Calle, número y comuna", opcional: true, auto: "street-address" })
+    + campo("instagram", "Instagram", "text", { ph: "@tunegocio", opcional: true })
+    + campo("responsable", "Tu nombre", "text", { ph: "Con quién hablamos", opcional: true, auto: "name" })
+    + '</div>';
+}
+
+function vHorario(){
+  var dias = D.horario.dias;
+  var h = '<h1 class="tit">Horario de atención</h1><p class="sub">Tu tienda se abre y se cierra sola según este horario. Fuera de él no se reciben pedidos.</p><div style="margin-top:14px">';
+  DIAS.forEach(function(d){
+    var t = dias[d[0]], abre = Array.isArray(t);
+    h += '<div class="dia"><div class="dia-c"><b>' + d[1] + '</b>' + (abre ? '' : '<small>Cerrado</small>')
+      + '<button type="button" class="sw" data-dia="' + d[0] + '" aria-pressed="' + abre + '" aria-label="' + d[1] + (abre ? " abierto" : " cerrado") + '"></button></div>';
+    if (abre){
+      t.forEach(function(r, i){
+        h += '<div class="tramo"><input class="inp" type="time" data-h="' + d[0] + '-' + i + '-a" value="' + esc(r.a) + '" aria-label="' + d[1] + ' abre' + (i ? ", segundo tramo" : "") + '"><span>a</span>'
+          + '<input class="inp" type="time" data-h="' + d[0] + '-' + i + '-c" value="' + esc(r.c) + '" aria-label="' + d[1] + ' cierra' + (i ? ", segundo tramo" : "") + '">'
+          + (i ? '<button type="button" class="x" data-quitar-tramo="' + d[0] + '" aria-label="Quitar segundo tramo de ' + d[1] + '">' + ICO.x + '</button>' : '') + '</div>';
+      });
+      h += '<div class="dia-acc">' + (t.length < 2 ? '<button type="button" class="enl" data-otro-tramo="' + d[0] + '">Agregar otro tramo</button>' : '')
+        + '<button type="button" class="enl" data-copiar="' + d[0] + '">Copiar a los demás días</button></div>';
+    }
+    h += '</div>';
+  });
+  return h + '</div><div class="err" id="errHorario" role="alert">Completa las horas de los días abiertos, o márcalos como cerrados.</div>'
+    + '<div class="nota">Si cierras después de la medianoche, pon la hora tal cual: por ejemplo, de 19:00 a 01:00.</div>';
+}
+
+function vArchivos(){
+  return '<h1 class="tit">Carta, fotos y logo</h1><p class="sub">Con esto cargamos tus productos y precios por ti.</p>'
+    + '<div class="bloque"><div class="bloque-c"><div><b>Tu carta o menú</b><span>PDF o fotos, con los precios a la vista.</span></div></div><div id="zCarta"></div>'
+    + '<button type="button" class="btn-agr" id="bCarta">Agregar archivo</button></div>'
+    + '<div class="bloque"><div class="bloque-c"><div><b>Fotos de tus productos</b><span>Puedes elegir varias de una vez.</span></div><em id="nFotos"></em></div>'
+    + '<div class="fotos" id="zFotos"></div><p class="ayuda" style="margin-top:8px">Si el nombre del archivo dice el producto, mejor: nos ayuda a ubicar cada foto.</p></div>'
+    + '<div class="bloque"><div class="bloque-c"><div><b>Tu logo</b><span>Se usa en tu tienda, en la pantalla de carga y como ícono.</span></div></div><div id="zLogo"></div></div>'
+    + '<div class="nota">¿No tienes todo ahora? Sube lo que tengas y sigue. Con este mismo enlace puedes volver a agregar archivos.</div>';
+}
+function filaCola(it){
+  return '<div class="arch"><div class="arch-i">' + (it.vista ? '<img src="' + it.vista + '" alt="">' : "PDF") + '</div><div class="arch-t"><b>' + esc(it.nombre) + '</b>'
+    + (it.estado === "error" ? '<small class="mal">' + esc(it.error) + '</small>' : '<small class="gris">' + (it.estado === "espera" ? "En espera" : "Subiendo…") + '</small><div class="barra"><i id="prog-' + it.tmp + '" style="width:' + Math.round(it.prog * 100) + '%"></i></div>')
+    + '</div>' + (it.estado === "error" && !it.fatal ? '<button type="button" class="enl" data-reintentar="' + it.tmp + '" style="padding:0 8px">Reintentar</button>' : '')
+    + '<button type="button" class="x" data-descartar="' + it.tmp + '" aria-label="Quitar ' + esc(it.nombre) + '">' + ICO.x + '</button></div>';
+}
+function pintarArchivos(){
+  pintarEstado();
+  var zc = $("#zCarta"); if (!zc) return;
+  var de = function(t){ return ARCH.filter(function(a){ return a.tipo === t; }); }, cola = function(t){ return COLA.filter(function(a){ return a.tipo === t; }); };
+  zc.innerHTML = de("carta").map(function(a){
+    var img = a.mime !== "application/pdf";
+    return '<div class="arch"><div class="arch-i">' + (img ? '<img src="' + (a.vista || urlArch(a)) + '" alt="" loading="lazy">' : "PDF") + '</div><div class="arch-t"><b>' + esc(a.nombre) + '</b><small>Subido · ' + peso(a.bytes) + '</small></div>'
+      + '<button type="button" class="x" data-quitar="' + a.id + '" aria-label="Quitar ' + esc(a.nombre) + '">' + ICO.x + '</button></div>';
+  }).join("") + cola("carta").map(filaCola).join("");
+  $("#bCarta").textContent = de("carta").length + cola("carta").length ? "Agregar otro archivo" : "Subir carta (PDF o fotos)";
+  var nf = de("foto").length;
+  $("#nFotos").textContent = nf ? nf + (nf === 1 ? " foto" : " fotos") : "";
+  $("#zFotos").innerHTML = de("foto").map(function(a){
+    return '<div class="foto"><img src="' + (a.vista || urlArch(a)) + '" alt="' + esc(a.nombre) + '" loading="lazy"><button type="button" class="x" data-quitar="' + a.id + '" aria-label="Quitar ' + esc(a.nombre) + '">' + ICO.x + '</button></div>';
+  }).join("") + cola("foto").map(function(it){
+    return '<div class="foto">' + (it.vista ? '<img src="' + it.vista + '" alt="">' : '') + (it.estado === "error"
+      ? '<div class="foto-sub mal">' + esc(it.error) + (it.fatal ? '' : '<button type="button" class="enl" style="min-height:32px" data-reintentar="' + it.tmp + '">Reintentar</button>') + '</div>'
+      : '<div class="foto-sub">' + (it.estado === "espera" ? "En espera" : '<div class="barra"><i id="prog-' + it.tmp + '" style="width:' + Math.round(it.prog * 100) + '%"></i></div>Subiendo') + '</div>')
+      + '<button type="button" class="x" data-descartar="' + it.tmp + '" aria-label="Quitar ' + esc(it.nombre) + '">' + ICO.x + '</button></div>';
+  }).join("") + '<button type="button" class="foto-agr" id="bFotos">' + ICO.mas + 'Agregar</button>';
+  var lg = de("logo")[0], lc = cola("logo")[0];
+  $("#zLogo").innerHTML = lc ? filaCola(lc)
+    : lg ? '<div class="arch" style="padding:12px 14px"><div class="logo-v"><img src="' + (lg.vista || urlArch(lg)) + '" alt="Tu logo"></div><div class="arch-t"><b>' + esc(lg.nombre) + '</b><small>Subido</small></div><button type="button" class="btn btn-2" id="bLogo" style="min-height:44px;padding:0 14px;font-size:13.5px">Cambiar</button></div>'
+    : '<button type="button" class="btn-agr" id="bLogo">Subir logo</button>';
+  var bf = $("#bFotos"); if (bf) bf.onclick = function(){ $("#fFotos").click(); };
+  var bl = $("#bLogo"); if (bl) bl.onclick = function(){ $("#fLogo").click(); };
+}
+
+function vEntrega(){
+  return '<h1 class="tit">Entrega y pagos</h1><p class="sub">Cómo reciben el pedido tus clientes y cómo te pagan.</p>'
+    + '<div class="grupo"><h2>ENTREGA</h2>'
+    + '<div class="op"><div><b>Delivery</b><span>Llevas el pedido a la dirección del cliente.</span></div>' + sw("delivery", "Delivery") + '</div>'
+    + (D.delivery ? '<div class="campos" style="margin:0 0 16px">' + campo("costoDespacho", "Costo del despacho", "text", { ph: "$1.500", modo: "numeric", opcional: true })
+        + campo("zonas", "¿A qué comunas o sectores llegas?", "text", { ph: "Ej.: Temuco centro y Padre Las Casas", opcional: true })
+        + campo("tiempo", "Tiempo estimado de entrega", "text", { ph: "Ej.: 30-45 min", opcional: true }) + '</div>' : '')
+    + '<div class="op" style="border-bottom:1px solid var(--linea)"><div><b>Retiro en local</b><span>El cliente pasa a buscar su pedido.</span></div>' + sw("retiro", "Retiro en local") + '</div>'
+    + '<div class="err" id="errEntrega" role="alert" style="margin-top:8px">Activa al menos una forma de entrega.</div></div>'
+    + '<div class="grupo"><h2>PAGOS</h2>'
+    + '<div class="op"><div><b>Efectivo</b><span>El cliente paga al recibir o al retirar.</span></div>' + sw("pagoEfectivo", "Efectivo") + '</div>'
+    + '<div class="op" style="display:block"><b>Mercado Pago</b><span style="display:block;margin-bottom:10px">Tarjetas y saldo de Mercado Pago. La plata llega a tu cuenta.</span>' + chips("pagoMP", OP_PAGO) + '</div>'
+    + '<div class="op" style="display:block;border-bottom:1px solid var(--linea)"><b>Webpay (con Flow)</b><span style="display:block;margin-bottom:10px">Débito, crédito y transferencia. Se cobra con una cuenta de Flow a tu nombre.</span>' + chips("pagoWebpay", OP_PAGO) + '</div></div>'
+    + '<div class="grupo"><h2>DIRECCIÓN WEB</h2><div class="campo"><div class="rot">¿Tienes un dominio propio, como tunegocio.cl?</div>' + chips("dominio", [["tengo", "Sí, ya tengo"], ["no", "No tengo"]]) + '</div>'
+    + (D.dominio === "tengo" ? '<div class="campos" style="margin-top:12px">' + campo("dominioCual", "¿Cuál es?", "text", { ph: "tunegocio.cl", opcional: true }) + '</div>' : '') + '</div>'
+    + '<div class="grupo"><div class="campos" style="margin-top:0">' + campo("notas", "Algo más que debamos saber", "area", { opcional: true, ph: "Promociones, productos estrella, lo que quieras contarnos" }) + '</div></div>';
+}
+
+function horarioTexto(h){
+  if (!h || !h.dias) return "";
+  var N = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb", 0: "Dom" }, grupos = [];
+  [1, 2, 3, 4, 5, 6, 0].forEach(function(d){
+    var t = h.dias[d]; if (!t || !t.length){ grupos.push(null); return; }
+    var txt = t.map(function(x){ return x.a + "–" + x.c; }).join(" y "), u = grupos[grupos.length - 1];
+    if (u && u.txt === txt) u.dias.push(d); else grupos.push({ txt: txt, dias: [d] });
+  });
+  return grupos.filter(Boolean).map(function(g){
+    var n = g.dias.length, a = N[g.dias[0]], z = N[g.dias[n - 1]].toLowerCase();
+    return (n === 1 ? a : n === 2 ? a + " y " + z : a + " a " + z) + " " + g.txt;
+  }).join(" · ");
+}
+function horarioTxt(){ return horarioTexto(limpiarHorario()); }
+function vRevisar(){
+  var de = function(t){ return ARCH.filter(function(a){ return a.tipo === t; }).length; };
+  var f = function(r, v){ return '<div class="rev-f"><span>' + r + '</span><div>' + (v ? esc(v) : '<span style="width:auto;font-weight:500">Sin indicar</span>') + '</div></div>'; };
+  var pago = function(v){ return v === "tengo" ? "ya tengo cuenta" : v === "ayuda" ? "necesito ayuda" : v === "no" ? "no lo usaré" : ""; };
+  var entrega = [D.delivery ? "Delivery" + (String(D.costoDespacho == null ? "" : D.costoDespacho).replace(/\D/g, "") ? " ($" + Number(String(D.costoDespacho).replace(/\D/g, "")).toLocaleString("es-CL") + ")" : "") : "", D.retiro ? "Retiro en local" : ""].filter(Boolean).join(" · ");
+  var pagos = [D.pagoEfectivo ? "Efectivo" : "", D.pagoMP ? "Mercado Pago: " + pago(D.pagoMP) : "", D.pagoWebpay ? "Webpay: " + pago(D.pagoWebpay) : ""].filter(Boolean).join(" · ");
+  var falta = [];
+  if (!de("carta")) falta.push("tu carta o menú");
+  if (!de("logo")) falta.push("tu logo");
+  if (!horarioTxt()) falta.push("el horario");
+  return '<h1 class="tit">Revisa y envía</h1><p class="sub">Si algo está mal, tócalo para corregirlo.</p>'
+    + (falta.length ? '<div class="aviso">Falta ' + falta.join(", ").replace(/, ([^,]*)$/, " y $1") + '. Puedes enviar igual y agregarlo después con este mismo enlace.</div>' : '')
+    + '<div class="rev"><div class="rev-c"><b>Negocio y contacto</b><button type="button" class="enl" data-ir="1">Editar</button></div>'
+    + f("Negocio", D.negocio) + f("WhatsApp", D.whatsapp) + f("Correo", D.correo) + f("Dirección", D.direccion) + (D.instagram ? f("Instagram", D.instagram) : "") + '</div>'
+    + '<div class="rev"><div class="rev-c"><b>Horario</b><button type="button" class="enl" data-ir="2">Editar</button></div>' + f("Atención", horarioTxt()) + '</div>'
+    + '<div class="rev"><div class="rev-c"><b>Carta, fotos y logo</b><button type="button" class="enl" data-ir="3">Editar</button></div>'
+    + f("Carta", de("carta") ? de("carta") + (de("carta") === 1 ? " archivo" : " archivos") : "") + f("Fotos", de("foto") ? String(de("foto")) : "") + f("Logo", de("logo") ? "Subido" : "") + '</div>'
+    + '<div class="rev"><div class="rev-c"><b>Entrega y pagos</b><button type="button" class="enl" data-ir="4">Editar</button></div>'
+    + f("Entrega", entrega) + f("Pagos", pagos) + (D.dominio ? f("Dominio", D.dominio === "tengo" ? (D.dominioCual || "Sí, ya tengo") : "No tengo") : "") + '</div>'
+    + '<div class="aviso mal" id="errEnviar" role="alert" style="display:none"></div>';
+}
+
+function vListo(){
+  return '<div class="centro"><div class="ok-ico">' + ICO.ok + '</div><h1 class="tit">Listo, recibimos todo.</h1>'
+    + '<p>Con esto armamos la tienda de ' + esc(D.negocio || A.negocio) + '. Te escribiremos por WhatsApp cuando esté lista.</p>'
+    + '<button class="btn btn-2" id="bMas" style="margin-top:10px;width:100%;max-width:320px">Agregar más archivos</button>'
+    + '<button class="enl" id="bRev">Revisar mis datos</button></div>';
+}
+
+/* ── horario ── */
+function limpiarHorario(){
+  var out = {}, dias = D.horario.dias || {};
+  Object.keys(dias).forEach(function(d){
+    var ok = (dias[d] || []).filter(function(t){ return /^\d\d:\d\d$/.test(t.a) && /^\d\d:\d\d$/.test(t.c) && t.a !== t.c; });
+    if (ok.length) out[d] = ok;
+  });
+  return { activo: true, dias: out };
+}
+function horarioIncompleto(){
+  var dias = D.horario.dias || {};
+  return Object.keys(dias).some(function(d){ return (dias[d] || []).some(function(t){ return !(/^\d\d:\d\d$/.test(t.a) && /^\d\d:\d\d$/.test(t.c)) || t.a === t.c; }); });
+}
+
+/* ── validación de cada paso ── */
+function validar(){
+  var mal = [];
+  if (paso === 1){
+    if (!String(D.negocio).trim()) mal.push("negocio");
+    if (String(D.whatsapp).replace(/\D/g, "").length < 8) mal.push("whatsapp");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(D.correo).trim())) mal.push("correo");
+    ["negocio", "whatsapp", "correo"].forEach(function(k){ var c = $("#c-" + k); if (c) c.classList.toggle("mal", mal.indexOf(k) >= 0); });
+    if (mal.length){ var p = $("#i-" + mal[0]); if (p){ p.focus(); p.scrollIntoView({ block: "center" }); } }
+  } else if (paso === 2){
+    var inc = horarioIncompleto(); $("#errHorario").classList.toggle("ver", inc); if (inc){ mal.push("horario"); $("#errHorario").scrollIntoView({ block: "center" }); }
+  } else if (paso === 4){
+    var sin = !D.delivery && !D.retiro; $("#errEntrega").classList.toggle("ver", sin); if (sin){ mal.push("entrega"); $("#errEntrega").scrollIntoView({ block: "center" }); }
+  }
+  return !mal.length;
+}
+
+function enviar(){
+  var e = $("#errEnviar"), b = $("#bSig");
+  var decir = function(t){ e.textContent = t; e.style.display = "block"; e.scrollIntoView({ block: "center" }); };
+  if (enCola()){ decir("Todavía se están subiendo archivos. Espera a que terminen y vuelve a enviar."); return; }
+  if (!String(D.negocio).trim() || String(D.whatsapp).replace(/\D/g, "").length < 8){ decir("Falta el nombre del negocio o el WhatsApp. Tócalo en “Negocio y contacto”."); return; }
+  b.disabled = true; b.textContent = "Enviando…"; e.style.display = "none";
+  clearTimeout(tGuardar); tGuardar = null; D.paso = 5;
+  var datos = Object.assign(paraEnviar(), { horario: limpiarHorario() });
+  api({ accion: "enviar", codigo: COD, datos: datos }).then(function(){
+    pendiente = false; A.estado = "completa"; try { localStorage.removeItem("dl_alta_" + COD); } catch(x){}
+    paso = 6; pintar();
+  }).catch(function(err){
+    b.disabled = false; b.textContent = "Enviar a DerLabs";
+    decir(err.servidor ? err.message : "No se pudo enviar. Revisa tu conexión e inténtalo de nuevo.");
+  });
+}
+
+/* ── eventos de cada pantalla ── */
+function enlazar(){
+  var app = $("#app");
+  var b;
+  if ((b = $("#bEmp"))) b.onclick = function(){ ir(Math.min(5, Math.max(1, D.paso || 1))); };
+  if ((b = $("#bAtras"))) b.onclick = function(){ ir(paso - 1); };
+  if ((b = $("#bSig"))) b.onclick = function(){ if (paso === 5){ enviar(); return; } if (validar()) ir(paso + 1); };
+  if ((b = $("#bMas"))) b.onclick = function(){ ir(3); };
+  if ((b = $("#bRev"))) b.onclick = function(){ ir(5); };
+  if ((b = $("#bCarta"))) b.onclick = function(){ $("#fCarta").click(); };
+  app.oninput = function(ev){
+    var t = ev.target, k = t.getAttribute("data-k"), hk = t.getAttribute("data-h");
+    if (k){ D[k] = t.value; var c = $("#c-" + k); if (c) c.classList.remove("mal"); cambio(); }
+    else if (hk){ var p = hk.split("-"); var tr = D.horario.dias[p[0]] && D.horario.dias[p[0]][Number(p[1])]; if (tr){ tr[p[2]] = t.value; $("#errHorario").classList.remove("ver"); cambio(); } }
+  };
+  app.onclick = function(ev){
+    var t = ev.target.closest("button"); if (!t) return;
+    var v;
+    if ((v = t.getAttribute("data-chip"))){ var val = t.getAttribute("data-v"); D[v] = D[v] === val && v !== "tipo" ? "" : val; cambio(); if (v === "dominio"){ pintar(); return; }
+      app.querySelectorAll('[data-chip="' + v + '"]').forEach(function(x){ x.setAttribute("aria-pressed", String(x.getAttribute("data-v") === D[v])); }); }
+    else if ((v = t.getAttribute("data-sw"))){ D[v] = !D[v]; cambio(); if (v === "delivery"){ var y = window.scrollY; pintar(); window.scrollTo(0, y); } else t.setAttribute("aria-pressed", String(D[v])); var ee = $("#errEntrega"); if (ee) ee.classList.remove("ver"); }
+    else if ((v = t.getAttribute("data-dia")) != null){ if (Array.isArray(D.horario.dias[v])) delete D.horario.dias[v]; else D.horario.dias[v] = [{ a: "", c: "" }]; cambio(); repintarHorario(); }
+    else if ((v = t.getAttribute("data-otro-tramo")) != null){ D.horario.dias[v].push({ a: "", c: "" }); cambio(); repintarHorario(); }
+    else if ((v = t.getAttribute("data-quitar-tramo")) != null){ D.horario.dias[v].splice(1, 1); cambio(); repintarHorario(); }
+    else if ((v = t.getAttribute("data-copiar")) != null){ var base = JSON.stringify(D.horario.dias[v]); DIAS.forEach(function(d){ D.horario.dias[d[0]] = JSON.parse(base); }); cambio(); repintarHorario(); }
+    else if ((v = t.getAttribute("data-ir"))) ir(Number(v));
+    else if ((v = t.getAttribute("data-quitar"))) quitar(v);
+    else if ((v = t.getAttribute("data-descartar"))){ COLA = COLA.filter(function(x){ return !(x.tmp === v && x.estado !== "subiendo"); }); pintarArchivos(); }
+    else if ((v = t.getAttribute("data-reintentar"))){ COLA.forEach(function(x){ if (x.tmp === v){ x.estado = "espera"; x.error = ""; x.prog = 0; } }); pintarArchivos(); procesarCola(); }
+  };
+}
+function repintarHorario(){ var y = window.scrollY; pintar(); window.scrollTo(0, y); }
+
+/* ── archivos: preparar, subir, quitar ── */
+function aBlob(canvas, tipo, calidad){ return new Promise(function(ok){ canvas.toBlob(function(b){ ok(b); }, tipo, calidad); }); }
+function reducir(file, maxLado, calidad){
+  return new Promise(function(ok, mal){
+    var u = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      var e = Math.min(1, maxLado / Math.max(img.naturalWidth, img.naturalHeight));
+      /* una foto que ya es chica y liviana se sube tal cual */
+      if (e === 1 && file.type === "image/jpeg" && file.size < 1.5 * 1048576){ URL.revokeObjectURL(u); ok({ blob: file, nombre: file.name }); return; }
+      var c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.naturalWidth * e)); c.height = Math.max(1, Math.round(img.naturalHeight * e));
+      var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingQuality = "high"; x.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(u);
+      aBlob(c, "image/jpeg", calidad).then(function(b){ if (!b){ mal(new Error("No se pudo preparar la imagen")); return; } ok({ blob: b, nombre: String(file.name || "foto").replace(/\.[A-Za-z0-9]{2,5}$/, "") + ".jpg" }); });
+    };
+    img.onerror = function(){ URL.revokeObjectURL(u); mal(new Error("No es una imagen JPG o PNG")); };
+    img.src = u;
+  });
+}
+function preparar(file, tipo){
+  var pdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+  if (tipo === "carta" && pdf){
+    if (file.size > 20 * 1048576) return Promise.reject(new Error("El PDF pesa más de 20 MB"));
+    return Promise.resolve({ blob: file, nombre: file.name || "carta.pdf" });
+  }
+  if (pdf) return Promise.reject(new Error("Aquí va una imagen, no un PDF"));
+  if (tipo === "logo"){
+    /* el logo se sube tal cual, para no perder calidad ni transparencia */
+    if (file.size <= 8 * 1048576 && /^image\/(png|jpeg|webp)$/.test(file.type)) return Promise.resolve({ blob: file, nombre: file.name || "logo" });
+    return reducir(file, 2400, 0.92);
+  }
+  return reducir(file, tipo === "carta" ? 2200 : 1600, tipo === "carta" ? 0.88 : 0.85);
+}
+function subirXHR(blob, tipo, nombre, progreso){
+  return new Promise(function(ok, mal){
+    var x = new XMLHttpRequest();
+    x.open("POST", "/api/alta?accion=subir&codigo=" + COD + "&tipo=" + tipo + "&nombre=" + encodeURIComponent(nombre));
+    x.setRequestHeader("Content-Type", "application/octet-stream");
+    x.upload.onprogress = function(e){ if (e.lengthComputable) progreso(e.loaded / e.total); };
+    x.onload = function(){ var j = {}; try { j = JSON.parse(x.responseText); } catch(e){} if (x.status === 200 && j.ok) ok(j.archivo); else mal(new Error(j.error || "No se pudo subir")); };
+    x.onerror = function(){ mal(new Error("Sin conexión")); };
+    x.send(blob);
+  });
+}
+function agregar(files, tipo){
+  Array.prototype.forEach.call(files || [], function(f){
+    if (tipo === "logo") COLA = COLA.filter(function(x){ return !(x.tipo === "logo" && x.estado !== "subiendo"); });
+    COLA.push({ tmp: "t" + (++nTmp), tipo: tipo, file: f, nombre: f.name || tipo, prog: 0, estado: "espera", error: "", vista: /^image\//.test(f.type) ? URL.createObjectURL(f) : "" });
+  });
+  pintarArchivos(); procesarCola();
+}
+function procesarCola(){
+  if (subiendo) return;
+  var it = COLA.filter(function(x){ return x.estado === "espera"; })[0];
+  if (!it){ pintarEstado(); return; }
+  subiendo = true; it.estado = "subiendo"; pintarArchivos();
+  preparar(it.file, it.tipo).catch(function(e){ e.fatal = true; throw e; }).then(function(p){
+    return subirXHR(p.blob, it.tipo, p.nombre, function(v){ it.prog = v; var e = document.getElementById("prog-" + it.tmp); if (e) e.style.width = Math.round(v * 100) + "%"; });
+  }).then(function(arch){
+    arch.vista = it.vista;
+    if (it.tipo === "logo") ARCH = ARCH.filter(function(a){ return a.tipo !== "logo"; });
+    ARCH.push(arch); COLA.splice(COLA.indexOf(it), 1);
+  }).catch(function(e){ it.estado = "error"; it.fatal = !!e.fatal; it.error = e.message || "No se pudo subir"; })
+    .then(function(){ subiendo = false; pintarArchivos(); procesarCola(); });
+}
+function quitar(id){
+  var a = ARCH.filter(function(x){ return x.id === id; })[0]; if (!a) return;
+  ARCH = ARCH.filter(function(x){ return x.id !== id; }); pintarArchivos();
+  api({ accion: "quitar", codigo: COD, id: id }).catch(function(){ ARCH.push(a); pintarArchivos(); marcar("No se pudo quitar el archivo", "mal"); });
+}
+[["fCarta", "carta"], ["fFotos", "foto"], ["fLogo", "logo"]].forEach(function(p){
+  document.getElementById(p[0]).addEventListener("change", function(ev){ agregar(ev.target.files, p[1]); ev.target.value = ""; });
+});
+window.addEventListener("beforeunload", function(ev){ if (enCola() || guardando){ ev.preventDefault(); ev.returnValue = ""; } });
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden" && pendiente && A) guardar(); });
+
+iniciar();
+})();
+</script>
+</body>
+</html>

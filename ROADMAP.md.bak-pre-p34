@@ -566,7 +566,7 @@ funcionamiento sin conexión.
 - **Flow:** ya no se envía `optional` (Flow se lo mostraba al comprador).
   Probado con una cuenta real: pago, confirmación y pedido funcionan.
 
-## 19. Cerrado es cerrado, logo nítido e ícono de la tienda (P32–P33) — ✅ hecho
+## 19. Cerrado es cerrado + logo nítido (P32) — ✅ hecho
 
 - **Horario en el servidor:** `estadoHorario()` en `_firebase.js` repite la
   lógica de `hrEstado()` del navegador y `validarPedidoCompleto()` la revisa
@@ -585,59 +585,8 @@ funcionamiento sin conexión.
   capas del borde el color del interior del logo con la transparencia que
   corresponde, y se achica sola si pasa de 300 KB. Las tiendas que ya tienen
   logo deben subirlo de nuevo: el guardado quedó en baja resolución.
-- **El logo es el ícono de la tienda (P33):** antes el ícono de la pestaña lo
-  ponía la página al terminar de cargar, así que el navegador, el historial y
-  los accesos directos se quedaban con el genérico (y las plantillas retail y
-  Tienda Pro ni siquiera declaraban uno). Ahora:
-  - al subir un logo (crear tienda o panel) se guarda además
-    `config.faviconBase64`: PNG cuadrado de 256 px con el logo entero centrado
-    (`iconoDeLogo()`);
-  - el Worker sirve `/favicon.png`, `/favicon.ico` y `/apple-touch-icon.png`
-    de cada tienda con ese ícono (o con el logo, si la tienda es anterior) y
-    escribe el `<link rel="icon">` en el HTML al servirlo;
-  - `manifest.json` (acceso directo al gestor) usa el mismo ícono.
-  Las tiendas que ya tenían logo lo ven como ícono sin hacer nada.
 - **Programa de vendedores: descartado.** Se alcanzó a entregar en P31
   (página `/vendedores`, invitación en el landing, postulaciones en
   `/leads.html`) y se investigó cómo lo hacen Bsale, Toteat, Fudo y
   Rindegastos, pero el dueño decidió no seguir. P32 lo retira si estaba
   instalado.
-
-## 20. Alta de tiendas (P34) — ✅ hecho
-
-Lo que DerLabs le pide a un negocio **que ya contrató**. No es `formulario.html`
-(ese es el contacto antes de contratar y no se tocó).
-
-- **Flujo:** en `derlabs.cl/altas` (clave de administrador, la misma de
-  `/leads.html`) se toca "Nueva alta", se escribe el nombre del negocio y sale
-  un enlace propio, `derlabs.cl/alta/<código de 8 caracteres>`, con botón para
-  mandarlo por WhatsApp. El negocio llena cinco pasos (negocio y contacto,
-  horario, carta/fotos/logo, entrega y pagos, revisar y enviar). Todo se guarda
-  solo a medida que avanza y puede volver al mismo enlace desde cualquier
-  teléfono. Al enviar llega un aviso a los teléfonos activados en `/leads.html`.
-- **Lo que hace DerLabs después:** en `/altas` ve los datos, descarga la carta
-  y el logo, baja todas las fotos en un `.zip`, y con "Pasar datos a la tienda"
-  deja en la tienda elegida el WhatsApp, correo de avisos, dirección (local),
-  horario, delivery/retiro, costo y tiempo de despacho, logo e ícono. Los
-  productos se cargan a mano con la carta. "Cerrar alta" borra los archivos
-  (los datos quedan) y el enlace deja de funcionar.
-- **Archivos:** `alta.html` (negocio), `altas.html` (DerLabs), `logo-util.js`
-  (tratamiento del logo para `altas.html`; misma lógica que `app.js` y
-  `generar-tienda.html`: si se cambia una, cambiar las tres),
-  `cloudflare/functions/altas.js` (`/api/alta`) y las rutas `/alta/…` y
-  `/altas` en `worker.js`.
-- **Dónde se guarda:** datos en Firestore `altas/<código>` y un documento por
-  archivo en `altas/<código>/archivos/<id>` (colecciones sin reglas: solo las
-  toca el servidor). Los archivos van al KV `LANDING` (el mismo del editor del
-  landing, sin configurar nada) con clave `alta:<código>:<id>`.
-- **Límites:** carta en PDF hasta 20 MB o fotos (12 archivos), 80 fotos de
-  productos (se achican a 1600 px en el teléfono antes de subir), 1 logo hasta
-  8 MB (se sube tal cual para no perder calidad). El servidor mira los primeros
-  bytes del archivo: solo acepta PDF, JPG, PNG y WebP reales.
-- **Cuidado con el espacio:** el KV gratuito tiene 1 GB. Cada alta ocupa lo que
-  pesen su carta y fotos hasta que se cierra; conviene cerrar las altas ya
-  cargadas. Cuando las imágenes pasen a R2, estos archivos deberían ir ahí.
-- **Detalle de Firestore que costó:** `set(..., { merge: true })` mezcla los
-  mapas por dentro. Por eso el alta se reescribe entera al guardar, y al pasar
-  el horario a la tienda van siempre los 7 días (los cerrados como lista
-  vacía), igual que hace el panel.

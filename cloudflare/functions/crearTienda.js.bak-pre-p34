@@ -64,14 +64,12 @@ export async function crearTienda(request, env){
   try {
     const body = JSON.parse(await request.text() || "{}");
     const { nombreNegocio, rubro, subrubro, hostname, colorPrimario, logoBase64, emailPropietario, passwordPropietario, plantilla, cajaLocal } = body;
-    /* Ícono cuadrado hecho a partir del logo (pestaña del navegador y acceso directo) */
-    const faviconBase64 = (logoBase64 && typeof body.faviconBase64 === "string" && /^data:image\/png;base64,/.test(body.faviconBase64) && body.faviconBase64.length < 200000) ? body.faviconBase64 : "";
 
     if (!nombreNegocio || !hostname) {
       return new Response(JSON.stringify({ ok: false, error: "Faltan nombreNegocio o hostname" }), { status: 400, headers });
     }
     const LIMITE_IMAGENES_COMBINADO = 700 * 1024;
-    const pesoImagenes = (logoBase64 ? logoBase64.length : 0) + faviconBase64.length;
+    const pesoImagenes = logoBase64 ? logoBase64.length : 0;
     if (pesoImagenes > LIMITE_IMAGENES_COMBINADO) {
       return new Response(JSON.stringify({ ok: false, error: "Las imágenes combinadas son demasiado grandes — probá con archivos más livianos o de menor resolución." }), { status: 400, headers });
     }
@@ -117,7 +115,6 @@ export async function crearTienda(request, env){
       subrubro: subrubroValido,
       colorPrimario: color,
       logoBase64: logoBase64 || "",
-      faviconBase64: faviconBase64,
       confTitulo: "¡Pago confirmado!",
       confSub: "Tu pedido está siendo procesado",
       timeline1: "Pedido recibido",

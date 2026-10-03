@@ -38,7 +38,6 @@ import { dominios, revisarDominios } from "./functions/dominios.js";
 import { planTienda } from "./functions/planTienda.js";
 import { webhookFlow, retornoFlow } from "./functions/flow.js";
 import { aceptarContrato } from "./functions/contrato.js";
-import { alta } from "./functions/altas.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -70,8 +69,7 @@ const FUNCIONES = {
   planTienda,
   webhookFlow,
   retornoFlow,
-  aceptarContrato,
-  alta
+  aceptarContrato
 };
 
 
@@ -87,7 +85,7 @@ const FUNCIONES = {
    ════════════════════════════════════════════════════════════════ */
 async function leerConfigTenant(hostname, env, ctx) {
   try {
-    const cacheKey = new Request("https://cache.local/tenant3/" + hostname);
+    const cacheKey = new Request("https://cache.local/tenant2/" + hostname);
     const cache = caches.default;
     const cached = await cache.match(cacheKey);
     if (cached) return await cached.json();
@@ -111,7 +109,6 @@ async function leerConfigTenant(hostname, env, ctx) {
     const config = {
       nombre: data.nombre || "",
       logoBase64: data.logoBase64 || "",
-      faviconBase64: data.faviconBase64 || "",
       rubro: data.rubro || "comida",
       plantilla: data.plantilla || "",
       dominioPrincipal: data.dominioPrincipal || "",
@@ -215,14 +212,6 @@ async function servirImagenTienda(request, url, env, ctx){
   }
 }
 
-/* Ícono de la tienda: el cuadrado hecho a partir del logo; si la tienda es
-   anterior a eso, el logo tal cual. Solo imágenes guardadas en la configuración. */
-function iconoTienda(cfg){
-  const v = cfg && (cfg.faviconBase64 || cfg.logoBase64) || "";
-  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(v) ? v : "";
-}
-const RUTAS_ICONO = ["/favicon.png", "/favicon.ico", "/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"];
-
 /* Plantilla de la tienda: config.plantilla manda ("boutique"); si no, el rubro */
 function archivoPlantilla(cfg){
   if (cfg && cfg.plantilla === "boutique") return "/index-boutique.html";
@@ -272,17 +261,6 @@ async function inyectarNombreReal(html, hostname, env, ctx, cfgYaLeida) {
       const v = config.logoBase64.length + "-" + config.logoBase64.slice(-8).replace(/[^A-Za-z0-9]/g, "");
       html = html.replace('src="/img-splash.png"', 'src="/splash-logo?v=' + v + '"');
       html = html.replace('<div id="splashScreen">', '<div id="splashScreen" class="con-logo">');
-    }
-
-    /* 6b. Ícono de la pestaña: el logo de la tienda desde el primer instante
-       (antes lo ponía la página al terminar de cargar, y el navegador, el
-       historial y los accesos directos se quedaban con el ícono genérico). */
-    const ico = iconoTienda(config);
-    if (ico) {
-      const vI = ico.length + "-" + ico.slice(-8).replace(/[^A-Za-z0-9]/g, "");
-      const etiquetas = '<link rel="icon" href="/favicon.png?v=' + vI + '"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=' + vI + '">';
-      html = html.replace(/<link[^>]*rel="(?:shortcut )?icon"[^>]*>/gi, "");
-      html = html.replace("</head>", etiquetas + "</head>");
     }
 
     /* 7. Tienda del dominio + color: la página arranca sin consultar "dominios" */
@@ -387,32 +365,9 @@ export default {
       return env.ASSETS.fetch(new Request(urlSp, request));
     }
 
-    /* ── Ícono de la pestaña y del acceso directo: el logo de cada tienda ── */
-    if (RUTAS_ICONO.includes(url.pathname) && !DOMINIOS_LANDING.includes(url.hostname)) {
-      try {
-        const m = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(iconoTienda(await leerConfigTenant(url.hostname, env, ctx)));
-        if (m) {
-          const bin = atob(m[2]); const bytes = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-          return new Response(bytes, { headers: { "Content-Type": m[1], "Cache-Control": url.search ? "public, max-age=604800" : "public, max-age=3600" } });
-        }
-      } catch(e) { console.error("icono tienda:", e.message); }
-      const urlIc = new URL(request.url); urlIc.pathname = "/favicon.png"; urlIc.search = "";
-      return env.ASSETS.fetch(new Request(urlIc, request));
-    }
-
     /* ── www.dominio-del-cliente → dominio sin www (los de DerLabs se manejan aparte) ── */
     if (url.hostname.startsWith("www.") && !DOMINIOS_LANDING.includes(url.hostname)) {
       return Response.redirect("https://" + url.hostname.slice(4) + url.pathname + url.search, 301);
-    }
-    /* ── Alta de tiendas: derlabs.cl/alta/<código> (el negocio) y /altas (DerLabs) ── */
-    if (url.pathname === "/alta" || url.pathname.startsWith("/alta/")) {
-      const urlAl = new URL(request.url); urlAl.pathname = "/alta.html";
-      return env.ASSETS.fetch(new Request(urlAl, request));
-    }
-    if (url.pathname === "/altas" || url.pathname === "/altas/") {
-      const urlAs = new URL(request.url); urlAs.pathname = "/altas.html";
-      return env.ASSETS.fetch(new Request(urlAs, request));
     }
     /* ── Conectar mi dominio: tienda.cl/dominio ── */
     if (url.pathname === "/dominio" || url.pathname === "/dominio/") {

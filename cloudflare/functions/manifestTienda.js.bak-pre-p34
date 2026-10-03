@@ -28,7 +28,7 @@ export async function manifestTienda(request, env){
     const cfg = cfgDoc.exists ? cfgDoc.data() : {};
     const nombre = cfg.nombre || "Gestor de pedidos";
     const color = cfg.colorPrimario || "#9B1B30";
-    const icono = cfg.faviconBase64 || cfg.logoBase64 || null;   /* el ícono cuadrado si existe */
+    const icono = cfg.logoBase64 || null;
 
     const manifest = {
       name: nombre,

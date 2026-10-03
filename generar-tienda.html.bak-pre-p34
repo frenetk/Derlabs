@@ -442,7 +442,7 @@ let rubroSeleccionado = "comida";
 let subrubroSeleccionado = "hamburguesas";
 let colorTocadoAMano = false;
 let ADMIN_SECRET = "";
-let logoBase64 = "", faviconBase64 = "";
+let logoBase64 = "";
 
 
 const qs = s => document.querySelector(s);
@@ -617,26 +617,6 @@ function procesarLogo(dataURL){
   });
 }
 
-/* Ícono cuadrado a partir del logo (pestaña del navegador y acceso directo):
-   el logo completo, centrado sobre fondo transparente y sin deformarlo. */
-function iconoDeLogo(dataURL, lado){
-  return new Promise(function(resolve){
-    const img = new Image();
-    img.onload = function(){
-      try {
-        const L = lado || 256, c = document.createElement("canvas"); c.width = L; c.height = L;
-        const x = c.getContext("2d"); x.imageSmoothingQuality = "high";
-        const m = Math.round(L * 0.04), e = Math.min((L - 2*m) / img.width, (L - 2*m) / img.height);
-        const w = img.width * e, h = img.height * e;
-        x.drawImage(img, (L - w) / 2, (L - h) / 2, w, h);
-        resolve(c.toDataURL("image/png"));
-      } catch(err){ resolve(""); }
-    };
-    img.onerror = function(){ resolve(""); };
-    img.src = dataURL;
-  });
-}
-
 function renderImgPreview(wrapId, base64, onQuitar){
   const wrap = qs(wrapId);
   if (!base64){ wrap.innerHTML = ""; return; }
@@ -660,9 +640,8 @@ qs("#fLogo").addEventListener("change", async (e) => {
     if (file.size > IMG_MAX_ARCHIVO_ENTRADA) throw new Error("La imagen es demasiado grande para procesarla. Usá una de menos de 15MB.");
     const original = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(new Error("No pudimos leer esta imagen. Probá con otro archivo.")); fr.readAsDataURL(file); });
     logoBase64 = await procesarLogo(original);
-    faviconBase64 = await iconoDeLogo(logoBase64);   /* ícono de la pestaña y del acceso directo */
     renderImgPreview("#logoPreviewWrap", logoBase64, () => {
-      logoBase64 = ""; faviconBase64 = ""; e.target.value = "";
+      logoBase64 = ""; e.target.value = "";
       renderImgPreview("#logoPreviewWrap", "", null);
     });
   } catch (err){
@@ -853,7 +832,6 @@ qs("#formTienda").addEventListener("submit", async (e) => {
         hostname,
         colorPrimario: qs("#fColor").value,
         logoBase64: logoBase64 || undefined,
-        faviconBase64: (logoBase64 && faviconBase64) || undefined,
         emailPropietario: emailPropietario || undefined,
         passwordPropietario: passwordPropietario || undefined
       })

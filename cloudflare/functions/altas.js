@@ -1,0 +1,334 @@
+/* cloudflare/functions/altas.js
+   ALTA DE TIENDAS — lo que DerLabs le pide a un negocio que ya contrató.
+
+   DerLabs crea un alta desde /altas.html y le manda al negocio su enlace
+   (derlabs.cl/alta/<código>). El negocio llena sus datos y sube su carta,
+   fotos y logo desde /alta.html. DerLabs lo revisa en /altas.html, descarga
+   los archivos y pasa los datos a la tienda con un toque.
+
+   Dónde se guarda:
+     Firestore  altas/<código>                    datos y estado (solo el servidor)
+                altas/<código>/archivos/<id>      un documento por archivo subido
+     KV LANDING alta:<código>:<id>                el archivo en sí
+   El código del enlace (8 caracteres al azar) es la llave del negocio: quien
+   lo tiene puede llenar esa alta y ninguna otra. Lo demás pide la clave de
+   administrador.
+
+   /api/alta
+     GET  ?codigo=                               el alta, para la página del negocio
+     GET  ?accion=archivo&codigo=&id=[&descargar=1]   un archivo
+     POST ?accion=subir&codigo=&tipo=&nombre=    cuerpo = el archivo (binario)
+     POST { accion: "guardar" | "enviar" | "quitar", codigo, ... }
+     POST { accion: "crear" | "listar" | "aplicar" | "cerrar", ... }   + x-admin-secret */
+import { getDb } from "./_firebase.js";
+import { enviarPushLista } from "./notificar.js";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-admin-secret"
+};
+const json = (obj, status) => new Response(JSON.stringify(obj),
+  { status: status || 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS } });
+
+const MB = 1024 * 1024;
+/* tipo de archivo → peso máximo, cuántos caben y qué formatos acepta */
+const TIPOS = {
+  carta: { max: 20 * MB, n: 12, mimes: ["application/pdf", "image/jpeg", "image/png", "image/webp"] },
+  foto:  { max: 6 * MB,  n: 80, mimes: ["image/jpeg", "image/png", "image/webp"] },
+  logo:  { max: 8 * MB,  n: 1,  mimes: ["image/jpeg", "image/png", "image/webp"] }
+};
+const EXT = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+
+/* Sin I, L, O, 0 ni 1: el código se puede dictar por teléfono sin confundirse */
+const ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function codigoNuevo(){
+  const a = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(a).map(x => ALFABETO[x % ALFABETO.length]).join("");
+}
+function idNuevo(){
+  const a = crypto.getRandomValues(new Uint8Array(10));
+  return Array.from(a).map(x => "abcdefghijkmnpqrstuvwxyz23456789"[x % 32]).join("");
+}
+const codigoDe = v => { const c = String(v || "").trim().toUpperCase(); return /^[A-Z2-9]{8}$/.test(c) ? c : ""; };
+const txt = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000b-\u001f]/g, "").trim().slice(0, n);
+const uno = (v, lista) => (lista.indexOf(v) >= 0 ? v : lista[0]);
+
+/* El formato real del archivo se lee de sus primeros bytes, no de lo que diga quien lo sube */
+function formatoDe(b){
+  if (b.length > 4 && b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return "application/pdf";
+  if (b.length > 3 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return "image/jpeg";
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return "image/png";
+  if (b.length > 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return "image/webp";
+  return "";
+}
+
+const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+function horarioLimpio(h){
+  const dias = {};
+  let alguno = false;
+  for (let d = 0; d < 7; d++){
+    const t = h && h.dias && h.dias[d];
+    const ok = (Array.isArray(t) ? t : []).filter(x => x && HORA.test(x.a) && HORA.test(x.c) && x.a !== x.c)
+      .slice(0, 2).map(x => ({ a: x.a, c: x.c }));
+    if (ok.length){ dias[d] = ok; alguno = true; }
+  }
+  return alguno ? { activo: true, dias } : null;
+}
+function datosLimpios(d){
+  d = d || {};
+  const costo = (d.costoDespacho === null || d.costoDespacho === undefined || d.costoDespacho === "") ? NaN : Math.round(Number(d.costoDespacho));
+  return {
+    negocio: txt(d.negocio, 100),
+    tipo: uno(d.tipo, ["", "comida", "retail", "ropa", "otro"]),
+    whatsapp: txt(d.whatsapp, 30),
+    correo: txt(d.correo, 120),
+    direccion: txt(d.direccion, 200),
+    instagram: txt(d.instagram, 60),
+    responsable: txt(d.responsable, 80),
+    horario: horarioLimpio(d.horario),
+    delivery: d.delivery === true,
+    retiro: d.retiro === true,
+    costoDespacho: costo >= 0 && costo <= 100000 ? costo : null,
+    zonas: txt(d.zonas, 300),
+    tiempo: txt(d.tiempo, 40),
+    pagoEfectivo: d.pagoEfectivo === true,
+    pagoMP: uno(d.pagoMP, ["", "tengo", "ayuda", "no"]),
+    pagoWebpay: uno(d.pagoWebpay, ["", "tengo", "ayuda", "no"]),
+    dominio: uno(d.dominio, ["", "tengo", "no"]),
+    dominioCual: txt(d.dominioCual, 100),
+    notas: txt(d.notas, 1000),
+    paso: Math.min(5, Math.max(0, Math.round(Number(d.paso)) || 0))
+  };
+}
+
+async function archivosDe(db, codigo){
+  const s = await db.collection("altas/" + codigo + "/archivos").get();
+  return (s.docs || []).map(d => d.data()).filter(Boolean)
+    .sort((a, z) => String(a.subidoEn || "").localeCompare(String(z.subidoEn || "")));
+}
+function vistaArchivo(a){ return { id: a.id, tipo: a.tipo, nombre: a.nombre, mime: a.mime, bytes: a.bytes, subidoEn: a.subidoEn }; }
+
+async function avisar(db, env, titulo, cuerpo){
+  try {
+    const snap = await db.collection("leads_dispositivos").get();
+    const subs = [];
+    (snap.docs || []).forEach(function(d){
+      try { const sub = JSON.parse(d.data().subscription || "{}"); if (sub.endpoint) subs.push({ id: d.id, sub }); } catch(e){}
+    });
+    if (!subs.length) return;
+    await enviarPushLista(subs, { title: titulo, body: cuerpo, url: "/altas.html" }, env);
+  } catch(e){ console.error("alta aviso:", e.message); }
+}
+
+/* WhatsApp como lo guarda la tienda: solo dígitos, con 569 adelante */
+function whatsappTienda(v){
+  let d = String(v || "").replace(/\D/g, "");
+  if (d.length === 8) d = "569" + d;
+  else if (d.length === 9 && d[0] === "9") d = "56" + d;
+  return d.length >= 11 && d.length <= 13 ? d : "";
+}
+/* "Mar a jue 12:30–23:00 · Vie y sáb 12:30–16:00 y 19:00–01:00": los días seguidos con el mismo horario van juntos */
+function horarioTexto(h){
+  if (!h || !h.dias) return "";
+  var N = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb", 0: "Dom" }, grupos = [];
+  [1, 2, 3, 4, 5, 6, 0].forEach(function(d){
+    var t = h.dias[d]; if (!t || !t.length){ grupos.push(null); return; }
+    var txt = t.map(function(x){ return x.a + "–" + x.c; }).join(" y "), u = grupos[grupos.length - 1];
+    if (u && u.txt === txt) u.dias.push(d); else grupos.push({ txt: txt, dias: [d] });
+  });
+  return grupos.filter(Boolean).map(function(g){
+    var n = g.dias.length, a = N[g.dias[0]], z = N[g.dias[n - 1]].toLowerCase();
+    return (n === 1 ? a : n === 2 ? a + " y " + z : a + " a " + z) + " " + g.txt;
+  }).join(" · ");
+}
+
+export async function alta(request, env){
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  const url = new URL(request.url);
+  const kv = env.LANDING;
+  const db = getDb(env);
+  const esAdmin = !!env.ADMIN_SECRET && request.headers.get("x-admin-secret") === env.ADMIN_SECRET;
+
+  /* Alta abierta para el negocio (existe y no está cerrada) */
+  async function abierta(codigo){
+    if (!codigo) return { error: json({ ok: false, error: "Este enlace no es válido. Pídele a DerLabs que te lo envíe de nuevo." }, 404) };
+    const ref = db.doc("altas/" + codigo), d = await ref.get();
+    if (!d.exists) return { error: json({ ok: false, error: "Este enlace no es válido. Pídele a DerLabs que te lo envíe de nuevo." }, 404) };
+    const a = d.data();
+    if (a.estado === "cerrada") return { error: json({ ok: false, cerrada: true, negocio: a.negocio || "", error: "Esta alta ya está cerrada. Si necesitas cambiar algo, escríbenos." }, 410) };
+    return { ref, a };
+  }
+
+  /* ───────── GET ───────── */
+  if (request.method === "GET"){
+    const codigo = codigoDe(url.searchParams.get("codigo"));
+    if (url.searchParams.get("accion") === "archivo"){
+      const id = String(url.searchParams.get("id") || "");
+      if (!codigo || !/^[a-z2-9]{10}$/.test(id) || !kv) return new Response("No encontrado", { status: 404 });
+      const d = await db.doc("altas/" + codigo + "/archivos/" + id).get();
+      if (!d.exists) return new Response("No encontrado", { status: 404 });
+      const a = d.data();
+      const bytes = await kv.get("alta:" + codigo + ":" + id, { type: "arrayBuffer" });
+      if (!bytes) return new Response("No encontrado", { status: 404 });
+      const nombre = encodeURIComponent(a.nombre || ("archivo." + (EXT[a.mime] || "bin")));
+      return new Response(bytes, { headers: {
+        "Content-Type": a.mime,
+        "Content-Disposition": (url.searchParams.get("descargar") ? "attachment" : "inline") + "; filename*=UTF-8''" + nombre,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Cache-Control": "private, max-age=3600"
+      }});
+    }
+    const r = await abierta(codigo); if (r.error) return r.error;
+    if (r.a.estado === "pendiente"){
+      r.a.estado = "abierta"; r.a.abiertaEn = new Date().toISOString();
+      await r.ref.set({ estado: r.a.estado, abiertaEn: r.a.abiertaEn }, { merge: true });
+    }
+    const archivos = await archivosDe(db, codigo);
+    return json({ ok: true, alta: { codigo, negocio: r.a.negocio || "", estado: r.a.estado, datos: r.a.datos || null,
+      guardadoEn: r.a.guardadoEn || null, completadaEn: r.a.completadaEn || null, archivos: archivos.map(vistaArchivo) } });
+  }
+  if (request.method !== "POST") return json({ ok: false, error: "Usa GET o POST" }, 405);
+
+  /* ───────── subir un archivo (cuerpo binario) ───────── */
+  if (url.searchParams.get("accion") === "subir"){
+    if (!kv) return json({ ok: false, error: "El almacenamiento de archivos no está conectado" }, 500);
+    const codigo = codigoDe(url.searchParams.get("codigo"));
+    const tipo = String(url.searchParams.get("tipo") || "");
+    const T = TIPOS[tipo];
+    if (!T) return json({ ok: false, error: "Tipo de archivo desconocido" }, 400);
+    const r = await abierta(codigo); if (r.error) return r.error;
+    if (Number(request.headers.get("content-length") || 0) > T.max) return json({ ok: false, error: "El archivo pesa más de " + Math.round(T.max / MB) + " MB" }, 413);
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (!bytes.length) return json({ ok: false, error: "El archivo llegó vacío" }, 400);
+    if (bytes.length > T.max) return json({ ok: false, error: "El archivo pesa más de " + Math.round(T.max / MB) + " MB" }, 413);
+    const mime = formatoDe(bytes);
+    if (T.mimes.indexOf(mime) < 0) return json({ ok: false, error: tipo === "carta" ? "La carta debe ser un PDF o una foto (JPG, PNG o WebP)" : "Debe ser una imagen JPG, PNG o WebP" }, 400);
+    const ya = (await archivosDe(db, codigo)).filter(a => a.tipo === tipo);
+    if (T.n === 1){
+      /* un solo logo: el nuevo reemplaza al anterior */
+      for (const v of ya){ await kv.delete("alta:" + codigo + ":" + v.id); await db.doc("altas/" + codigo + "/archivos/" + v.id).delete(); }
+    } else if (ya.length >= T.n) return json({ ok: false, error: "Ya subiste el máximo de " + T.n + " archivos de este tipo" }, 400);
+    const id = idNuevo();
+    let nombre = txt(url.searchParams.get("nombre"), 120).replace(/[\\/:*?"<>|]+/g, "-") || (tipo + "." + EXT[mime]);
+    if (!/\.[A-Za-z0-9]{2,5}$/.test(nombre)) nombre += "." + EXT[mime];
+    const arch = { id, tipo, nombre, mime, bytes: bytes.length, subidoEn: new Date().toISOString() };
+    await kv.put("alta:" + codigo + ":" + id, bytes, { metadata: { mime, nombre } });
+    await db.doc("altas/" + codigo + "/archivos/" + id).set(arch);
+    return json({ ok: true, archivo: vistaArchivo(arch) });
+  }
+
+  let b = {}; try { b = JSON.parse(await request.text() || "{}"); } catch(e){ b = {}; }
+  const accion = String(b.accion || "");
+
+  /* ───────── el negocio ───────── */
+  if (accion === "guardar" || accion === "enviar"){
+    const r = await abierta(codigoDe(b.codigo)); if (r.error) return r.error;
+    const datos = datosLimpios(b.datos);
+    const ahora = new Date().toISOString();
+    const cambio = { datos, guardadoEn: ahora };
+    if (accion === "enviar"){
+      if (!datos.negocio || datos.whatsapp.replace(/\D/g, "").length < 8) return json({ ok: false, error: "Faltan el nombre del negocio o el WhatsApp" }, 400);
+      cambio.estado = "completa"; cambio.completadaEn = ahora;
+      if (datos.negocio) cambio.negocio = datos.negocio;
+    }
+    /* Se reescribe el documento entero: con "merge", Firestore mezcla los mapas por dentro
+       y un día que el negocio quitó del horario seguiría apareciendo. */
+    await r.ref.set(Object.assign({}, r.a, cambio));
+    if (accion === "enviar"){
+      const n = (await archivosDe(db, r.a.codigo)).length;
+      await avisar(db, env, (r.a.estado === "completa" ? "Alta actualizada: " : "Alta completada: ") + (datos.negocio || r.a.negocio),
+        n + (n === 1 ? " archivo" : " archivos") + " · WA " + datos.whatsapp);
+    }
+    return json({ ok: true, guardadoEn: ahora, estado: cambio.estado || r.a.estado });
+  }
+  if (accion === "quitar"){
+    const codigo = codigoDe(b.codigo), id = String(b.id || "");
+    const r = await abierta(codigo); if (r.error) return r.error;
+    if (!/^[a-z2-9]{10}$/.test(id)) return json({ ok: false, error: "Archivo desconocido" }, 400);
+    if (kv) await kv.delete("alta:" + codigo + ":" + id);
+    await db.doc("altas/" + codigo + "/archivos/" + id).delete();
+    return json({ ok: true });
+  }
+
+  /* ───────── DerLabs (clave de administrador) ───────── */
+  if (["crear", "listar", "aplicar", "cerrar"].indexOf(accion) < 0) return json({ ok: false, error: "Acción desconocida" }, 400);
+  if (!esAdmin) return json({ ok: false, error: "Clave incorrecta" }, 401);
+
+  if (accion === "crear"){
+    const negocio = txt(b.negocio, 100);
+    if (!negocio) return json({ ok: false, error: "Escribe el nombre del negocio" }, 400);
+    let codigo = "";
+    for (let i = 0; i < 5 && !codigo; i++){ const c = codigoNuevo(); if (!(await db.doc("altas/" + c).get()).exists) codigo = c; }
+    if (!codigo) return json({ ok: false, error: "No se pudo crear el enlace. Intenta de nuevo." }, 500);
+    const a = { codigo, negocio, estado: "pendiente", creadaEn: new Date().toISOString(), datos: datosLimpios({ negocio }) };
+    await db.doc("altas/" + codigo).set(a);
+    return json({ ok: true, alta: Object.assign({}, a, { archivos: [] }) });
+  }
+
+  if (accion === "listar"){
+    const s = await db.collection("altas").get();
+    const altas = [];
+    for (const d of (s.docs || [])){
+      const a = d.data(); if (!a || !a.codigo) continue;
+      a.archivos = a.estado === "cerrada" ? [] : (await archivosDe(db, a.codigo)).map(vistaArchivo);
+      altas.push(a);
+    }
+    altas.sort((x, z) => String(z.creadaEn || "").localeCompare(String(x.creadaEn || "")));
+    return json({ ok: true, altas });
+  }
+
+  const codigo = codigoDe(b.codigo);
+  const ref = db.doc("altas/" + codigo), doc = codigo ? await ref.get() : null;
+  if (!doc || !doc.exists) return json({ ok: false, error: "Esa alta no existe" }, 404);
+  const a = doc.data();
+
+  if (accion === "cerrar"){
+    const arch = await archivosDe(db, codigo);
+    for (const v of arch){ if (kv) await kv.delete("alta:" + codigo + ":" + v.id); await db.doc("altas/" + codigo + "/archivos/" + v.id).delete(); }
+    await ref.set({ estado: "cerrada", cerradaEn: new Date().toISOString() }, { merge: true });
+    return json({ ok: true, borrados: arch.length });
+  }
+
+  /* aplicar: pasa los datos del alta a la configuración de una tienda que ya existe */
+  const storeId = String(b.storeId || "").replace(/[^A-Za-z0-9_-]/g, "");
+  const cfgRef = db.doc("tiendas/" + storeId + "/config/general");
+  if (!storeId || !(await cfgRef.get()).exists) return json({ ok: false, error: "Esa tienda no existe" }, 404);
+  const d = datosLimpios(a.datos), general = {}, hecho = [], omitido = [];
+  const wsp = whatsappTienda(d.whatsapp);
+  if (wsp){ general.whatsapp = wsp; hecho.push("WhatsApp"); } else omitido.push("WhatsApp (no parece un número válido)");
+  if (d.horario){
+    /* los 7 días van siempre, los cerrados como lista vacía: así un día que la tienda
+       tenía abierto y el negocio no marcó queda cerrado y no mezclado con lo anterior */
+    const dias = {}; for (let k = 0; k < 7; k++) dias[k] = d.horario.dias[k] || [];
+    general.horario = { activo: true, dias }; hecho.push("Horario");
+  } else omitido.push("Horario (no lo indicó)");
+  if (d.delivery || d.retiro){
+    general.deliveryActivo = d.delivery; general.retiroActivo = d.retiro; hecho.push("Delivery y retiro");
+    if (d.delivery && d.costoDespacho != null){ general.deliveryCosto = d.costoDespacho; hecho.push("Costo de despacho"); }
+  } else omitido.push("Delivery y retiro (no los indicó)");
+  if (d.tiempo){ general.tiempoEntrega = d.tiempo; hecho.push("Tiempo de entrega"); }
+  const logo = String(b.logoBase64 || ""), ico = String(b.faviconBase64 || "");
+  if (/^data:image\/(png|webp|jpeg);base64,/.test(logo) && logo.length < 400000){
+    general.logoBase64 = logo; hecho.push("Logo");
+    if (/^data:image\/png;base64,/.test(ico) && ico.length < 200000){ general.faviconBase64 = ico; hecho.push("Ícono"); }
+  } else omitido.push("Logo (no subió uno)");
+  if (Object.keys(general).length) await cfgRef.set(general, { merge: true });
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.correo)){
+    await db.doc("tiendas/" + storeId + "/config/privado").set({ emailVendedor: d.correo, emailNotif: d.correo }, { merge: true });
+    hecho.push("Correo de avisos");
+  } else omitido.push("Correo (no parece válido)");
+  if (d.direccion){
+    const loc = await db.collection("tiendas/" + storeId + "/locales").get();
+    const lista = loc.docs || [];
+    if (lista.length <= 1){
+      const id = lista.length ? lista[0].id : "principal";
+      const base = lista.length ? {} : { id, nombre: d.negocio || a.negocio || "Local", imagen: "", abierto: true };
+      await db.doc("tiendas/" + storeId + "/locales/" + id).set(Object.assign(base, { direccion: d.direccion, horario: horarioTexto(d.horario) }), { merge: true });
+      hecho.push("Dirección del local");
+    } else omitido.push("Dirección (la tienda tiene más de un local: cámbiala a mano)");
+  } else omitido.push("Dirección (no la indicó)");
+  await ref.set({ storeId, aplicadaEn: new Date().toISOString() }, { merge: true });
+  return json({ ok: true, hecho, omitido });
+}

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Altas — DerLabs</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#14121F">
+<link rel="icon" href="/favicon-landing.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--
+  ALTAS — página privada de DerLabs (clave de administrador, la misma de /leads.html).
+  Aquí se crea el enlace que se le manda a un negocio que ya contrató (/alta/<código>),
+  se revisa lo que llenó, se descargan su carta, fotos y logo, y se pasan sus datos
+  a la tienda. El servidor es /api/alta (cloudflare/functions/altas.js).
+-->
+<style>
+:root{--tinta:#14121F;--gris:#55516A;--linea:#E7E4EF;--borde:#CFCADF;--suave:#F6F5FB;--morado:#4A3BC0;--verde:#12703A;--verde-suave:#E3F6EA;--rojo:#B3261E}
+*{box-sizing:border-box}
+body{margin:0;background:var(--suave);color:var(--tinta);font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;cursor:pointer;background:none;padding:0}
+input,select{font:inherit;color:inherit}
+h1,h2,p{margin:0}
+.pagina{max-width:620px;margin:0 auto;min-height:100vh}
+.cab{display:flex;align-items:center;gap:12px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--linea);position:sticky;top:0;z-index:5}
+.cab h1{flex:1;font-size:18px;font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;min-height:46px;padding:0 12px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none}
+.btn-1{background:var(--tinta);color:#fff}
+.btn-2{background:#fff;border:1.5px solid var(--borde);color:var(--tinta)}
+.btn-wa{background:#0E7A3B;color:#fff}
+.btn:disabled{opacity:.55;cursor:default}
+.enl{min-height:44px;font-weight:700;font-size:14px;color:var(--gris)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--morado);outline-offset:2px}
+.inp{min-height:48px;width:100%;padding:0 14px;border-radius:10px;border:1.5px solid var(--borde);background:#fff}
+.lista{padding:16px 16px 40px;display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card.abierta{border:2px solid var(--tinta)}
+.card-c{display:flex;align-items:flex-start;gap:10px}
+.card-c div{flex:1;min-width:0}
+.card-c b{font-size:16px;display:block;overflow-wrap:anywhere}
+.card-c small{font-size:13px;color:var(--gris)}
+.pill{flex:none;padding:4px 10px;border-radius:999px;background:#EFEDF6;color:#3F3B52;font-size:12px;font-weight:700}
+.pill.ok{background:var(--verde-suave);color:var(--verde)}
+.pill.av{background:#FFF4DC;color:#5F4200}
+.link{padding:10px 12px;border-radius:10px;background:var(--suave);font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.fila{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--linea);font-size:14px}
+.fila:last-child{border-bottom:1px solid var(--linea)}
+.fila span{flex:none;width:84px;color:var(--gris);font-weight:600}
+.fila div{flex:1;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.fila a{color:var(--morado)}
+.rot{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--gris)}
+.arch{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--linea);border-radius:12px}
+.arch-i{flex:none;width:40px;height:40px;border-radius:10px;background:var(--suave);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--morado);overflow:hidden}
+.arch-i img{width:100%;height:100%;object-fit:cover}
+.arch-t{flex:1;min-width:0}
+.arch-t b{display:block;font-size:14px;overflow-wrap:anywhere}
+.arch-t small{font-size:12.5px;color:var(--gris)}
+.arch .btn{min-height:44px;padding:0 12px;font-size:13.5px}
+.grupo{display:flex;flex-direction:column;gap:8px}
+.ayuda{font-size:12.5px;color:var(--gris)}
+.res{padding:12px 14px;border-radius:12px;background:var(--verde-suave);color:#0B4A26;font-size:13.5px}
+.res.mal{background:#FCE8E6;color:var(--rojo);font-weight:600}
+.res b{display:block}
+.vacio{text-align:center;color:var(--gris);padding:48px 24px}
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate-c{width:100%;max-width:360px;background:#fff;border:1px solid var(--linea);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.gate-c h1{font-size:20px}
+.err{font-size:13px;font-weight:600;color:var(--rojo);min-height:18px}
+.sec{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--gris);padding:10px 4px 0}
+</style>
+</head>
+<body>
+<div class="gate" id="gate">
+  <form class="gate-c" id="gateForm">
+    <h1>Altas</h1>
+    <p class="ayuda" style="font-size:14px">Ingresa la clave de administrador.</p>
+    <label for="gClave" class="rot" style="letter-spacing:0;font-size:13px;color:var(--tinta)">Clave</label>
+    <input class="inp" id="gClave" type="password" autocomplete="current-password">
+    <div class="err" id="gErr" role="alert"></div>
+    <button class="btn btn-1" id="gEntrar" type="submit">Entrar</button>
+  </form>
+</div>
+
+<div class="pagina" id="pagina" hidden>
+  <header class="cab"><h1>Altas</h1><button class="btn btn-1" id="bNueva">Nueva alta</button></header>
+  <div class="lista" id="lista"></div>
+</div>
+
+<script src="/logo-util.js"></script>
+<script>
+(function(){
+"use strict";
+var SECRETO = "", ALTAS = [], TIENDAS = null, abierta = "", nueva = false, aplicar = "", resultado = {};
+function $(s){ return document.querySelector(s); }
+function esc(s){ return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function peso(b){ return b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+function fecha(iso){ if (!iso) return ""; var d = new Date(iso), h = new Date();
+  var hora = d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toDateString() === h.toDateString() ? "hoy a las " + hora : "el " + d.toLocaleDateString("es-CL", { day: "numeric", month: "short" }) + " a las " + hora; }
+function enlace(a){ return location.origin + "/alta/" + a.codigo; }
+function urlArch(a, f, descargar){ return "/api/alta?accion=archivo&codigo=" + a.codigo + "&id=" + f.id + (descargar ? "&descargar=1" : ""); }
+
+function api(ruta, cuerpo){
+  return fetch(ruta, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": SECRETO }, body: JSON.stringify(cuerpo) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if (!r.ok || !j.ok){ var e = new Error(j.error || "No se pudo conectar"); e.st = r.status; throw e; } return j; }); });
+}
+function cargar(){ return api("/api/alta", { accion: "listar" }).then(function(j){ ALTAS = j.altas || []; }); }
+
+/* ── entrada ── */
+function entrar(){ $("#gate").hidden = true; $("#gate").style.display = "none"; $("#pagina").hidden = false; pintar(); }
+$("#gateForm").addEventListener("submit", function(ev){
+  ev.preventDefault();
+  var v = $("#gClave").value.trim(), b = $("#gEntrar");
+  if (!v){ $("#gErr").textContent = "Ingresa la clave."; return; }
+  SECRETO = v; b.disabled = true; b.textContent = "Entrando…"; $("#gErr").textContent = "";
+  cargar().then(function(){ try { sessionStorage.setItem("adminSecret", v); } catch(e){} entrar(); })
+    .catch(function(e){ SECRETO = ""; $("#gErr").textContent = e.st === 401 ? "Clave incorrecta." : (e.message || "No se pudo conectar."); })
+    .then(function(){ b.disabled = false; b.textContent = "Entrar"; });
+});
+
+/* ── listado ── */
+var ESTADOS = { pendiente: ["Pendiente", ""], abierta: ["Llenando", "av"], completa: ["Completa", "ok"], cerrada: ["Cerrada", ""] };
+function detalleEstado(a){
+  if (a.estado === "pendiente") return "Enlace creado " + fecha(a.creadaEn) + " · aún no lo abre";
+  if (a.estado === "abierta") return "Lo abrió " + fecha(a.abiertaEn) + (a.guardadoEn ? " · último cambio " + fecha(a.guardadoEn) : "");
+  if (a.estado === "completa") return "Completada " + fecha(a.completadaEn) + (a.aplicadaEn ? " · datos pasados a " + (a.storeId || "la tienda") : "");
+  return "Cerrada " + fecha(a.cerradaEn);
+}
+function horarioTexto(h){
+  if (!h || !h.dias) return "";
+  var N = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb", 0: "Dom" }, grupos = [];
+  [1, 2, 3, 4, 5, 6, 0].forEach(function(d){
+    var t = h.dias[d]; if (!t || !t.length){ grupos.push(null); return; }
+    var txt = t.map(function(x){ return x.a + "–" + x.c; }).join(" y "), u = grupos[grupos.length - 1];
+    if (u && u.txt === txt) u.dias.push(d); else grupos.push({ txt: txt, dias: [d] });
+  });
+  return grupos.filter(Boolean).map(function(g){
+    var n = g.dias.length, a = N[g.dias[0]], z = N[g.dias[n - 1]].toLowerCase();
+    return (n === 1 ? a : n === 2 ? a + " y " + z : a + " a " + z) + " " + g.txt;
+  }).join(" · ");
+}
+function horarioTxt(h){ return horarioTexto(h); }
+function fila(r, v, html){ return v ? '<div class="fila"><span>' + r + '</span><div>' + (html || esc(v)) + '</div></div>' : ''; }
+function vistaDatos(a){
+  var d = a.datos || {}, wa = String(d.whatsapp || "").replace(/\D/g, "");
+  var pago = function(v){ return v === "tengo" ? "ya tiene cuenta" : v === "ayuda" ? "necesita ayuda" : v === "no" ? "no lo usará" : ""; };
+  var entrega = [d.delivery ? "Delivery" + (d.costoDespacho != null ? " · despacho $" + Number(d.costoDespacho).toLocaleString("es-CL") : "") : "", d.retiro ? "Retiro en local" : ""].filter(Boolean).join(" · ");
+  var pagos = [d.pagoEfectivo ? "Efectivo" : "", d.pagoMP ? "Mercado Pago: " + pago(d.pagoMP) : "", d.pagoWebpay ? "Webpay: " + pago(d.pagoWebpay) : ""].filter(Boolean).join(" · ");
+  var tipos = { comida: "Comida", retail: "Tienda o retail", ropa: "Ropa", otro: "Otro" };
+  var h = '<div>' + fila("Negocio", d.negocio) + fila("Tipo", tipos[d.tipo]) + fila("Contacto", d.responsable)
+    + fila("WhatsApp", d.whatsapp, wa ? '<a href="https://wa.me/' + (wa.length === 8 ? "569" + wa : wa.length === 9 ? "56" + wa : wa) + '" target="_blank" rel="noopener">' + esc(d.whatsapp) + '</a>' : "")
+    + fila("Correo", d.correo) + fila("Dirección", d.direccion) + fila("Instagram", d.instagram) + fila("Horario", horarioTxt(d.horario))
+    + fila("Entrega", entrega) + fila("Zonas", d.zonas) + fila("Tiempo", d.tiempo) + fila("Pagos", pagos)
+    + fila("Dominio", d.dominio === "tengo" ? (d.dominioCual || "Tiene uno") : d.dominio === "no" ? "No tiene" : "") + fila("Notas", d.notas) + '</div>';
+  var arch = a.archivos || [], de = function(t){ return arch.filter(function(f){ return f.tipo === t; }); };
+  var fotos = de("foto"), items = "";
+  de("carta").forEach(function(f){
+    items += '<div class="arch"><div class="arch-i">' + (f.mime === "application/pdf" ? "PDF" : '<img src="' + urlArch(a, f) + '" alt="" loading="lazy">') + '</div><div class="arch-t"><b>' + esc(f.nombre) + '</b><small>Carta · ' + peso(f.bytes) + '</small></div>'
+      + '<a class="btn btn-2" href="' + urlArch(a, f, true) + '">Descargar</a></div>';
+  });
+  if (fotos.length) items += '<div class="arch"><div class="arch-i"><img src="' + urlArch(a, fotos[0]) + '" alt="" loading="lazy"></div><div class="arch-t"><b>' + fotos.length + (fotos.length === 1 ? " foto de producto" : " fotos de productos") + '</b><small>Se descargan en un solo archivo .zip</small></div>'
+    + '<button class="btn btn-2" data-zip="' + a.codigo + '">Descargar</button></div>';
+  de("logo").forEach(function(f){
+    items += '<div class="arch"><div class="arch-i"><img src="' + urlArch(a, f) + '" alt="" style="object-fit:contain"></div><div class="arch-t"><b>Logo</b><small>' + esc(f.nombre) + ' · ' + peso(f.bytes) + '</small></div>'
+      + '<a class="btn btn-2" href="' + urlArch(a, f, true) + '">Descargar</a></div>';
+  });
+  h += '<div class="grupo"><div class="rot">ARCHIVOS</div>' + (items || '<p class="ayuda" style="font-size:13.5px">Todavía no sube archivos.</p>') + '</div>';
+  var res = resultado[a.codigo];
+  if (res) h += '<div class="res' + (res.error ? " mal" : "") + '" role="status">' + (res.error ? esc(res.error)
+    : '<b>Datos pasados a ' + esc(res.tienda) + '</b>' + esc(res.hecho.join(", ")) + (res.omitido.length ? '<br><b style="margin-top:6px">No se pasó</b>' + esc(res.omitido.join("; ")) : '')) + '</div>';
+  if (aplicar === a.codigo){
+    h += '<div class="grupo"><label class="rot" for="selTienda" style="letter-spacing:0;font-size:13px;color:var(--tinta)">¿A qué tienda?</label>'
+      + (TIENDAS === null ? '<p class="ayuda">Cargando tiendas…</p>' : !TIENDAS.length ? '<p class="ayuda">No hay tiendas creadas todavía. Crea la tienda primero en el generador.</p>'
+        : '<select class="inp" id="selTienda">' + TIENDAS.map(function(t){ return '<option value="' + esc(t.storeId) + '"' + (t.storeId === a.storeId ? " selected" : "") + '>' + esc(t.nombre) + ' · ' + esc((t.dominios || [])[0] || t.storeId) + '</option>'; }).join("") + '</select>'
+          + '<div class="dos"><button class="btn btn-2" data-cancelar="1">Cancelar</button><button class="btn btn-1" data-confirmar="' + a.codigo + '">Pasar datos</button></div>') + '</div>';
+  } else {
+    h += '<div class="grupo"><button class="btn btn-1" data-aplicar="' + a.codigo + '" style="min-height:50px;font-size:15px">Pasar datos a la tienda</button>'
+      + '<p class="ayuda">Deja en la tienda el WhatsApp, correo, dirección, horario, entrega, logo e ícono. Los productos los cargas tú con la carta.</p>'
+      + '<button class="enl" data-cerrar="' + a.codigo + '">Cerrar alta y borrar archivos</button></div>';
+  }
+  return h;
+}
+function tarjeta(a){
+  var e = ESTADOS[a.estado] || ESTADOS.pendiente, ab = abierta === a.codigo, n = (a.archivos || []).length;
+  var h = '<div class="card' + (ab ? " abierta" : "") + '" id="a-' + a.codigo + '"><div class="card-c"><div><b>' + esc(a.negocio || "Sin nombre") + '</b><small>' + esc(detalleEstado(a)) + '</small></div><span class="pill ' + e[1] + '">' + e[0] + '</span></div>';
+  if (a.estado === "cerrada") return h + (ab ? vistaCerrada(a) : '<button class="enl" data-ver="' + a.codigo + '" style="align-self:flex-start">Ver datos</button>') + '</div>';
+  h += '<div class="link">' + esc(enlace(a).replace(/^https?:\/\//, "")) + '</div>'
+    + '<div class="dos"><button class="btn btn-2" data-copiar="' + a.codigo + '">Copiar enlace</button>'
+    + '<a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent("Hola, ya podemos armar tu tienda de " + (a.negocio || "") + ". Sube aquí tu carta, fotos, logo y los datos de tu negocio: " + enlace(a)) + '">Enviar por WhatsApp</a></div>';
+  if (a.estado !== "pendiente") h += ab ? '<button class="enl" data-ver="' + a.codigo + '" style="align-self:flex-start">Ocultar datos</button>' + vistaDatos(a) : '<button class="btn btn-2" data-ver="' + a.codigo + '">Ver datos' + (n ? " y " + n + (n === 1 ? " archivo" : " archivos") : "") + '</button>';
+  return h + '</div>';
+}
+function vistaCerrada(a){
+  var d = a.datos || {};
+  return '<div>' + fila("WhatsApp", d.whatsapp) + fila("Correo", d.correo) + fila("Dirección", d.direccion) + fila("Horario", horarioTxt(d.horario)) + fila("Tienda", a.storeId) + '</div><p class="ayuda">Los archivos de esta alta ya se borraron.</p>';
+}
+function pintar(){
+  var vivas = ALTAS.filter(function(a){ return a.estado !== "cerrada"; }), cerradas = ALTAS.filter(function(a){ return a.estado === "cerrada"; });
+  var orden = { completa: 0, abierta: 1, pendiente: 2 };
+  vivas.sort(function(x, z){ return (orden[x.estado] - orden[z.estado]) || String(z.creadaEn).localeCompare(String(x.creadaEn)); });
+  var h = "";
+  if (nueva) h += '<form class="card" id="fNueva"><label for="nNegocio" style="font-weight:700">Nombre del negocio</label><input class="inp" id="nNegocio" maxlength="100" autocomplete="off">'
+    + '<div class="err" id="nErr" role="alert"></div><div class="dos"><button type="button" class="btn btn-2" id="nCancelar">Cancelar</button><button class="btn btn-1" id="nCrear" type="submit">Crear enlace</button></div></form>';
+  h += vivas.map(tarjeta).join("");
+  if (!vivas.length && !nueva) h += '<div class="vacio"><b style="display:block;color:var(--tinta);font-size:16px;margin-bottom:6px">No hay altas en curso</b>Cuando cierres una venta, toca “Nueva alta” y envíale el enlace al negocio.</div>';
+  if (cerradas.length) h += '<div class="sec">CERRADAS</div>' + cerradas.map(tarjeta).join("");
+  $("#lista").innerHTML = h;
+  var f = $("#fNueva");
+  if (f){
+    $("#nNegocio").focus();
+    $("#nCancelar").onclick = function(){ nueva = false; pintar(); };
+    f.onsubmit = function(ev){
+      ev.preventDefault();
+      var v = $("#nNegocio").value.trim(), b = $("#nCrear");
+      if (!v){ $("#nErr").textContent = "Escribe el nombre del negocio."; return; }
+      b.disabled = true; b.textContent = "Creando…";
+      api("/api/alta", { accion: "crear", negocio: v }).then(function(j){ ALTAS.unshift(j.alta); nueva = false; pintar(); })
+        .catch(function(e){ b.disabled = false; b.textContent = "Crear enlace"; $("#nErr").textContent = e.message; });
+    };
+  }
+}
+$("#bNueva").onclick = function(){ nueva = true; pintar(); window.scrollTo(0, 0); };
+function de(codigo){ return ALTAS.filter(function(a){ return a.codigo === codigo; })[0]; }
+
+$("#lista").addEventListener("click", function(ev){
+  var t = ev.target.closest("button"); if (!t) return;
+  var v;
+  if ((v = t.getAttribute("data-ver"))){ abierta = abierta === v ? "" : v; aplicar = ""; pintar(); var c = document.getElementById("a-" + v); if (c) c.scrollIntoView({ block: "start" }); }
+  else if ((v = t.getAttribute("data-copiar"))){
+    var u = enlace(de(v)), listo = function(){ t.textContent = "Copiado"; setTimeout(function(){ t.textContent = "Copiar enlace"; }, 1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(listo, function(){ window.prompt("Copia el enlace:", u); });
+    else window.prompt("Copia el enlace:", u);
+  }
+  else if ((v = t.getAttribute("data-aplicar"))){
+    aplicar = v; delete resultado[v]; pintar();
+    if (TIENDAS === null) api("/api/planTienda", { accion: "listar" }).then(function(j){ TIENDAS = j.tiendas || []; }).catch(function(){ TIENDAS = []; }).then(pintar);
+  }
+  else if (t.getAttribute("data-cancelar")){ aplicar = ""; pintar(); }
+  else if ((v = t.getAttribute("data-confirmar"))) pasarDatos(de(v), $("#selTienda").value, t);
+  else if ((v = t.getAttribute("data-cerrar"))){
+    var a = de(v);
+    if (!window.confirm("¿Cerrar el alta de " + (a.negocio || "este negocio") + "?\n\nSe borran sus archivos (carta, fotos y logo) y el enlace deja de funcionar. Los datos se conservan. Descarga antes lo que necesites.")) return;
+    t.disabled = true; t.textContent = "Cerrando…";
+    api("/api/alta", { accion: "cerrar", codigo: v }).then(function(){ a.estado = "cerrada"; a.cerradaEn = new Date().toISOString(); a.archivos = []; abierta = ""; pintar(); })
+      .catch(function(e){ t.disabled = false; t.textContent = "Cerrar alta y borrar archivos"; window.alert(e.message); });
+  }
+  else if ((v = t.getAttribute("data-zip"))) descargarZip(de(v), t);
+});
+
+/* ── pasar datos a la tienda ── */
+function aDataURL(blob){ return new Promise(function(ok, mal){ var fr = new FileReader(); fr.onload = function(){ ok(fr.result); }; fr.onerror = function(){ mal(new Error("No se pudo leer el logo")); }; fr.readAsDataURL(blob); }); }
+function pasarDatos(a, storeId, boton){
+  boton.disabled = true; boton.textContent = "Pasando…";
+  var logo = (a.archivos || []).filter(function(f){ return f.tipo === "logo"; })[0];
+  var prep = !logo ? Promise.resolve({}) : fetch(urlArch(a, logo)).then(function(r){ if (!r.ok) throw new Error("No se pudo leer el logo"); return r.blob(); })
+    .then(aDataURL).then(procesarLogo).then(function(l){ return iconoDeLogo(l).then(function(i){ return { logoBase64: l, faviconBase64: i }; }); });
+  prep.then(function(img){ return api("/api/alta", Object.assign({ accion: "aplicar", codigo: a.codigo, storeId: storeId }, img)); })
+    .then(function(j){
+      var t = (TIENDAS || []).filter(function(x){ return x.storeId === storeId; })[0];
+      a.storeId = storeId; a.aplicadaEn = new Date().toISOString();
+      resultado[a.codigo] = { tienda: t ? t.nombre : storeId, hecho: j.hecho || [], omitido: j.omitido || [] };
+    }).catch(function(e){ resultado[a.codigo] = { error: e.message || "No se pudieron pasar los datos" }; })
+    .then(function(){ aplicar = ""; pintar(); });
+}
+
+/* ── fotos en un .zip (sin comprimir: las fotos ya vienen comprimidas) ── */
+var CRC = (function(){ var t = []; for (var n = 0; n < 256; n++){ var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b){ var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function armarZip(archivos){
+  var enc = new TextEncoder(), partes = [], central = [], pos = 0;
+  archivos.forEach(function(f){
+    var nom = enc.encode(f.nombre), crc = crc32(f.bytes), n = f.bytes.length;
+    var loc = new DataView(new ArrayBuffer(30));
+    loc.setUint32(0, 0x04034b50, true); loc.setUint16(4, 20, true); loc.setUint16(6, 0x0800, true); loc.setUint16(8, 0, true);
+    loc.setUint32(14, crc, true); loc.setUint32(18, n, true); loc.setUint32(22, n, true); loc.setUint16(26, nom.length, true);
+    partes.push(new Uint8Array(loc.buffer), nom, f.bytes);
+    var cen = new DataView(new ArrayBuffer(46));
+    cen.setUint32(0, 0x02014b50, true); cen.setUint16(4, 20, true); cen.setUint16(6, 20, true); cen.setUint16(8, 0x0800, true);
+    cen.setUint32(16, crc, true); cen.setUint32(20, n, true); cen.setUint32(24, n, true); cen.setUint16(28, nom.length, true); cen.setUint32(42, pos, true);
+    central.push(new Uint8Array(cen.buffer), nom);
+    pos += 30 + nom.length + n;
+  });
+  var tam = central.reduce(function(s, x){ return s + x.length; }, 0);
+  var fin = new DataView(new ArrayBuffer(22));
+  fin.setUint32(0, 0x06054b50, true); fin.setUint16(8, archivos.length, true); fin.setUint16(10, archivos.length, true); fin.setUint32(12, tam, true); fin.setUint32(16, pos, true);
+  return new Blob(partes.concat(central, [new Uint8Array(fin.buffer)]), { type: "application/zip" });
+}
+function descargarZip(a, boton){
+  var fotos = (a.archivos || []).filter(function(f){ return f.tipo === "foto"; }), usados = {}, listos = [];
+  boton.disabled = true;
+  var sigue = function(i){
+    if (i >= fotos.length) return Promise.resolve();
+    boton.textContent = (i + 1) + " de " + fotos.length;
+    return fetch(urlArch(a, fotos[i])).then(function(r){ if (!r.ok) throw new Error("No se pudo leer " + fotos[i].nombre); return r.arrayBuffer(); }).then(function(buf){
+      var nom = fotos[i].nombre, k = 1;
+      while (usados[nom.toLowerCase()]){ k++; nom = fotos[i].nombre.replace(/(\.[A-Za-z0-9]+)?$/, " (" + k + ")$1"); }
+      usados[nom.toLowerCase()] = 1; listos.push({ nombre: nom, bytes: new Uint8Array(buf) });
+      return sigue(i + 1);
+    });
+  };
+  sigue(0).then(function(){
+    var u = URL.createObjectURL(armarZip(listos)), l = document.createElement("a");
+    l.href = u; l.download = "fotos-" + String(a.negocio || a.codigo).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".zip";
+    document.body.appendChild(l); l.click(); l.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 60000);
+  }).catch(function(e){ window.alert(e.message || "No se pudieron descargar las fotos"); })
+    .then(function(){ boton.disabled = false; boton.textContent = "Descargar"; });
+}
+
+/* ── si la clave ya se ingresó en esta pestaña, entrar directo ── */
+try { var s = sessionStorage.getItem("adminSecret"); if (s){ SECRETO = s; cargar().then(entrar).catch(function(){ SECRETO = ""; }); } } catch(e){}
+})();
+</script>
+</body>
+</html>
