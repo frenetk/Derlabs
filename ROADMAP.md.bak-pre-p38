@@ -603,7 +603,7 @@ funcionamiento sin conexión.
   Rindegastos, pero el dueño decidió no seguir. P32 lo retira si estaba
   instalado.
 
-## 20. Alta de tiendas (P34–P37) — ✅ hecho
+## 20. Alta de tiendas (P34–P36) — ✅ hecho
 
 Lo que DerLabs le pide a un negocio **que ya contrató**, pensado para dejarle
 la tienda lista (eso es lo que cubre la cuota de integración). No es
@@ -619,16 +619,9 @@ la tienda lista (eso es lo que cubre la cuota de integración). No es
   1. Negocio y contacto: nombre, WhatsApp, correo, dirección, **comuna y
      ciudad** (obligatorias).
   2. Horario: al menos un día abierto.
-  3. Productos (P37): primero elige **cómo** los entrega.
-     - "Mi carta ya tiene los nombres y los precios": sube la carta o
-       catálogo (obligatorio) y DerLabs carga los productos a mano; si
-       agrega fotos aparte, a cada una solo se le pide el nombre del producto.
-     - "Prefiero cargarlos uno por uno": cada foto crea un producto que
-       **exige nombre, precio y categoría**; esos se cargan solos en la
-       tienda. La carta queda opcional, como respaldo.
-     Además: "Mis productos tienen variantes o extras", con un espacio para
-     explicarlas (obligatorio si lo marca) y un enlace para explicarlo por
-     audio en WhatsApp. Logo.
+  3. Productos: cada foto elegida crea un producto que **exige nombre, precio
+     y categoría** (descripción opcional). También se pueden agregar productos
+     sin foto. La carta o catálogo en PDF es opcional, como respaldo. Logo.
   4. Entrega y pagos: con delivery, **cada comuna a la que despacha con su
      costo** (obligatorio), despacho gratis desde (opcional), tiempo estimado;
      retiro; medios de pago; dominio.
@@ -674,71 +667,3 @@ la tienda lista (eso es lo que cubre la cuota de integración). No es
   mapas por dentro. Por eso el alta se reescribe entera al guardar, y al pasar
   el horario a la tienda van siempre los 7 días (los cerrados como lista
   vacía), igual que hace el panel.
-
-## 21. Caja local en tema claro (P37) — ✅ hecho
-
-- `caja.html` pasó de oscuro a **claro por defecto** (fondo lavanda muy
-  claro, tarjetas blancas, texto tinta), en la línea del alta y del panel.
-  El tema oscuro sigue disponible con el botón 🌙/☀️ del encabezado; cada
-  equipo recuerda el suyo (`localStorage caja_tema`).
-- Los colores fijos del CSS pasaron a variables (`--ok-t`, `--bad-t`,
-  `--warn-t`, `--info-t`, `--inv`, `--plano`, `--mesa-ocu`, `--mesa-par`,
-  `--pagado`, `--velo`…): un color nuevo se define una vez por tema.
-- `cocina.html` (pantalla de cocina) sigue oscura a propósito: se lee mejor
-  de lejos y con grasa en la pantalla. Cambiarla es el mismo ejercicio.
-
-### Íconos de línea en vez de emojis (P38)
-
-- La caja y la cocina ya no muestran emojis de colores: se ven los mismos
-  íconos de línea, de un solo color, que usa la tienda (`EMOJI_A_ICONO` en
-  `app.js`), más los que faltaban (cocina, impresora, para llevar, banco,
-  dividir, mover, juntar, tema, salir…).
-- Vive en `local-util.js`, módulo "Íconos en vez de emojis": un mapa
-  `ICONOS` (emoji → trazos SVG de 24×24) y un observador de la página que
-  cambia cada texto nuevo. El resto del código sigue escribiendo
-  `"🧾 Pre-cuenta"`; no hay que tocar nada más para que salga el ícono.
-- Para sumar uno: agregar su dibujo a `ICONOS`. Un emoji que no esté en el
-  mapa se muestra tal cual.
-- "Turno abierto" es un punto lleno y "Caja cerrada" un aro vacío: el color
-  lo pone el chip, no el emoji.
-
-## 22. Boleta electrónica en la caja local — investigado, pendiente de decidir
-
-- **Proveedor candidato: OpenFactura (Haulmer).** Precio público: plan Pyme
-  $360.000 + IVA al año por razón social. Con el **programa de partners**,
-  una empresa con ventas bajo $100 millones al mes paga **$60.000 + IVA al
-  año (≈ $5.000 al mes)**, con emisión ilimitada, API, habilitación y
-  certificación ante el SII incluidas. Firma electrónica del dueño aparte
-  (≈ $12.000 al año). Es el precio "por negocio al mes" que se recordaba.
-- **Alternativa: SimpleAPI.** Una sola cuenta para todos los negocios
-  (multi-RUT): Básico 5 UF al año (10.000 llamadas al mes), Estándar 9 UF
-  (50.000), Premium 12 UF (150.000). En cuotas es más barato que OpenFactura
-  desde unos 4 negocios Pro. Pero solo genera, timbra, firma y envía: cada
-  negocio tiene que certificarse ante el SII con el software de DerLabs (set
-  de pruebas), pedir y cargar sus folios (CAF), y DerLabs tiene que guardar
-  los XML 6 años. Una integración directa así suele tomar 4 a 10 semanas.
-- **Recomendación:** partir con OpenFactura (se cobra al negocio dentro del
-  plan Pro) y dejar el emisor detrás de una sola función, para poder pasar a
-  SimpleAPI cuando haya suficientes negocios como para que convenga.
-- **API de OpenFactura:** `POST https://api.haulmer.com/v2/dte/document`
-  (pruebas: `https://dev-api.haulmer.com`), cabeceras `apikey` (una por
-  negocio) e `Idempotency-Key`; cuerpo `{ response: ["FOLIO","TIMBRE","PDF",
-  "80MM"…], dte: { Encabezado, Detalle } }`; boleta = `TipoDTE 39`.
-  Límite: 3 llamadas por segundo. No se probó desde aquí.
-- **Plan de trabajo (por aprobar):** datos tributarios por tienda en
-  `config/privado` (RUT, razón social, giro, dirección, API key, ambiente);
-  al cobrar, emitir boleta por lo pagado en efectivo o transferencia (el
-  comprobante de tarjeta ya vale como boleta), sin propina; guardar folio y
-  timbre en el pedido e imprimirlos en el ticket; si el proveedor falla, la
-  venta no se detiene: la boleta queda pendiente y se reintenta.
-
-## 23. Carrusel de destacados que no tapa la etiqueta (P38) — ✅ hecho
-
-- En teléfonos angostos o con títulos largos, la barra de abajo del
-  carrusel (descripción + botón) tapaba la etiqueta "Más pedidos".
-- Las tarjetas del carrusel ahora crecen con su contenido en vez de tener
-  alto fijo: la etiqueta, el título y la barra se apilan y la foto cubre
-  todo el fondo. El título se achica solo en pantallas chicas y corta
-  palabras largas. Está en `_vtCss` de `app.js` (reglas `.vt-track`,
-  `.vt-slide`, `.vt-sl-txt`, `.vt-sl-tit`).
-- Probado a 320, 360 y 412 px, con títulos normales y largos.

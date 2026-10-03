@@ -123,12 +123,7 @@ function datosLimpios(d){
     instagram: txt(d.instagram, 60),
     responsable: txt(d.responsable, 80),
     horario: horarioLimpio(d.horario),
-    /* cómo entrega sus productos: "carta" = sube su carta con nombres y precios y DerLabs los carga;
-       "uno" = los escribe uno por uno (con nombre, precio y categoría) y se cargan solos */
-    modoProductos: uno(d.modoProductos, ["", "carta", "uno"]),
     productos: productosLimpios(d.productos),
-    variantes: d.variantes === true,
-    variantesTexto: txt(d.variantesTexto, 1500),
     delivery: d.delivery === true,
     retiro: d.retiro === true,
     zonas: zonasLimpias(d.zonas),
@@ -152,21 +147,12 @@ function faltantes(d, archivos){
   if (!d.negocio) f.push("el nombre del negocio");
   if (d.whatsapp.replace(/\D/g, "").length < 8) f.push("el WhatsApp");
   if (!d.direccion || !d.comuna || !d.ciudad) f.push("la dirección, comuna y ciudad");
+  const inc = d.productos.filter(p => !productoCompleto(p)).length;
+  if (inc) f.push("el nombre, precio y categoría de " + inc + (inc === 1 ? " producto" : " productos"));
   const usadas = {}; d.productos.forEach(p => { if (p.foto) usadas[p.foto] = 1; });
   const sueltas = archivos.filter(a => a.tipo === "foto" && !usadas[a.id]).length;
-  const hayCarta = archivos.some(a => a.tipo === "carta");
-  if (d.modoProductos === "carta"){
-    /* los precios vienen en la carta: a cada foto le basta el nombre del producto */
-    if (!hayCarta) f.push("tu carta o catálogo con los nombres y precios");
-    const sinNombre = d.productos.filter(p => !p.nombre).length + sueltas;
-    if (sinNombre) f.push("el nombre del producto en " + sinNombre + (sinNombre === 1 ? " foto" : " fotos"));
-  } else {
-    const inc = d.productos.filter(p => !productoCompleto(p)).length;
-    if (inc) f.push("el nombre, precio y categoría de " + inc + (inc === 1 ? " producto" : " productos"));
-    if (sueltas) f.push("el nombre y precio de " + sueltas + (sueltas === 1 ? " foto" : " fotos"));
-    if (!d.productos.length && !hayCarta) f.push("tus productos o tu carta con precios");
-  }
-  if (d.variantes && !d.variantesTexto) f.push("la explicación de las variantes de tus productos");
+  if (sueltas) f.push("el nombre y precio de " + sueltas + (sueltas === 1 ? " foto" : " fotos"));
+  if (!d.productos.length && !archivos.some(a => a.tipo === "carta")) f.push("tus productos o tu carta con precios");
   if (!d.delivery && !d.retiro) f.push("cómo entregas (delivery o retiro)");
   if (d.delivery && (!d.zonas.length || d.zonas.some(z => !zonaCompleta(z)))) f.push("las comunas de despacho con su costo");
   return f;

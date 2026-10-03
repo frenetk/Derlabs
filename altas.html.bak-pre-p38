@@ -168,22 +168,18 @@ function vistaDatos(a){
     + fila("WhatsApp", d.whatsapp, wa ? '<a href="https://wa.me/' + (wa.length === 8 ? "569" + wa : wa.length === 9 ? "56" + wa : wa) + '" target="_blank" rel="noopener">' + esc(d.whatsapp) + '</a>' : "")
     + fila("Correo", d.correo) + fila("Dirección", [d.direccion, d.comuna, d.ciudad].filter(Boolean).join(", ")) + fila("Instagram", d.instagram) + fila("Horario", horarioTxt(d.horario))
     + fila("Delivery", delivery) + fila("Retiro", d.retiro ? "Sí, en el local" : "") + fila("Tiempo", d.tiempo) + fila("Pagos", pagos)
-    + fila("Dominio", d.dominio === "tengo" ? (d.dominioCual || "Tiene uno") : d.dominio === "no" ? "No tiene" : "")
-    + fila("Variantes", d.variantes ? (d.variantesTexto || "Sí, sin explicar") : "") + fila("Notas", d.notas) + '</div>';
+    + fila("Dominio", d.dominio === "tengo" ? (d.dominioCual || "Tiene uno") : d.dominio === "no" ? "No tiene" : "") + fila("Notas", d.notas) + '</div>';
   /* productos, agrupados por categoría */
   var prods = d.productos || [], cats = [];
   prods.forEach(function(p){ var c = p.categoria || "Sin categoría"; if (cats.indexOf(c) < 0) cats.push(c); });
   var inc = prods.filter(function(p){ return !prodCompleto(p); }).length;
-  var porCarta = d.modoProductos === "carta";
   h += '<div class="grupo"><div class="rot">PRODUCTOS' + (prods.length ? " · " + prods.length : "") + '</div>';
-  if (porCarta) h += '<p class="ayuda" style="font-size:13.5px;color:var(--tinta);font-weight:600">Eligió entregar su ' + (TIPOS[a.tipo || d.tipo] === "Comida" ? "carta" : "catálogo") + ': los productos y precios hay que cargarlos a mano desde ese archivo.'
-    + (prods.length ? ' Las fotos de abajo traen el nombre del producto.' : '') + '</p>';
-  else if (!prods.length) h += '<p class="ayuda" style="font-size:13.5px">Todavía no agrega productos.</p>';
-  if (inc && !porCarta) h += '<p class="ayuda" style="font-size:13px;color:#5F4200;font-weight:600">' + inc + (inc === 1 ? " producto está incompleto" : " productos están incompletos") + ' (sin nombre, precio o categoría) y no se pasará a la tienda.</p>';
+  if (!prods.length) h += '<p class="ayuda" style="font-size:13.5px">Todavía no agrega productos.</p>';
+  if (inc) h += '<p class="ayuda" style="font-size:13px;color:#5F4200;font-weight:600">' + inc + (inc === 1 ? " producto está incompleto" : " productos están incompletos") + ' (sin nombre, precio o categoría) y no se pasará a la tienda.</p>';
   cats.forEach(function(c){
-    h += (porCarta && c === "Sin categoría" ? '' : '<div class="cat">' + esc(c) + '</div>') + prods.filter(function(p){ return (p.categoria || "Sin categoría") === c; }).map(function(p){
+    h += '<div class="cat">' + esc(c) + '</div>' + prods.filter(function(p){ return (p.categoria || "Sin categoría") === c; }).map(function(p){
       return '<div class="pr"><div class="arch-i">' + (p.foto ? '<img src="' + urlArch(a, { id: p.foto }) + '" alt="" loading="lazy">' : '') + '</div><div class="arch-t"><b>' + esc(p.nombre || "Sin nombre") + '</b>'
-        + (p.descripcion ? '<small>' + esc(p.descripcion) + '</small>' : '') + '</div><b class="pr-p">' + (p.precio != null ? plata(p.precio) : porCarta ? "" : "—") + '</b></div>';
+        + (p.descripcion ? '<small>' + esc(p.descripcion) + '</small>' : '') + '</div><b class="pr-p">' + (p.precio != null ? plata(p.precio) : "—") + '</b></div>';
     }).join("");
   });
   h += '</div>';
@@ -209,7 +205,7 @@ function vistaDatos(a){
       + (TIENDAS === null ? '<p class="ayuda">Cargando tiendas…</p>' : !TIENDAS.length ? '<p class="ayuda">No hay tiendas creadas todavía. Crea la tienda primero en el generador.</p>'
         : '<select class="inp" id="selTienda">' + TIENDAS.map(function(t){ return '<option value="' + esc(t.storeId) + '"' + (t.storeId === a.storeId ? " selected" : "") + '>' + esc(t.nombre) + ' · ' + esc((t.dominios || [])[0] || t.storeId) + '</option>'; }).join("") + '</select>'
           + '<label class="marca"><input type="checkbox" id="chkReemplazar" checked><span><b>Tienda nueva: reemplazar lo que tenga</b>Borra los productos, categorías y locales que hoy tiene la tienda (los de muestra) y deja solo los de esta alta. Desmárcalo si la tienda ya tiene productos reales.</span></label>'
-          + '<p class="ayuda" id="avance" role="status">Se pasarán los datos' + (listos ? " y " + listos + (listos === 1 ? " producto" : " productos") : "") + '.' + (prods.length > listos ? " " + (prods.length - listos) + (porCarta ? " con solo el nombre quedan para cargar a mano." : " incompletos no se pasan.") : "") + '</p>'
+          + '<p class="ayuda" id="avance" role="status">Se pasarán los datos' + (listos ? " y " + listos + (listos === 1 ? " producto" : " productos") : "") + '.</p>'
           + '<div class="dos"><button class="btn btn-2" data-cancelar="1">Cancelar</button><button class="btn btn-1" data-confirmar="' + a.codigo + '">Pasar a la tienda</button></div>') + '</div>';
   } else {
     h += '<div class="grupo"><button class="btn btn-1" data-aplicar="' + a.codigo + '" style="min-height:50px;font-size:15px">Pasar todo a la tienda</button>'

@@ -124,14 +124,6 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--morado);outline-off
 .tapa .barra{width:80%;margin:0}
 .logo-v{flex:none;width:64px;height:64px;border-radius:14px;background:#E9E6F3;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .logo-v img{width:100%;height:100%;object-fit:contain}
-.modo{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:14px;border:1.5px solid var(--borde);border-radius:14px;margin-bottom:10px;background:#fff}
-.modo[aria-pressed="true"]{border-color:var(--tinta);box-shadow:inset 0 0 0 1px var(--tinta)}
-.modo i{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #9B95B5;margin-top:1px;display:flex;align-items:center;justify-content:center}
-.modo[aria-pressed="true"] i{border-color:var(--tinta)}
-.modo[aria-pressed="true"] i::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--tinta)}
-.modo b{display:block;font-size:15.5px}
-.modo span{display:block;font-size:13.5px;color:var(--gris);margin-top:2px}
-.wa{display:inline-flex;align-items:center;min-height:44px;font-weight:700;font-size:14px;color:var(--morado);text-decoration:none}
 /* opciones y zonas */
 .op{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--linea)}
 .op div{flex:1}
@@ -194,11 +186,7 @@ function T(){
     cartaCorta: c ? "tu carta" : "tu catálogo",
     ejProd: c ? "Ej.: Hamburguesa doble" : D.tipo === "ropa" ? "Ej.: Polera básica negra" : "Ej.: Audífonos inalámbricos",
     ejCat: c ? "Ej.: Hamburguesas" : D.tipo === "ropa" ? "Ej.: Poleras" : "Ej.: Audio",
-    ejDesc: c ? "Ingredientes o lo que trae" : "Talla, medidas, material, color",
-    cartaNom: c ? "carta" : "catálogo",
-    ejVar: c ? "Ej.: trabajamos con dos tipos de carne para las hamburguesas, carne común y Not Burger. Además se pueden agregar ingredientes, cada uno con un costo adicional."
-      : D.tipo === "ropa" ? "Ej.: las poleras vienen en tallas S a XL y en negro, blanco y azul. La talla XL cuesta $1.000 más."
-      : "Ej.: los audífonos vienen en negro y blanco, y la funda se vende aparte por $3.000."
+    ejDesc: c ? "Ingredientes o lo que trae" : "Talla, medidas, material, color"
   };
 }
 
@@ -269,7 +257,6 @@ function desdeServidor(s, nuevo){
   var txtN = function(v){ return v == null ? "" : String(v); };
   return { negocio: s.negocio || A.negocio || "", tipo: A.tipo || s.tipo || "", whatsapp: s.whatsapp || "", correo: s.correo || "", direccion: s.direccion || "",
     comuna: s.comuna || "", ciudad: s.ciudad || "", instagram: s.instagram || "", responsable: s.responsable || "", horario: s.horario || { activo: true, dias: {} },
-    modoProductos: s.modoProductos || ((Array.isArray(s.productos) && s.productos.length) ? "uno" : ""), variantes: s.variantes === true, variantesTexto: s.variantesTexto || "",
     productos: (Array.isArray(s.productos) ? s.productos : []).map(function(p){ return { id: p.id || idProd(), nombre: p.nombre || "", precio: txtN(p.precio), categoria: p.categoria || "", descripcion: p.descripcion || "", foto: p.foto || "" }; }),
     delivery: nuevo ? true : s.delivery === true, retiro: nuevo ? true : s.retiro === true,
     zonas: (Array.isArray(s.zonas) ? s.zonas : []).map(function(z){ return { comuna: z.comuna || "", costo: txtN(z.costo) }; }),
@@ -326,7 +313,7 @@ function pintar(){
   else h = cabPaso() + '<div class="cuerpo">' + [null, vNegocio, vHorario, vProductos, vEntrega, vRevisar][paso]() + '</div>' + navPaso();
   $("#app").innerHTML = h;
   enlazar(); pintarEstado();
-  if (paso === 3 && D.modoProductos){ pintarProductos(); pintarArchivos(); }
+  if (paso === 3){ pintarProductos(); pintarArchivos(); }
   window.scrollTo(0, 0);
 }
 function repintar(){ var y = window.scrollY; pintar(); window.scrollTo(0, y); }
@@ -339,8 +326,8 @@ function vInicio(){
     + '<h1 class="tit" style="font-size:28px">Bienvenido a DerLabs. Armemos tu tienda.</h1>'
     + '<p class="sub" style="font-size:16px">Con lo que subas aquí dejamos tu tienda lista para vender: productos, precios, horario y despachos.</p>'
     + '<div class="lista"><h2>TEN A MANO</h2>'
-    + it('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>', t.carta, "En PDF o en fotos, con los nombres y los precios. Si no " + (D.tipo === "comida" ? "la" : "lo") + " tienes, cargas tus productos uno por uno.")
-    + it('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/>', "Fotos de tus productos", "Las que tengas.")
+    + it('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/>', "Tus productos", "Una foto de cada uno, con su nombre y su precio.")
+    + it('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>', t.carta, D.tipo === "comida" ? "Si la tienes, en PDF o en fotos." : "Si lo tienes, en PDF o en fotos.")
     + it('<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>', "Tu logo", "En la mejor calidad que tengas.")
     + it('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/>', "Dónde estás y dónde despachas", "Tu dirección, tu horario y cada comuna a la que llegas, con su costo.")
     + '</div></div><div class="inicio-pie"><p class="ayuda" style="font-size:13.5px">Lo que avances se guarda solo. Puedes parar y seguir después con este mismo enlace.</p>'
@@ -384,32 +371,17 @@ function vHorario(){
 
 /* ── productos, carta y logo ── */
 function vProductos(){
-  var t = T(), m = D.modoProductos, carta = m === "carta";
-  var modo = function(v, tit, sub){ return '<button type="button" class="modo" data-modo="' + v + '" aria-pressed="' + (m === v) + '"><i></i><div><b>' + tit + '</b><span>' + sub + '</span></div></button>'; };
-  var h = '<h1 class="tit">Tus productos</h1><p class="sub">Elige la forma que te quede más cómoda.</p><div style="margin-top:16px">'
-    + modo("carta", "Mi " + t.cartaNom + " ya tiene los nombres y los precios", "La subo en PDF o en fotos y DerLabs carga los productos por mí.")
-    + modo("uno", "Prefiero cargarlos uno por uno", "Subo la foto de cada producto y le escribo su nombre y su precio.")
-    + '<div class="err" id="errModo" role="alert">Elige una de las dos formas.</div></div>';
-  if (m){
-    var bCarta = '<div class="bloque"><div class="bloque-c"><div><b>' + t.carta + (carta ? '' : ' <span style="display:inline;font-weight:500">(opcional)</span>') + '</b><span>'
-      + (carta ? "Que se lean bien los nombres y los precios." : t.cartaSub + " Nos sirve para revisar que no falte nada.") + '</span></div></div><div id="zCarta"></div>'
-      + '<button type="button" class="btn-agr" id="bCarta">' + t.cartaBtn + '</button><div class="err" id="errCarta" role="alert" style="margin-top:8px">Sube ' + t.cartaCorta + ' para continuar.</div></div>';
-    var bProd = '<div class="bloque"><div class="bloque-c"><div><b>' + (carta ? 'Fotos de tus productos <span style="display:inline;font-weight:500">(opcional)</span>' : "Productos") + '</b><span>'
-      + (carta ? "Si tienes fotos aparte, súbelas y escribe a qué producto corresponde cada una." : "Elige las fotos y completa los datos de cada una.") + '</span></div><em id="nProd"></em></div>'
-      + '<datalist id="cats"></datalist><div id="zProd"></div>'
-      + '<button type="button" class="btn-agr" id="bFotos" style="min-height:52px">Agregar fotos de productos</button>'
-      + (carta ? '' : '<button type="button" class="enl" id="bSinFoto" style="width:100%">Agregar un producto sin foto</button>')
-      + '<div class="err" id="errProd" role="alert"></div></div>';
-    h += (carta ? bCarta + bProd : bProd + bCarta)
-      + '<div class="bloque"><div class="op" style="border-top:0;padding-top:0"><div><b>Mis productos tienen variantes o extras</b><span>Tamaños, sabores, tallas, colores, ingredientes con costo adicional.</span></div>' + sw("variantes", "Mis productos tienen variantes o extras") + '</div>'
-      + (D.variantes ? '<div class="campo" id="c-variantesTexto"><label for="i-variantesTexto">Cuéntanos cómo funcionan</label><textarea class="inp" id="i-variantesTexto" data-k="variantesTexto" rows="5" placeholder="' + esc(t.ejVar) + '" maxlength="1500">' + esc(D.variantesTexto) + '</textarea>'
-          + '<div class="ayuda">Escríbelo como se lo explicarías a un cliente. Con eso lo dejamos configurado.</div><div class="err">Cuéntanos cómo funcionan, o apaga esta opción.</div>'
-          + '<a class="wa" target="_blank" rel="noopener" href="' + waDerLabs("te explico por audio las variantes de mis productos") + '">Prefiero explicarlo por audio en WhatsApp</a></div>' : '') + '</div>'
-      + '<div class="bloque"><div class="bloque-c"><div><b>Tu logo</b><span>Se usa en tu tienda, en la pantalla de carga y como ícono.</span></div></div><div id="zLogo"></div></div>';
-  }
-  return h;
+  var t = T();
+  return '<h1 class="tit">Tus productos</h1><p class="sub">Cada producto con su nombre, su precio y su categoría: así quedan cargados en tu tienda tal como los escribas.</p>'
+    + '<div class="bloque" style="margin-top:18px"><div class="bloque-c"><div><b>Productos</b><span>Elige las fotos y completa los datos de cada una.</span></div><em id="nProd"></em></div>'
+    + '<datalist id="cats"></datalist><div id="zProd"></div>'
+    + '<button type="button" class="btn-agr" id="bFotos" style="min-height:52px">Agregar fotos de productos</button>'
+    + '<button type="button" class="enl" id="bSinFoto" style="width:100%">Agregar un producto sin foto</button>'
+    + '<div class="err" id="errProd" role="alert"></div></div>'
+    + '<div class="bloque"><div class="bloque-c"><div><b>' + t.carta + ' <span style="display:inline;font-weight:500">(opcional)</span></b><span>' + t.cartaSub + ' Nos sirve para revisar que no falte nada.</span></div></div><div id="zCarta"></div>'
+    + '<button type="button" class="btn-agr" id="bCarta">' + t.cartaBtn + '</button></div>'
+    + '<div class="bloque"><div class="bloque-c"><div><b>Tu logo</b><span>Se usa en tu tienda, en la pantalla de carga y como ícono.</span></div></div><div id="zLogo"></div></div>';
 }
-function waDerLabs(texto){ return "https://wa.me/" + WSP_DERLABS + "?text=" + encodeURIComponent("Hola, soy de " + (D.negocio || A.negocio || "") + " (alta " + COD + "): " + texto + "."); }
 function miniatura(p){
   var it = COLA.filter(function(x){ return x.prodId === p.id; })[0];
   var src = VISTAS[p.id] || (p.foto ? urlArch(p.foto) : "");
@@ -419,29 +391,25 @@ function miniatura(p){
   return h;
 }
 function tarjeta(p, i){
-  var t = T(), carta = D.modoProductos === "carta";
-  var h = '<div class="prod" id="p-' + p.id + '"><div class="prod-a">'
+  var t = T();
+  return '<div class="prod" id="p-' + p.id + '"><div class="prod-a">'
     + '<button type="button" class="prod-f" id="th-' + p.id + '" data-foto="' + p.id + '" aria-label="' + (p.foto ? "Cambiar la foto" : "Agregar foto") + ' del producto ' + (i + 1) + '">' + miniatura(p) + '</button>'
-    + '<div class="prod-n"><label for="pn-' + p.id + '">' + (carta ? "¿Qué producto es?" : "Nombre del producto") + '</label><input class="inp" id="pn-' + p.id + '" data-p="' + p.id + '" data-f="nombre" value="' + esc(p.nombre) + '" placeholder="' + t.ejProd + '" maxlength="80" autocomplete="off"></div>'
-    + '<button type="button" class="x" data-quitar-prod="' + p.id + '" aria-label="Quitar el producto ' + (i + 1) + '">' + ICO.x + '</button></div>';
-  if (carta) return h + '</div>';     /* el precio y la categoría ya vienen en la carta */
-  return h + '<div class="dosc"><div class="campo"><label for="pp-' + p.id + '">Precio</label><div class="precio"><input class="inp" id="pp-' + p.id + '" data-p="' + p.id + '" data-f="precio" value="' + esc(p.precio) + '" inputmode="numeric" maxlength="11" autocomplete="off"></div></div>'
+    + '<div class="prod-n"><label for="pn-' + p.id + '">Nombre del producto</label><input class="inp" id="pn-' + p.id + '" data-p="' + p.id + '" data-f="nombre" value="' + esc(p.nombre) + '" placeholder="' + t.ejProd + '" maxlength="80" autocomplete="off"></div>'
+    + '<button type="button" class="x" data-quitar-prod="' + p.id + '" aria-label="Quitar el producto ' + (i + 1) + '">' + ICO.x + '</button></div>'
+    + '<div class="dosc"><div class="campo"><label for="pp-' + p.id + '">Precio</label><div class="precio"><input class="inp" id="pp-' + p.id + '" data-p="' + p.id + '" data-f="precio" value="' + esc(p.precio) + '" inputmode="numeric" maxlength="11" autocomplete="off"></div></div>'
     + '<div class="campo"><label for="pc-' + p.id + '">Categoría</label><input class="inp" id="pc-' + p.id + '" data-p="' + p.id + '" data-f="categoria" value="' + esc(p.categoria) + '" placeholder="' + t.ejCat + '" list="cats" maxlength="40" autocomplete="off"></div></div>'
     + '<div class="campo"><label for="pd-' + p.id + '">Descripción <span>(opcional)</span></label><input class="inp" id="pd-' + p.id + '" data-p="' + p.id + '" data-f="descripcion" value="' + esc(p.descripcion) + '" placeholder="' + t.ejDesc + '" maxlength="200" autocomplete="off"></div></div>';
 }
 function categorias(){ var c = []; D.productos.forEach(function(p){ var v = String(p.categoria || "").trim(); if (v && c.indexOf(v) < 0) c.push(v); }); return c; }
 function pintarCats(){ var dl = $("#cats"); if (dl) dl.innerHTML = categorias().map(function(c){ return '<option value="' + esc(c) + '">'; }).join(""); }
-function contarProd(){ var e = $("#nProd"); if (e){ var n = D.productos.length, c = D.modoProductos === "carta"; e.textContent = n ? n + (c ? (n === 1 ? " foto" : " fotos") : (n === 1 ? " producto" : " productos")) : ""; } }
+function contarProd(){ var e = $("#nProd"); if (e){ var n = D.productos.length; e.textContent = n ? n + (n === 1 ? " producto" : " productos") : ""; } }
 function pintarProductos(){
   var z = $("#zProd"); if (!z) return;
   z.innerHTML = D.productos.map(tarjeta).join("");
   contarProd(); pintarCats(); pintarEstado();
 }
 function pintarMini(id){ var e = document.getElementById("th-" + id), p = prod(id); if (e && p) e.innerHTML = miniatura(p); pintarEstado(); }
-function incompleto(p){
-  if (D.modoProductos === "carta") return !String(p.nombre).trim();      /* el precio viene en la carta */
-  return !String(p.nombre).trim() || !(Number(digitos(p.precio)) > 0) || !String(p.categoria).trim();
-}
+function incompleto(p){ return !String(p.nombre).trim() || !(Number(digitos(p.precio)) > 0) || !String(p.categoria).trim(); }
 
 function filaCola(it){
   return '<div class="arch"><div class="arch-i">' + (it.vista ? '<img src="' + it.vista + '" alt="">' : "PDF") + '</div><div class="arch-t"><b>' + esc(it.nombre) + '</b>'
@@ -452,7 +420,6 @@ function filaCola(it){
 function pintarArchivos(){
   pintarEstado();
   var zc = $("#zCarta"); if (!zc) return;
-  var ec = $("#errCarta"); if (ec && (ARCH.some(function(a){ return a.tipo === "carta"; }) || COLA.some(function(x){ return x.tipo === "carta"; }))) ec.classList.remove("ver");
   var de = function(t){ return ARCH.filter(function(a){ return a.tipo === t; }); }, cola = function(t){ return COLA.filter(function(a){ return a.tipo === t; }); };
   zc.innerHTML = de("carta").map(function(a){
     var img = a.mime !== "application/pdf";
@@ -493,8 +460,7 @@ function vEntrega(){
     + '<div class="op" style="display:block;border-bottom:1px solid var(--linea)"><b>Webpay (con Flow)</b><span style="display:block;margin-bottom:10px">Débito, crédito y transferencia. Se cobra con una cuenta de Flow a tu nombre.</span>' + chips("pagoWebpay", OP_PAGO) + '</div></div>'
     + '<div class="grupo"><h2>DIRECCIÓN WEB</h2><div class="campo"><div class="rot">¿Tienes un dominio propio, como tunegocio.cl?</div>' + chips("dominio", [["tengo", "Sí, ya tengo"], ["no", "No tengo"]]) + '</div>'
     + (D.dominio === "tengo" ? '<div class="campos" style="margin-top:12px">' + campo("dominioCual", "¿Cuál es?", "text", { ph: "tunegocio.cl", opcional: true }) + '</div>' : '') + '</div>'
-    + '<div class="grupo"><div class="campos" style="margin-top:0">' + campo("notas", "Cuéntanos cómo funciona tu negocio", "area", { opcional: true, ph: "Promociones, combos, días con horario especial, cómo tomas hoy los pedidos, lo que tus clientes más preguntan…", ayuda: "Mientras más nos cuentes, más parecida a tu negocio queda la tienda." })
-    + '<a class="wa" target="_blank" rel="noopener" href="' + waDerLabs("te cuento por audio cómo funciona mi negocio") + '">Prefiero contarlo por audio en WhatsApp</a></div></div>';
+    + '<div class="grupo"><div class="campos" style="margin-top:0">' + campo("notas", "Algo más que debamos saber", "area", { opcional: true, ph: "Promociones, productos estrella, lo que quieras contarnos" }) + '</div></div>';
 }
 
 function horarioTexto(h){
@@ -520,16 +486,14 @@ function vRevisar(){
   var np = D.productos.length, conFoto = D.productos.filter(function(p){ return p.foto; }).length, cats = categorias();
   var falta = [];
   if (!de("logo")) falta.push("tu logo");
-  if (D.modoProductos !== "carta" && np && conFoto < np) falta.push("la foto de " + (np - conFoto) + (np - conFoto === 1 ? " producto" : " productos"));
+  if (np && conFoto < np) falta.push("la foto de " + (np - conFoto) + (np - conFoto === 1 ? " producto" : " productos"));
   return '<h1 class="tit">Revisa y envía</h1><p class="sub">Si algo está mal, tócalo para corregirlo.</p>'
     + (falta.length ? '<div class="aviso">Falta ' + falta.join(" y ") + '. Puedes enviar igual y agregarlo después con este mismo enlace.</div>' : '')
     + '<div class="rev"><div class="rev-c"><b>Negocio y contacto</b><button type="button" class="enl" data-ir="1">Editar</button></div>'
     + f("Negocio", D.negocio) + f("WhatsApp", D.whatsapp) + f("Correo", D.correo) + f("Dirección", [D.direccion, D.comuna, D.ciudad].filter(Boolean).join(", ")) + (D.instagram ? f("Instagram", D.instagram) : "") + '</div>'
     + '<div class="rev"><div class="rev-c"><b>Horario</b><button type="button" class="enl" data-ir="2">Editar</button></div>' + f("Atención", horarioTxt()) + '</div>'
     + '<div class="rev"><div class="rev-c"><b>Productos</b><button type="button" class="enl" data-ir="3">Editar</button></div>'
-    + (D.modoProductos === "carta" ? f("Productos", "Los carga DerLabs desde " + T().cartaCorta + (np ? " · " + np + (np === 1 ? " foto con nombre" : " fotos con nombre") : ""))
-        : f("Productos", np ? np + (np === 1 ? " producto" : " productos") + " · " + conFoto + " con foto" : "") + f("Categorías", cats.join(", ")))
-    + (D.variantes ? f("Variantes", D.variantesTexto) : "")
+    + f("Productos", np ? np + (np === 1 ? " producto" : " productos") + " · " + conFoto + " con foto" : "") + f("Categorías", cats.join(", "))
     + f(D.tipo === "comida" ? "Carta" : "Catálogo", de("carta") ? de("carta") + (de("carta") === 1 ? " archivo" : " archivos") : "") + f("Logo", de("logo") ? "Subido" : "") + '</div>'
     + '<div class="rev"><div class="rev-c"><b>Entrega y pagos</b><button type="button" class="enl" data-ir="4">Editar</button></div>'
     + f("Delivery", D.delivery ? zonas + (digitos(D.gratisDesde) ? " · gratis desde " + plata(digitos(D.gratisDesde)) : "") : "No") + f("Retiro", D.retiro ? "Sí, en el local" : "No")
@@ -574,21 +538,14 @@ function validar(){
     var vacio = !Object.keys(limpiarHorario().dias).length;
     if (horarioIncompleto() || vacio){ mal.push("horario"); mostrar("#errHorario"); }
   } else if (paso === 3){
-    var carta = D.modoProductos === "carta", hayCarta = ARCH.some(function(a){ return a.tipo === "carta"; }) || COLA.some(function(x){ return x.tipo === "carta" && x.estado !== "error"; });
-    if (!D.modoProductos){ mostrar("#errModo"); return false; }
     var inc = D.productos.filter(incompleto), e = $("#errProd");
     D.productos.forEach(function(p){ var c = document.getElementById("p-" + p.id); if (c) c.classList.toggle("mal", inc.indexOf(p) >= 0); });
     e.classList.remove("ver");
-    if (carta && !hayCarta){ mal.push("carta"); mostrar("#errCarta"); }
-    else if (inc.length){
-      mal.push("productos");
-      e.textContent = carta ? "Escribe a qué producto corresponde cada foto (faltan " + inc.length + ")."
-        : "Falta el nombre, el precio o la categoría en " + inc.length + (inc.length === 1 ? " producto" : " productos") + ". Sin eso no podemos cargarlo en tu tienda.";
+    if (inc.length){
+      mal.push("productos"); e.textContent = "Falta el nombre, el precio o la categoría en " + inc.length + (inc.length === 1 ? " producto" : " productos") + ". Sin eso no podemos cargarlo en tu tienda.";
       e.classList.add("ver"); document.getElementById("p-" + inc[0].id).scrollIntoView({ block: "center" });
-    } else if (!carta && !D.productos.length && !hayCarta){
+    } else if (!D.productos.length && !ARCH.some(function(a){ return a.tipo === "carta"; }) && !COLA.some(function(x){ return x.tipo === "carta" && x.estado !== "error"; })){
       mal.push("productos"); e.textContent = "Agrega tus productos (o al menos " + T().cartaCorta + " con precios) para poder armar tu tienda."; mostrar("#errProd");
-    } else if (D.variantes && !String(D.variantesTexto).trim()){
-      mal.push("variantes"); var cv = $("#c-variantesTexto"); cv.classList.add("mal"); cv.scrollIntoView({ block: "center" });
     }
   } else if (paso === 4){
     if (!D.delivery && !D.retiro){ mal.push("entrega"); mostrar("#errEntrega"); }
@@ -643,8 +600,7 @@ function enlazar(){
     var v;
     if ((v = t.getAttribute("data-chip"))){ var val = t.getAttribute("data-v"); D[v] = D[v] === val && v !== "tipo" ? "" : val; cambio(); if (v === "dominio"){ repintar(); return; }
       app.querySelectorAll('[data-chip="' + v + '"]').forEach(function(x){ x.setAttribute("aria-pressed", String(x.getAttribute("data-v") === D[v])); }); var ct = $("#c-" + v); if (ct) ct.classList.remove("mal"); }
-    else if ((v = t.getAttribute("data-modo"))){ if (D.modoProductos !== v){ D.modoProductos = v; cambio(); repintar(); } }
-    else if ((v = t.getAttribute("data-sw"))){ D[v] = !D[v]; cambio(); if (v === "delivery" || v === "variantes"){ repintar(); if (v === "variantes" && D.variantes){ var tv = $("#i-variantesTexto"); if (tv) tv.focus(); } } else t.setAttribute("aria-pressed", String(D[v])); var ee = $("#errEntrega"); if (ee) ee.classList.remove("ver"); }
+    else if ((v = t.getAttribute("data-sw"))){ D[v] = !D[v]; cambio(); if (v === "delivery") repintar(); else t.setAttribute("aria-pressed", String(D[v])); var ee = $("#errEntrega"); if (ee) ee.classList.remove("ver"); }
     else if ((v = t.getAttribute("data-dia")) != null){ if (Array.isArray(D.horario.dias[v])) delete D.horario.dias[v]; else D.horario.dias[v] = [{ a: "", c: "" }]; cambio(); repintar(); }
     else if ((v = t.getAttribute("data-otro-tramo")) != null){ D.horario.dias[v].push({ a: "", c: "" }); cambio(); repintar(); }
     else if ((v = t.getAttribute("data-quitar-tramo")) != null){ D.horario.dias[v].splice(1, 1); cambio(); repintar(); }
