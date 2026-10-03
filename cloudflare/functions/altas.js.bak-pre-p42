@@ -29,7 +29,6 @@
                con la foto ya achicada al tamaño que usa la tienda) */
 import { getDb } from "./_firebase.js";
 import { enviarPushLista } from "./notificar.js";
-import { guardarImagen } from "./imagenes.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -388,9 +387,7 @@ export async function alta(request, env){
       const x = lote[i] || {}, p = d.productos.filter(q => q.id === x.id)[0];
       if (!p || !productoCompleto(p)) continue;
       const img = String(x.imagen || "");
-      let imagen = /^data:image\/(jpeg|png|webp);base64,/.test(img) && img.length < 450000 ? img : "";
-      /* la foto va al almacén y en el producto queda su dirección; si el almacén falla, queda como antes */
-      if (imagen){ try { imagen = await guardarImagen(env, storeId, imagen); } catch(e){ console.warn("alta, foto:", e.message); } }
+      const imagen = /^data:image\/(jpeg|png|webp);base64,/.test(img) && img.length < 450000 ? img : "";
       const id = "alta_" + p.id;
       await db.doc(base + "/productos/" + id).set({ id, orden: desde + i + 1, nombre: p.nombre, precio: p.precio,
         descripcion: p.descripcion, categoria: p.categoria, imagen, activo: true });

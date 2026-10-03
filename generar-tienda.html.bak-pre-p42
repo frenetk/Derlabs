@@ -182,10 +182,7 @@ header p{color:var(--txt2);font-size:14px}
 #planes h2{font-size:19px;font-weight:900;margin-bottom:6px}
 #planes p{color:var(--txt2);font-size:13.5px;margin-bottom:14px;line-height:1.45}
 #btnPlanes{padding:12px 18px;border-radius:12px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-weight:800;cursor:pointer}
-#planesMsg,#fotosMsg{font-size:13px;color:var(--txt2);min-height:18px;margin:10px 0}
-#btnFotos{padding:12px 18px;border-radius:12px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-weight:800;cursor:pointer}
-#btnFotos:disabled{opacity:.5}
-#fotosMsg.error{color:#FF8A80}
+#planesMsg{font-size:13px;color:var(--txt2);min-height:18px;margin:10px 0}
 #planesMsg.error{color:#FF8A80}
 .pl-fila{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;background:var(--card);border:1px solid var(--borde)}
 .pl-txt{flex:1;min-width:0}
@@ -334,11 +331,6 @@ header p{color:var(--txt2);font-size:14px}
     <button type="button" id="btnPlanes">Ver tiendas</button>
     <div id="planesMsg" role="status"></div>
     <div id="planesLista"></div>
-    <div id="fotosCaja" hidden>
-      <p style="margin-top:18px">Las fotos nuevas ya se guardan fuera de la base de datos. Las antiguas se pasan solas cuando el dueño entra a su panel; con este botón las pasas tú de una vez, en todas las tiendas.</p>
-      <button type="button" id="btnFotos">Pasar las fotos antiguas</button>
-      <div id="fotosMsg" role="status"></div>
-    </div>
   </section>
 </div>
 
@@ -1089,32 +1081,11 @@ qs("#formTienda").addEventListener("submit", async (e) => {
   }
   async function cargar(){
     btn.disabled = true; aviso("Cargando…");
-    try { tiendas = (await api({ accion: "listar" })).tiendas || []; pintar(); aviso(tiendas.length + " tiendas"); btn.textContent = "Actualizar lista"; qs("#fotosCaja").hidden = !tiendas.length; }
+    try { tiendas = (await api({ accion: "listar" })).tiendas || []; pintar(); aviso(tiendas.length + " tiendas"); btn.textContent = "Actualizar lista"; }
     catch(err){ aviso(err.message, true); }
     btn.disabled = false;
   }
   btn.addEventListener("click", cargar);
-  /* Fotos antiguas (guardadas como texto en Firestore) → almacén de imágenes, tienda por tienda y de a pocas */
-  qs("#btnFotos").addEventListener("click", async function(){
-    var bf = qs("#btnFotos"), mf = qs("#fotosMsg"), total = 0, saltadas = 0;
-    bf.disabled = true; mf.classList.remove("error");
-    try {
-      for (var i = 0; i < tiendas.length; i++){
-        var t = tiendas[i], n = 0;
-        for (var vuelta = 0; vuelta < 60; vuelta++){
-          mf.textContent = "«" + t.nombre + "» (" + (i + 1) + " de " + tiendas.length + ")" + (n ? ": " + n + " fotos pasadas…" : "…");
-          var r = await fetch("/api/imagen", { method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Secret": ADMIN_SECRET }, body: JSON.stringify({ accion: "migrar", storeId: t.storeId, max: 15 }) });
-          var j = await r.json().catch(function(){ return {}; });
-          if (!r.ok || !j.ok) throw new Error("«" + t.nombre + "»: " + (j.error || ("error " + r.status)));
-          n += j.hechas || 0; total += j.hechas || 0; saltadas += j.saltadas || 0;
-          if (j.error) throw new Error("«" + t.nombre + "»: " + j.error + ". Pasé " + total + " fotos; vuelve a intentarlo más tarde.");
-          if (!j.pendientes || !j.hechas) break;
-        }
-      }
-      mf.textContent = total ? "Listo: " + total + " fotos pasadas al almacén." + (saltadas ? " " + saltadas + " quedaron como estaban (formato no compatible)." : "") : "No había fotos antiguas por pasar.";
-    } catch(err){ mf.textContent = err.message; mf.classList.add("error"); }
-    bf.disabled = false;
-  });
   lista.addEventListener("click", async function(ev){
     var bb = ev.target.closest("[data-bol]"); if (bb){ boletaClick(bb); return; }
     var b = ev.target.closest("[data-plan]"); if (!b || b.classList.contains("activo")) return;

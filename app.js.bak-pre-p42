@@ -3564,7 +3564,6 @@ function activarDevmode(irAPedidos){
      sesión (visita nueva, primer login) — cargarConfigPrivada() no repite
      el trabajo si ya se había cargado antes (ver _privadoCargado). */
   cargarConfigPrivada();
-  setTimeout(function(){ v42PasarFotos(); }, 6000);
   if (irAPedidos){
     /* Navegar a pestaña Pedidos del panel */
     setTimeout(function(){
@@ -3947,9 +3946,7 @@ async function confirmarImagen(){
         const base64url = ev.target.result; /* data:image/jpeg;base64,... */
         /* Comprimir si es muy grande (max ~800px ancho) */
         const compressed = f === "logoBase64" ? await procesarLogo(base64url) : await comprimirImagen(base64url, 800, 0.82);
-        /* las fotos van al almacén y aquí se guarda solo su dirección (el logo no: el servidor lo usa para el ícono) */
-        const valorImg = f === "logoBase64" ? compressed : await v42SubirFoto(compressed);
-        await guardarInline(c, d, f, valorImg);
+        await guardarInline(c, d, f, compressed);
         /* el logo también es el ícono de la pestaña y del acceso directo */
         if (f === "logoBase64"){ await guardarInline(c, d, "faviconBase64", await iconoDeLogo(compressed)); actualizarFaviconConConfig(); }
         cerrarImgModal(); renderAll();
@@ -4111,42 +4108,6 @@ function iconoDeLogo(dataURL, lado){
     img.onerror = function(){ resolve(""); };
     img.src = dataURL;
   });
-}
-
-/* P42 · Fotos fuera de Firestore (cloudflare/functions/imagenes.js).
-   v42SubirFoto: sube una foto ya achicada y devuelve su dirección (/img/<tienda>/<huella>.jpg).
-   Si el almacén no responde devuelve la misma foto en texto: se guarda como antes y nada se pierde. */
-async function v42Api(cuerpo){
-  const tk = auth && auth.currentUser ? await auth.currentUser.getIdToken() : "";
-  const r = await fetch("/api/imagen", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tk }, body: JSON.stringify(Object.assign({ storeId: STORE_ID }, cuerpo)) });
-  const j = await r.json().catch(function(){ return {}; });
-  if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
-  return j;
-}
-async function v42SubirFoto(dataURL){
-  if (DEMO || !/^data:image\/(jpeg|png|webp);base64,/.test(String(dataURL || ""))) return dataURL;
-  try { const j = await v42Api({ imagen: dataURL }); return /^\/img\//.test(j.url || "") ? j.url : dataURL; }
-  catch(e){ console.warn("foto al almacén:", e.message); return dataURL; }
-}
-/* Al entrar al panel: pasa al almacén, de a pocas y sin molestar, las fotos antiguas que siguen dentro de Firestore.
-   Los documentos se actualizan en el servidor y llegan solos a la página por la conexión de siempre. */
-var _v42Migrando = false, _v42Intentos = 0;
-async function v42PasarFotos(){
-  if (_v42Migrando || DEMO) return;
-  /* la sesión puede tardar unos segundos en restaurarse al abrir la página */
-  if (!auth || !auth.currentUser){ if (++_v42Intentos < 4) setTimeout(v42PasarFotos, 8000); return; }
-  const quedan = (state.productos || []).concat(state.locales || []).some(function(x){ return String(x.imagen || "").indexOf("data:image/") === 0; }) ||
-    ["heroImagen", "portadaImagen"].some(function(k){ return String((state.config || {})[k] || "").indexOf("data:image/") === 0; });
-  if (!quedan) return;
-  _v42Migrando = true;
-  try {
-    for (var vuelta = 0; vuelta < 30; vuelta++){
-      const r = await v42Api({ accion: "migrar", max: 10 });
-      if (!r.hechas || !r.pendientes || r.error) break;
-      await new Promise(function(ok){ setTimeout(ok, 800); });
-    }
-  } catch(e){ console.warn("pasar fotos:", e.message); }
-  _v42Migrando = false;
 }
 
 /* Comprime una imagen base64 a max ancho/calidad dada — sin Storage */
