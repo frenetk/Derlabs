@@ -41,7 +41,6 @@ import { aceptarContrato } from "./functions/contrato.js";
 import { alta } from "./functions/altas.js";
 import { reintentarBoletas } from "./functions/boleta.js";
 import { imagen, servirImagen } from "./functions/imagenes.js";
-import { inventario } from "./functions/inventario.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -75,8 +74,7 @@ const FUNCIONES = {
   retornoFlow,
   aceptarContrato,
   alta,
-  imagen,
-  inventario
+  imagen
 };
 
 

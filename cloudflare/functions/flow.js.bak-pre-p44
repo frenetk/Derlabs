@@ -21,7 +21,6 @@
 import { admin, getDb, corsHeaders, getStoreConfig } from "./_firebase.js";
 import { enviarCorreosPedido } from "./enviarEmails.js";
 import { notificar } from "./notificar.js";
-import { moverInsumos } from "./inventario.js";
 
 const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const baseFlow = sandbox => (sandbox ? "https://sandbox.flow.cl/api" : "https://www.flow.cl/api");
@@ -156,8 +155,6 @@ async function confirmarPedidoFlow(db, env, storeId, pedidoId, estadoFlow, orige
       await prodRef.set({ stock: Math.max(0, (Number(prod.stock) || 0) - (Number(it.cantidad) || 1)) }, { merge: true });
     } catch (e) { console.warn("No se pudo descontar stock de", it.id, ":", e.message); }
   }));
-  /* inventario con recetas (plan Pro): descuenta los insumos de lo vendido; nunca hace fallar el pedido */
-  if (Array.isArray(ped.items)) await moverInsumos(db, storeId, ped.items, -1, { pedidoId: pedidoId, lugar: "Pedido online" });
 
   if (ped.cuponAplicado){
     try {

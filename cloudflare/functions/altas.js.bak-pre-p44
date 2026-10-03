@@ -433,9 +433,7 @@ export async function alta(request, env){
     const previas = Array.isArray(cfgDoc.data().categorias) ? cfgDoc.data().categorias : [];
     general.categorias = reemplazar ? cats : previas.concat(cats.filter(c => previas.indexOf(c) < 0));
   }
-  /* mergeFields y no merge: reemplaza cada campo entero. Con merge la librería arma rutas como
-     "horario.dias.0" sin escapar y Firestore rechaza un tramo que parte con un dígito. */
-  if (Object.keys(general).length) await cfgRef.set(general, { mergeFields: Object.keys(general) });
+  if (Object.keys(general).length) await cfgRef.set(general, { merge: true });
 
   if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.correo)){
     await db.doc(base + "/config/privado").set({ emailVendedor: d.correo, emailNotif: d.correo }, { merge: true });

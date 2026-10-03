@@ -10,7 +10,6 @@
    (cuenta de servicio): no hace falta tocar las reglas de Firestore. */
 import { getDb, corsHeaders, admin, uidDesdeToken, authRest, calcularExtras } from "./_firebase.js";
 import { planDe } from "./planTienda.js";
-import { moverInsumos, avisosDe } from "./inventario.js";
 import { cfgBoleta, vistaCfg, guardarCfg, llevaBoleta, ventaDelPago, boletaDelPago, vistaBoleta, reintentar, pdfDe } from "./boleta.js";
 
 /* Personal del local (fase 2): cuentas con usuario y clave, SIN rol en
@@ -53,8 +52,6 @@ const METODOS = ["efectivo", "tarjeta", "transferencia"];
 const fmtDia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" });
 const diaChile = iso => fmtDia.format(iso ? new Date(iso) : new Date());
 
-/* Ojo: los ids que se usan como clave de un mapa (pedido.boletas[pagoId]) empiezan con letra. La librería
-   de Firestore no escapa las rutas de campo y Firestore rechaza un tramo que parte con un dígito. */
 function token(){ const b = crypto.getRandomValues(new Uint8Array(18)); return Array.from(b, x => ("0" + x.toString(16)).slice(-2)).join(""); }
 function idPedido(){ const b = crypto.getRandomValues(new Uint8Array(2)); return "L" + Date.now().toString().slice(-6) + (b[0] % 10); }
 
@@ -100,7 +97,6 @@ async function moverStock(db, storeId, items, signo){
     try {
       const ref = db.doc("tiendas/" + storeId + "/productos/" + it.id);
       const d = await ref.get(); if (!d.exists) continue;
-      if (d.data().agotadoInv) continue;   /* lo marcó agotado el inventario con recetas: lo reactiva él */
       const st = d.data().stock;
       if (st === null || st === undefined || st === "") continue;
       await ref.set({ stock: Math.max(0, (Number(st) || 0) + signo * (Number(it.cantidad) || 1)) }, { merge: true });
@@ -249,8 +245,6 @@ export async function cajaLocal(request, env){
         const vb = vistaCfg(await cfgBoleta(db, storeId).catch(() => null));
         return json({ ok: true, rol, quien, turno: t ? Object.assign({ id: t.id }, t.t) : null,
                       boleta: { conectado: vb.conectado, activo: vb.activo, ambiente: vb.ambiente || "", tarjeta: !!vb.tarjeta },
-                      /* insumos que llegaron a 0 y esperan decisión (inventario con recetas); el garzón no los ve */
-                      avisosInv: rol === "garzon" || rol === "cocina" ? [] : await avisosDe(db, storeId),
                       resumen: t ? await resumenTurno(db, storeId, t.id, t.t) : null, mesas: cfg.cajaMesas || null,
                       barra: Array.isArray(cfg.cajaBarra) ? cfg.cajaBarra : [], nombre: cfg.nombre || "", equipo: await equipoLocal() });
       }
@@ -344,7 +338,7 @@ export async function cajaLocal(request, env){
         const monto = Math.max(0, num(a.p.total));
         if (!monto) return json({ ok: false, error: "Ese pedido no tiene monto" }, 400);
         const recibido = metodo === "efectivo" ? Math.max(monto, num(b.recibido) || monto) : monto;
-        const pago = { id: "p" + token().slice(0, 9), metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: "", venta: monto };
+        const pago = { id: token().slice(0, 10), metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: "", venta: monto };
         const cambios = { pagos: [pago], pagado: true, cobradoEn: ahora, cobradoPor: quien, turnoId: t.id, cobroCaja: true };
         await a.ref.set(cambios, { merge: true });
         let boleta = null;
@@ -429,8 +423,7 @@ export async function cajaLocal(request, env){
         }
         await pedidoRef(id).set(ped);
         await moverStock(db, storeId, items, -1);
-        const enCero = await moverInsumos(db, storeId, items, -1, { pedidoId: id, lugar: esMesa ? mesaNombre : "Para llevar", por: quien });
-        return json({ ok: true, pedido: ped, insumosEnCero: enCero });
+        return json({ ok: true, pedido: ped });
       }
       case "agregarItems": {
         const a = await pedidoLocal(b.pedidoId);
@@ -442,8 +435,7 @@ export async function cajaLocal(request, env){
         await a.ref.set({ items, rondas: ronda, cocinaListo: false, cuentaPedida: false, subtotal: sub, total: Math.max(0, sub - (a.p.descuentoLocal || 0)),
                           estado: "preparacion", estadoTimeline: Object.assign({}, a.p.estadoTimeline || {}, { preparacion: ahora, listo: null }) }, { merge: true });
         await moverStock(db, storeId, nuevos, -1);
-        const enCero = await moverInsumos(db, storeId, nuevos, -1, { pedidoId: a.p.id || idOk(b.pedidoId), lugar: a.p.mesa ? a.p.mesa.nombre : "Para llevar", por: quien });
-        return json({ ok: true, ronda, insumosEnCero: enCero });
+        return json({ ok: true, ronda });
       }
       case "anularItem": {
         const a = await pedidoLocal(b.pedidoId);
@@ -456,7 +448,6 @@ export async function cajaLocal(request, env){
         if (pagadoDe(a.p) > sub) return json({ ok: false, error: "Ya se pagó más que el nuevo total" }, 409);
         await a.ref.set({ items, subtotal: sub, total: Math.max(0, sub - (a.p.descuentoLocal || 0)) }, { merge: true });
         await moverStock(db, storeId, [items[i]], +1);
-        await moverInsumos(db, storeId, [Object.assign({}, items[i], { anulado: false })], +1, { pedidoId: a.p.id || idOk(b.pedidoId), lugar: a.p.mesa ? a.p.mesa.nombre : "Para llevar", por: quien, nota: "Producto anulado" });
         return json({ ok: true });
       }
       case "ajustes": {  /* descuento y propina de la cuenta */
@@ -483,7 +474,7 @@ export async function cajaLocal(request, env){
         const monto = Math.min(Math.max(0, num(b.monto)), falta);
         if (!monto) return json({ ok: false, error: "Monto inválido" }, 400);
         const recibido = metodo === "efectivo" ? Math.max(monto, num(b.recibido) || monto) : monto;
-        const pago = { id: "p" + token().slice(0, 9), metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: limpio(b.nota, 60) };
+        const pago = { id: token().slice(0, 10), metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: limpio(b.nota, 60) };
         if (b.com != null && b.com !== "") pago.com = comOk(b.com);
         if (extra) pago.propina = propina - (a.p.propina || 0);
         const pagos = (a.p.pagos || []).concat([pago]);
@@ -530,7 +521,6 @@ export async function cajaLocal(request, env){
         if (pagadoDe(a.p) > 0) return json({ ok: false, error: "Esta cuenta ya tiene pagos registrados" }, 409);
         await a.ref.set({ estado: "cancelado", cerrado: true, anuladoEn: ahora, anuladoPor: quien, motivoAnulacion: limpio(b.motivo, 100) }, { merge: true });
         await moverStock(db, storeId, (a.p.items || []).filter(i => !i.anulado), +1);
-        await moverInsumos(db, storeId, (a.p.items || []).filter(i => !i.anulado), +1, { pedidoId: a.p.id || idOk(b.pedidoId), lugar: a.p.mesa ? a.p.mesa.nombre : "Para llevar", por: quien, nota: "Cuenta anulada" });
         return json({ ok: true });
       }
       case "moverMesa": {

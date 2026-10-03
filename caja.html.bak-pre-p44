@@ -320,9 +320,7 @@ const S = { cfg: {}, productos: [], pedidos: [], turno: null, resumen: null, rol
             juntar: null,   /* { ids:[mesaId] } mientras se eligen mesas para juntar */
             comSel: 0,      /* a quién se le anota lo que se agrega: 0 = compartir, 1..n = comensal */
             equipo: [],
-            boleta: {},     /* { conectado, activo, ambiente, tarjeta }: boleta electrónica de la tienda */
-            avisosInv: [],  /* insumos que llegaron a 0 y esperan decisión (inventario con recetas) */
-            invVistos: {} };
+            boleta: {} };   /* { conectado, activo, ambiente, tarjeta }: boleta electrónica de la tienda */
 
 async function api(accion, datos){
   const u = auth.currentUser; if (!u) throw new Error("Sin sesión");
@@ -332,8 +330,6 @@ async function api(accion, datos){
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
   if (S.poll && ["estado", "pedidos", "turnos"].indexOf(accion) < 0) setTimeout(cargarPedidosApi, 150);
-  /* esta venta dejó un insumo en 0: se pregunta qué hacer (nada se agota solo) */
-  if (j.insumosEnCero && j.insumosEnCero.length) setTimeout(() => refrescarTurno(true), 500);
   return j;
 }
 const ES_PERSONAL = r => ["cajero", "garzon", "cocina"].indexOf(r) >= 0;
@@ -370,7 +366,7 @@ async function entrar(){
     qs("#loginTienda").textContent = "La caja del local es parte del plan Pro. Pídelo a DerLabs.";
     return;
   }
-  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.rol = e.rol; S.quien = e.quien; S.equipo = e.equipo || []; S.boleta = e.boleta || {}; S.avisosInv = e.avisosInv || []; if (e.mesas) S.cfg.cajaMesas = e.mesas; }
+  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.rol = e.rol; S.quien = e.quien; S.equipo = e.equipo || []; S.boleta = e.boleta || {}; if (e.mesas) S.cfg.cajaMesas = e.mesas; }
   catch(e){ qs("#login").classList.remove("oculto"); qs("#app").classList.add("oculto"); qs("#loginErr").textContent = e.message; return; }
   if (S.rol === "cocina"){ location.href = "/cocina"; return; }
   qs("#login").classList.add("oculto"); qs("#app").classList.remove("oculto");
@@ -378,7 +374,6 @@ async function entrar(){
   qs("#btnPersonal").classList.toggle("oculto", S.rol !== "propietario");
   qs('.tab[data-v="turno"]').classList.toggle("oculto", S.rol === "garzon");
   qs("#hNombre").textContent = (S.cfg.nombre || "Tienda") + " · Caja";
-  setTimeout(avisoInventario, 1500);
   qs("#reloj").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
   document.title = (S.cfg.nombre || "Tienda") + " — Caja local";
   const T = db.collection("tiendas").doc(STORE_ID);
@@ -1388,7 +1383,7 @@ function abrirCobro(modoIni){
 
 /* ───────────── Turno de caja ───────────── */
 async function refrescarTurno(silencioso){
-  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.boleta = e.boleta || {}; S.avisosInv = e.avisosInv || []; render(); avisoInventario(); }
+  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.boleta = e.boleta || {}; render(); }
   catch(err){ if (!silencioso) toast("❌ " + err.message); }
 }
 function renderTurno(){
@@ -1407,7 +1402,7 @@ function renderTurno(){
     '<div class="sec-t">Movimientos de efectivo</div><div class="fila2"><button class="btn" data-mov="ingreso">＋ Ingreso</button><button class="btn" data-mov="retiro">− Retiro</button></div>' +
     '<table class="t" style="margin-top:8px">' + ((t.movimientos || []).map(m => '<tr><td>' + (m.tipo === "ingreso" ? "＋ " : "− ") + esc(m.nota || m.tipo) + '<br><span class="muted small">' + new Date(m.fecha).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) + '</span></td><td>' + (m.tipo === "retiro" ? "−" : "") + $$(m.monto) + '</td></tr>').join("") || '<tr><td class="muted small">Sin movimientos</td><td></td></tr>') + '</table>' +
     (R.top && R.top.length ? '<div class="sec-t">Más vendidos del turno</div><table class="t">' + R.top.map(x => '<tr><td>' + esc(x.nombre) + '</td><td>' + x.cantidad + '</td></tr>').join("") + '</table>' : '') +
-    seccionInsumos() + seccionBoleta() + '<button class="btn btn-acc" id="tCerrar" style="width:100%;margin-top:18px">Cerrar turno y hacer arqueo</button>' +
+    seccionBoleta() + '<button class="btn btn-acc" id="tCerrar" style="width:100%;margin-top:18px">Cerrar turno y hacer arqueo</button>' +
     '<div class="sec-t">Turnos anteriores</div><div class="lista" id="tHist"><div class="muted small">Cargando…</div></div>';
   cargarHistorial(); cargarBoletas();
 }
@@ -1421,8 +1416,7 @@ qs("#turnoBody").addEventListener("click", async e => {
     const m = prompt((tipo === "ingreso" ? "Ingreso de efectivo" : "Retiro de efectivo") + " — monto:"); if (!m) return;
     const nota = prompt("Motivo (ej: pago a proveedor, sencillo):", "") || "";
     try { await api("movimiento", { tipo, monto: Number(String(m).replace(/\D/g, "")), nota }); refrescarTurno(); } catch(err){ toast("❌ " + err.message); }
-  } else if ((b = e.target.closest("[data-invav]"))) avisoInventario(b.dataset.invav);
-  else if (e.target.closest("#bolCfg")) abrirBoletaCfg();
+  } else if (e.target.closest("#bolCfg")) abrirBoletaCfg();
   else if ((b = e.target.closest("[data-bimp]"))) reimprimirBoleta(b.dataset.bimp);
   else if ((b = e.target.closest("[data-bpdf]"))) pdfBoleta(b.dataset.bpdf, b);
   else if ((b = e.target.closest("[data-bre]"))) reintentarBoleta(b.dataset.bre, b);
@@ -1573,68 +1567,6 @@ async function abrirBoletaCfg(){
     let b;
     if ((b = e.target.closest("[data-bact]"))) guardar({ activo: b.dataset.bact === "1" });
     else if ((b = e.target.closest("[data-btar]"))) guardar({ tarjeta: b.dataset.btar === "1" });
-  });
-}
-
-/* ───────────── Inventario con recetas: insumo en cero ─────────────
-   Cuando una venta deja un insumo en 0, el servidor guarda un aviso (cloudflare/functions/inventario.js).
-   La caja pregunta qué hacer: marcar agotados los productos que lo usan, anotar cuánto queda de verdad
-   o seguir vendiendo. Nada se agota solo. El dueño ve el mismo aviso en su panel. */
-async function apiInv(cuerpo){
-  const u = auth.currentUser; if (!u) throw new Error("Sin sesión");
-  const r = await fetch("/api/inventario", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + await u.getIdToken() }, body: JSON.stringify(Object.assign({ storeId: STORE_ID }, cuerpo)) });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
-  return j;
-}
-const invUnidad = (a, n) => a.unidad === "kg" ? "kg" : a.unidad === "l" ? "litros" : (a.etiqueta || (n === 1 ? "unidad" : "unidades"));
-const invCant = (a, c) => a.unidad === "un" ? c + " " + (a.etiqueta || "un") : c + (a.unidad === "kg" ? " g" : " ml");
-function seccionInsumos(){
-  const L = (S.avisosInv || []);
-  if (!L.length || S.rol === "garzon") return "";
-  return '<div class="sec-t">Insumos en cero</div>' + L.map(a => '<div class="card"><div class="card-top"><b>' + esc(a.nombre) + '</b><span class="badge warn">Llegó a 0</span></div>' +
-    '<span class="muted small">' + ((a.usos || []).length ? "Lo usan " + a.usos.length + (a.usos.length === 1 ? " producto." : " productos.") : "Ningún producto con receta lo usa.") + '</span>' +
-    '<div class="acciones"><button class="btn btn-sm" data-invav="' + esc(a.id) + '">Decidir</button></div></div>').join("");
-}
-/* id: abrir ese aviso (lo pidió alguien). Sin id: el primero que no se haya mostrado en esta sesión. */
-function avisoInventario(id){
-  if (S.rol === "garzon" || !(S.avisosInv || []).length) return;
-  const a = id ? S.avisosInv.find(x => x.id === id) : S.avisosInv.find(x => S.invVistos[x.id] !== x.desde);
-  if (!a) return;
-  if (!id && !qs("#modal").classList.contains("oculto")) return;   /* hay otra ventana abierta: se muestra después (y queda en Turno) */
-  S.invVistos[a.id] = a.desde;
-  const usos = (a.usos || []).map(x => { const p = S.productos.find(q => q.id === x.p); return p ? { nombre: p.nombre, c: x.c } : null; }).filter(Boolean);
-  const cerrarYrefrescar = () => { cerrarModal(); refrescarTurno(true); };
-  const pint = () => {
-    qs("#mBox").innerHTML = '<h3>⚠️ ' + esc(a.nombre) + ' llegó a 0</h3><p class="muted small">Según el inventario, ya no queda.' + (usos.length ? " ¿Quieres marcar agotados los productos que lo usan?" : " Ningún producto con receta lo usa.") + '</p>' +
-      (usos.length ? '<table class="t">' + usos.map(x => '<tr><td>' + esc(x.nombre) + '</td><td>' + esc(invCant(a, x.c)) + '</td></tr>').join("") + '</table>' : '') +
-      (usos.length ? '<button class="btn btn-ok" id="ivAgotar">Marcar ' + (usos.length === 1 ? "agotado" : "agotados los " + usos.length) + '</button>' : '') +
-      '<button class="btn" id="ivTengo">Todavía tengo: anotar cuánto</button><button class="btn" id="ivSeguir">Seguir vendiendo sin cambiar nada</button>' +
-      '<p class="muted small">Nada se agota solo: decides tú. El mismo aviso le aparece al dueño en su panel.</p>';
-  };
-  modal(""); pint();
-  qs("#mBox").addEventListener("click", async e => {
-    let b;
-    try {
-      if ((b = e.target.closest("#ivAgotar"))){ b.disabled = true; const r = await apiInv({ accion: "aviso", insumo: a.id, op: "agotar" }); toast("✅ " + (r.agotados_ahora === 1 ? "1 producto marcado agotado" : r.agotados_ahora + " productos marcados agotados"), 3500); cerrarYrefrescar(); }
-      else if ((b = e.target.closest("#ivSeguir"))){ b.disabled = true; await apiInv({ accion: "aviso", insumo: a.id, op: "seguir" }); cerrarYrefrescar(); }
-      else if (e.target.closest("#ivTengo")){
-        qs("#mBox").innerHTML = '<h3>' + esc(a.nombre) + '</h3><p class="muted small">Cuenta lo que queda de verdad y anótalo. El inventario queda en ese número.</p>' +
-          '<input id="ivCant" inputmode="decimal" placeholder="Cuánto queda (' + esc(invUnidad(a, 2)) + ')"><div class="fila2"><button class="btn" id="ivVolver">Volver</button><button class="btn btn-ok" id="ivGuardar">Guardar</button></div>';
-        qs("#ivCant").focus();
-      }
-      else if (e.target.closest("#ivVolver")) pint();
-      else if ((b = e.target.closest("#ivGuardar"))){
-        const n = Number(String(qs("#ivCant").value).replace(",", "."));
-        if (!(n >= 0) || String(qs("#ivCant").value).trim() === ""){ toast("Escribe cuánto queda"); return; }
-        b.disabled = true;
-        const r = await apiInv({ accion: "movimiento", tipo: "conteo", insumo: a.id, cantidad: Math.round(n * (a.unidad === "un" ? 1 : 1000) * 1000) / 1000 });
-        toast("✅ Stock anotado", 3000);
-        /* si había productos agotados por este insumo, se ofrece volver a venderlos */
-        if (r.reactivar && r.reactivar.productos.length && confirm("Volvió a haber " + a.nombre + ". ¿Volver a vender los productos que quedaron agotados?")) await apiInv({ accion: "reactivar", insumo: a.id });
-        cerrarYrefrescar();
-      }
-    } catch(err){ toast("❌ " + err.message, 4000); if (b) b.disabled = false; }
   });
 }
 

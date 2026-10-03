@@ -2582,9 +2582,6 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 
     <!-- TAB INVENTARIO -->
     <div class="psec" id="pt-inventario">
-      <!-- Inventario con recetas (plan Pro): lo dibuja panel-inventario.js; en Básico, una invitación a Pro (v44Inventario en app.js) -->
-      <div id="invPro"></div>
-      <div id="invClasico">
       <div class="pcard">
         <div class="pcard-h"><div><b>Stock de productos</b><small>Al llegar a 0, el producto se marca sin stock solo.</small></div></div>
         <div id="invLista"></div>
@@ -2598,7 +2595,6 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
         </div>
         <button class="pill pill-outline pill-sm panel-full" id="btnInvGuardar">Guardar aviso</button>
         <div id="invAlertas" style="margin-top:12px"></div>
-      </div>
       </div>
     </div>
 

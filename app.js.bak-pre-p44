@@ -4130,13 +4130,11 @@ async function v42SubirFoto(dataURL){
 }
 /* Al entrar al panel: pasa al almacén, de a pocas y sin molestar, las fotos antiguas que siguen dentro de Firestore.
    Los documentos se actualizan en el servidor y llegan solos a la página por la conexión de siempre. */
-var _v42Migrando = false, _v42Intentos = 0, _v42Limpio = false;
+var _v42Migrando = false, _v42Intentos = 0;
 async function v42PasarFotos(){
   if (_v42Migrando || DEMO) return;
   /* la sesión puede tardar unos segundos en restaurarse al abrir la página */
   if (!auth || !auth.currentUser){ if (++_v42Intentos < 4) setTimeout(v42PasarFotos, 8000); return; }
-  /* de paso: borrar del almacén las fotos que la tienda ya no usa (el servidor lo hace a lo más una vez al día) */
-  if (!_v42Limpio){ _v42Limpio = true; v42Api({ accion: "limpiar" }).catch(function(e){ console.warn("limpiar fotos:", e.message); }); }
   const quedan = (state.productos || []).concat(state.locales || []).some(function(x){ return String(x.imagen || "").indexOf("data:image/") === 0; }) ||
     ["heroImagen", "portadaImagen"].some(function(k){ return String((state.config || {})[k] || "").indexOf("data:image/") === 0; });
   if (!quedan) return;
@@ -8590,40 +8588,6 @@ function v28FilaCaja(){
     '<span class="pv-txt"><b>Caja y mesas</b><small>Atención en el local: mesas, cocina y cobro</small></span>' +
     (v28EsPro() ? '<span class="pv-chev">›</span>' : '<span class="pv-pro">Pro</span>') + '</button>';
 }
-/* P44 · Inventario con recetas (plan Pro, solo comida). La pantalla está en panel-inventario.js, que se
-   carga la primera vez que se abre "Inventario"; los datos, en cloudflare/functions/inventario.js.
-   En Básico se muestra una invitación a Pro y queda el stock por producto de siempre. */
-async function v44Api(cuerpo){
-  const tk = auth && auth.currentUser ? await auth.currentUser.getIdToken() : "";
-  const r = await fetch("/api/inventario", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tk }, body: JSON.stringify(Object.assign({ storeId: STORE_ID }, cuerpo)) });
-  const j = await r.json().catch(function(){ return {}; });
-  if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
-  return j;
-}
-var _v44Cargando = null;
-function v44Inventario(){
-  var caja = qs("#invPro"), clasico = qs("#invClasico"); if (!caja) return;
-  if (!v28EsComida()){ caja.innerHTML = ""; if (clasico) clasico.style.display = ""; return; }
-  if (!v28EsPro()){
-    if (clasico) clasico.style.display = "";
-    caja.innerHTML = '<div class="pcard"><div class="pcard-h"><div><b>Inventario con recetas</b><small>Controla tus ingredientes: cada venta descuenta lo que lleva el plato, te avisa cuando algo se acaba y te muestra cuánto deja cada producto.</small></div><span class="pchip">Pro</span></div>' +
-      '<button type="button" class="pill pill-solid pill-sm panel-full" data-pvpro="1">Subir a Pro</button></div>';
-    return;
-  }
-  if (DEMO){ caja.innerHTML = '<div class="pcard"><b class="pcard-t">Inventario con recetas</b><p class="pnota" style="margin:4px 0 0">Insumos, recetas y costos. Se activa en la tienda real.</p></div>'; return; }
-  var montar = function(){ window.DLInv.montar({ raiz: caja, clasico: clasico, api: v44Api, toast: toast,
-    productos: function(){ return state.productos || []; }, grupos: function(){ return (state.config || {}).gruposExtras || []; } }); };
-  if (window.DLInv){ montar(); return; }
-  if (!_v44Cargando) _v44Cargando = new Promise(function(ok, mal){ var s = document.createElement("script"); s.src = "/panel-inventario.js?v=44"; s.onload = ok; s.onerror = mal; document.head.appendChild(s); });
-  caja.innerHTML = '<p class="pnota" style="text-align:center;padding:16px 0">Cargando…</p>';
-  _v44Cargando.then(montar).catch(function(){ _v44Cargando = null; caja.innerHTML = '<div class="pcard"><p class="pnota" style="margin:0">No se pudo cargar el inventario. Revisa tu conexión y vuelve a abrir esta sección.</p></div>'; });
-}
-document.addEventListener("click", function(e){
-  if (e.target.closest && e.target.closest('.ptab[data-pt="inventario"]')) setTimeout(v44Inventario, 0);
-  /* la invitación a Pro de esta sección usa el mismo aviso que el inicio del panel */
-  var b = e.target.closest && e.target.closest('#invPro [data-pvpro]'); if (b) v28AvisoPro("Plan Pro");
-});
-
 /* P41 · El plan de la tienda en el inicio del panel (solo comida: el Pro es la caja del local).
    Básico: invita a subir a Pro. Pro: lo confirma, sin botón. */
 function v41Plan(){

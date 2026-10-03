@@ -5,7 +5,6 @@
 
 import { getDb, corsHeaders, validarPedidoCompleto, admin } from "./_firebase.js";
 import { enviarCorreosPedido } from "./enviarEmails.js";
-import { moverInsumos } from "./inventario.js";
 
 export async function crearPedidoEfectivo(request, env){
   const headers = corsHeaders();
@@ -74,8 +73,6 @@ export async function crearPedidoEfectivo(request, env){
           console.warn("No se pudo descontar stock de", it.id, ":", e.message);
         }
       }));
-      /* inventario con recetas (plan Pro): descuenta los insumos de lo vendido; nunca hace fallar el pedido */
-      await moverInsumos(db, storeId, itemsConVariantes, -1, { pedidoId: id, lugar: "Pedido online" });
     }
 
     if (cuponFinal) {

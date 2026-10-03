@@ -183,9 +183,6 @@ header p{color:var(--txt2);font-size:14px}
 #planes p{color:var(--txt2);font-size:13.5px;margin-bottom:14px;line-height:1.45}
 #btnPlanes{padding:12px 18px;border-radius:12px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-weight:800;cursor:pointer}
 #planesMsg,#fotosMsg{font-size:13px;color:var(--txt2);min-height:18px;margin:10px 0}
-#btnFotos,#btnFotosLimpiar{margin:0 8px 8px 0}
-#btnFotosLimpiar{padding:12px 18px;border-radius:12px;border:1px solid var(--borde);background:transparent;color:var(--txt);font:inherit;font-weight:800;cursor:pointer}
-#btnFotosLimpiar:disabled{opacity:.5}
 #btnFotos{padding:12px 18px;border-radius:12px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-weight:800;cursor:pointer}
 #btnFotos:disabled{opacity:.5}
 #fotosMsg.error{color:#FF8A80}
@@ -340,9 +337,7 @@ header p{color:var(--txt2);font-size:14px}
     <div id="fotosCaja" hidden>
       <p style="margin-top:18px">Las fotos nuevas ya se guardan fuera de la base de datos. Las antiguas se pasan solas cuando el dueño entra a su panel; con este botón las pasas tú de una vez, en todas las tiendas.</p>
       <button type="button" id="btnFotos">Pasar las fotos antiguas</button>
-      <button type="button" id="btnFotosLimpiar">Borrar fotos sin uso</button>
       <div id="fotosMsg" role="status"></div>
-      <p>"Borrar fotos sin uso" quita del almacén las fotos de productos eliminados o reemplazados. No toca nada subido en los últimos dos días. También se hace solo, una vez al día, cuando el dueño entra a su panel.</p>
     </div>
   </section>
 </div>
@@ -1119,26 +1114,6 @@ qs("#formTienda").addEventListener("submit", async (e) => {
       mf.textContent = total ? "Listo: " + total + " fotos pasadas al almacén." + (saltadas ? " " + saltadas + " quedaron como estaban (formato no compatible)." : "") : "No había fotos antiguas por pasar.";
     } catch(err){ mf.textContent = err.message; mf.classList.add("error"); }
     bf.disabled = false;
-  });
-  /* Fotos que ya nadie usa (producto eliminado o foto reemplazada): se borran del almacén */
-  qs("#btnFotosLimpiar").addEventListener("click", async function(){
-    var bl = qs("#btnFotosLimpiar"), mf = qs("#fotosMsg"), total = 0;
-    bl.disabled = true; mf.classList.remove("error");
-    try {
-      for (var i = 0; i < tiendas.length; i++){
-        var t = tiendas[i];
-        for (var vuelta = 0; vuelta < 30; vuelta++){
-          mf.textContent = "Revisando «" + t.nombre + "» (" + (i + 1) + " de " + tiendas.length + ")…";
-          var r = await fetch("/api/imagen", { method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Secret": ADMIN_SECRET }, body: JSON.stringify({ accion: "limpiar", storeId: t.storeId }) });
-          var j = await r.json().catch(function(){ return {}; });
-          if (!r.ok || !j.ok) throw new Error("«" + t.nombre + "»: " + (j.error || ("error " + r.status)) + (total ? ". Alcancé a borrar " + total + "." : ""));
-          total += j.borradas || 0;
-          if (!j.quedan || !j.borradas) break;
-        }
-      }
-      mf.textContent = total ? "Listo: " + total + (total === 1 ? " foto sin uso borrada." : " fotos sin uso borradas.") : "No había fotos sin uso.";
-    } catch(err){ mf.textContent = err.message; mf.classList.add("error"); }
-    bl.disabled = false;
   });
   lista.addEventListener("click", async function(ev){
     var bb = ev.target.closest("[data-bol]"); if (bb){ boletaClick(bb); return; }

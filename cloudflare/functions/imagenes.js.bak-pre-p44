@@ -21,9 +21,6 @@
      { accion: "migrar", storeId, max }                  dueño o clave de administrador
          pasa al almacén las fotos que siguen dentro de Firestore, de a pocas
          por llamada → { ok, hechas, pendientes }
-     { accion: "limpiar", storeId }                      dueño (una vez al día) o administrador
-         borra del almacén las fotos de la tienda que ya nadie usa
-         → { ok, borradas, enUso, quedan }
    El logo (logoBase64 / faviconBase64) NO se mueve: el servidor lo usa para
    el ícono, el manifest y la pantalla de carga. */
 import { getDb, corsHeaders, uidDesdeToken } from "./_firebase.js";
@@ -44,8 +41,7 @@ export const esFotoEnTexto = v => typeof v === "string" && v.length > 200 && v.i
 async function poner(env, clave, bytes, tipo){
   if (env.IMG) return env.IMG.put(clave, bytes, { httpMetadata: { contentType: tipo } });
   if (!env.LANDING) throw new Error("No hay almacén de imágenes configurado");
-  /* t = cuándo se subió: la limpieza no toca fotos recientes (pueden estar en un cambio sin guardar) */
-  return env.LANDING.put(clave, bytes, { metadata: { ct: tipo, t: Date.now() } });
+  return env.LANDING.put(clave, bytes, { metadata: { ct: tipo } });
 }
 async function traer(env, clave){
   if (env.IMG){
@@ -133,51 +129,6 @@ export async function migrarTienda(env, db, storeId, max){
   return { hechas, saltadas, pendientes: tareas.length - vistas, error };
 }
 
-/* ───────────── Limpieza: fotos que ya nadie usa ─────────────
-   Una foto queda sin uso cuando se borra su producto o se le cambia la foto. No se borra en ese
-   momento porque la misma foto puede estar en otro producto y porque el cambio puede estar sin
-   guardar. Aquí se mira todo lo que la tienda tiene publicado y se borra del almacén lo que no
-   aparece en ninguna parte y lleva más de dos días subido. */
-const GRACIA_MS = 48 * 3600 * 1000;
-async function listar(env, prefijo){
-  const out = [];
-  if (env.IMG){
-    let cur;
-    do {
-      const r = await env.IMG.list({ prefix: prefijo, cursor: cur });
-      (r.objects || []).forEach(o => out.push({ clave: o.key, t: o.uploaded ? new Date(o.uploaded).getTime() : 0, r2: true }));
-      cur = r.truncated ? r.cursor : null;
-    } while (cur);
-  }
-  if (env.LANDING){
-    let cur;
-    do {
-      const r = await env.LANDING.list({ prefix: prefijo, cursor: cur });
-      (r.keys || []).forEach(k => out.push({ clave: k.name, t: (k.metadata && Number(k.metadata.t)) || 0, r2: false }));
-      cur = r.list_complete ? null : r.cursor;
-    } while (cur);
-  }
-  return out;
-}
-export async function limpiarTienda(env, db, storeId, max, ahora){
-  const base = "tiendas/" + storeId, prefijo = "img/" + storeId + "/";
-  /* si alguna lectura falla, esto lanza y no se borra nada */
-  const [cf, pr, lo, cu] = await Promise.all([db.doc(base + "/config/general").get(), db.collection(base + "/productos").get(), db.collection(base + "/locales").get(), db.collection(base + "/cupones").get()]);
-  if (!cf.exists) throw Object.assign(new Error("Esa tienda no existe"), { st: 404 });
-  const enUso = new Set(), re = new RegExp("img/" + storeId + "/[a-f0-9]{20}\\.(?:jpg|png|webp)", "g");
-  const mirar = datos => { const m = JSON.stringify(datos || {}).match(re); if (m) m.forEach(x => enUso.add(x)); };
-  mirar(cf.data()); [pr, lo, cu].forEach(s => (s.docs || []).forEach(d => mirar(d.data())));
-  const todas = await listar(env, prefijo), t0 = ahora || Date.now();
-  /* sin fecha de subida no se puede saber si es reciente: no se toca */
-  const sobran = todas.filter(x => !enUso.has(x.clave) && x.t > 0 && t0 - x.t > GRACIA_MS);
-  let borradas = 0;
-  for (const x of sobran.slice(0, max)){
-    if (x.r2) await env.IMG.delete(x.clave); else await env.LANDING.delete(x.clave);
-    borradas++;
-  }
-  return { revisadas: todas.length, enUso: todas.filter(x => enUso.has(x.clave)).length, borradas, quedan: sobran.length - borradas };
-}
-
 /* ───────────── /api/imagen ───────────── */
 export async function imagen(request, env){
   if (request.method === "OPTIONS") return new Response("", { status: 204, headers: hdr() });
@@ -195,15 +146,6 @@ export async function imagen(request, env){
       const u = await db.doc("usuarios/" + uid).get();
       const rol = u.exists && u.data().roles ? u.data().roles[storeId] : null;
       if (!rol || rol === "repartidor") return json({ ok: false, error: "Sin permiso en esta tienda" }, 403);
-    }
-    if (b.accion === "limpiar"){
-      /* el panel del dueño la pide cada vez que entra: se hace a lo más una vez al día por tienda */
-      const marca = "imggc:" + storeId;
-      if (!esAdmin && env.LANDING){
-        if (await env.LANDING.get(marca)) return json({ ok: true, omitida: true, borradas: 0 });
-        await env.LANDING.put(marca, "1", { expirationTtl: 86400 });
-      }
-      return json(Object.assign({ ok: true }, await limpiarTienda(env, db, storeId, 100)));
     }
     if (b.accion === "migrar"){
       const cfg = await db.doc("tiendas/" + storeId + "/config/general").get();
