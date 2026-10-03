@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="only light">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <!-- SEO: Open Graph (para WhatsApp, Facebook, LinkedIn) -->
+  <!-- SEO: Twitter Card -->
+  <!-- SEO: URL canónica -->
+  <!-- SEO: theme-color -->
+  <!-- SEO: robots -->
+  <!-- SEO: JSON-LD Schema -->
+<title>Software para Delivery en Chile | Crea tu Tienda Online | DerLabs</title>
+<meta name="description" content="Plataforma todo en uno para crear tu tienda online con delivery y gestionar pedidos en tiempo real. Sin comisiones por venta. Empieza a vender hoy en Chile.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════
+   TOKENS — extraídos del patrón visual de referencia (no del texto):
+   morado/violeta de marca, verde esmeralda para "éxito/dinero",
+   fondos lavanda muy suaves, tarjetas blancas con sombra grande,
+   bordes muy redondeados, footer negro con la marca en píldora.
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  color-scheme: only light;
+  --morado:      #6C5CE7;
+  --morado-dark: #5849C4;
+  --morado-suave:#EDEBFC;
+  --verde:       #16A34A;
+  --verde-suave: #DCFCE7;
+  --negro:       #14121F;
+  --texto:       #1A1826;
+  --texto2:      #6B6880;
+  --fondo:       #F5F3FC;
+  --fondo-card:  #FFFFFF;
+  --borde:       rgba(20,18,31,.08);
+  --radius-lg:   28px;
+  --radius-md:   20px;
+  --radius-sm:   14px;
+  --sombra:      0 20px 50px -12px rgba(108,92,231,.18);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.ico-svg{display:inline-flex;align-items:center;justify-content:center;width:1em;height:1em;flex-shrink:0}
+.ico-svg svg{width:100%;height:100%;display:block}
+html{scroll-behavior:smooth}
+body{
+  background:var(--fondo);color:var(--texto);
+  font-family:'Plus Jakarta Sans',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3,h4{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;line-height:1.05}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button{font-family:inherit;cursor:pointer;border:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+/* ── Chip de marca — "cajita" sí, píldora de Claude no.
+   Diseño propio que funciona en los 2 contextos del landing (fondo
+   lila del body Y dentro de tarjetas blancas):
+   - Fondo tenue del color de marca (se ve como cajita en cualquier lado).
+   - Borde fino del mismo color (da estructura, no depende del fondo).
+   - Radio 10px (Claude usa 999px — la forma de esquina ya es distinta).
+   - Sin puntito, sin sombra dura, sin degradados.
+   Mismo componente para morado y verde, solo cambia el color. */
+.badge{
+  display:inline-flex;align-items:center;
+  background:rgba(108,92,231,.06);
+  color:var(--morado-dark);
+  border:1px solid rgba(108,92,231,.22);
+  font-weight:800;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  padding:8px 14px;border-radius:10px;
+  margin-bottom:14px;
+  line-height:1.2;
+}
+.badge .punto{display:none}
+.badge.verde{
+  background:rgba(22,163,74,.06);
+  color:var(--verde);
+  border-color:rgba(22,163,74,.22);
+}
+/* ── Header ── */
+header.nav{
+  position:sticky;top:0;z-index:50;
+  background:rgba(245,243,252,.85);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--borde);
+}
+.nav-inner{
+  max-width:1180px;margin:0 auto;padding:18px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:16px;
+}
+.nav-logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px}
+.nav-logo-img{height:34px;width:auto;max-width:100%;display:block;flex-shrink:1;min-width:0}
+.nav-links{display:flex;gap:32px;font-weight:700;font-size:15px}
+.nav-links a{color:var(--texto2)}
+.nav-links a:hover{color:var(--morado)}
+.btn-nav-cta{
+  background:var(--negro);color:#fff;font-weight:800;font-size:14px;
+  padding:12px 22px;border-radius:999px;flex-shrink:0;white-space:nowrap;
+}
+/* ── Botones ── */
+.btn-primario{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--morado);color:#fff;font-weight:800;font-size:16px;
+  padding:16px 28px;border-radius:999px;
+  box-shadow:0 10px 30px -6px rgba(108,92,231,.5);
+}
+.btn-secundario{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#fff;color:var(--texto);font-weight:800;font-size:16px;
+  padding:16px 28px;border-radius:999px;border:2px solid var(--borde);
+}
+/* ── Hero ── */
+.hero{padding:80px 0 60px;text-align:left}
+.hero h1{font-size:clamp(38px,6vw,64px);margin:20px 0 22px;letter-spacing:-1px}
+.hero h1 .acento{color:var(--morado)}
+.hero p.sub{font-size:19px;color:var(--texto2);max-width:640px;line-height:1.55;margin-bottom:32px}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap}
+/* ── Sección genérica ── */
+section{padding:70px 0}
+.section-tit{font-size:clamp(30px,4.5vw,46px);margin-bottom:14px;letter-spacing:-.5px}
+.section-tit .acento{color:var(--morado)}
+.section-sub{color:var(--texto2);font-size:17px;max-width:560px;margin-bottom:44px;line-height:1.5}
+/* ── Grid de features (tarjetas blancas, borde de color lateral) ── */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.feature-card{
+  background:var(--fondo-card);border-radius:var(--radius-md);
+  padding:28px;border:1px solid var(--borde);
+  box-shadow:0 8px 24px -10px rgba(20,18,31,.06);
+}
+.feature-card .ico-wrap{
+  width:52px;height:52px;border-radius:16px;background:var(--morado-suave);
+  display:flex;align-items:center;justify-content:center;margin-bottom:18px;
+  font-size:24px;
+}
+.feature-card h3{font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;font-size:18px;margin-bottom:8px}
+.feature-card p{color:var(--texto2);font-size:14.5px;line-height:1.5}
+/* ── Tarjeta destacada con barra lateral de color (como las de MercadoPago/Cliente) ── */
+/* ── Tarjeta destacada con barra lateral de color (estilo "MercadoPago
+   conectado de verdad" / "Subpágina 100% dedicada" de la referencia)
+   — componente listo, todavía sin usar en el HTML: encaja bien para
+   2-3 puntos fuertes destacados con más detalle que las feature-card
+   chicas. Usar .tarjeta-destacada / .tarjeta-destacada.verde cuando
+   se arme esa sección. */
+.tarjeta-destacada{
+  background:var(--fondo-card);border-radius:var(--radius-md);
+  padding:30px 32px;display:flex;gap:22px;align-items:flex-start;
+  border-left:6px solid var(--morado);
+  box-shadow:0 8px 24px -10px rgba(20,18,31,.06);
+  margin-bottom:16px;
+}
+.tarjeta-destacada.verde{border-left-color:var(--verde)}
+.tarjeta-destacada .ico-wrap{
+  width:56px;height:56px;border-radius:16px;background:var(--morado-suave);
+  display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;
+}
+.tarjeta-destacada h3{font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;font-size:19px;margin-bottom:6px}
+.tarjeta-destacada p{color:var(--texto2);font-size:15px;line-height:1.55}
+/* ── Mockup de teléfono (marco negro grueso) ── */
+.telefono{
+  background:var(--negro);border-radius:36px;padding:14px;
+  box-shadow:0 30px 60px -15px rgba(20,18,31,.35);
+  max-width:300px;
+}
+.telefono-pantalla{
+  background:#fff;border-radius:24px;overflow:hidden;
+  aspect-ratio:9/18;display:flex;flex-direction:column;
+}
+/* ── Barra de pasos horizontal (Cliente paga → MP acredita → Cae a tu cuenta) ── */
+.pasos-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px}
+.paso-chip{
+  background:#fff;border:1px solid var(--borde);border-radius:999px;
+  padding:12px 20px;font-weight:800;font-size:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.paso-chip .hora{color:var(--morado);font-weight:800}
+/* ── Precios ── */
+.precios-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px;align-items:start}
+.plan-card{
+  background:var(--fondo-card);border-radius:var(--radius-lg);
+  padding:36px 32px;border:1px solid var(--borde);
+  box-shadow:0 8px 24px -10px rgba(20,18,31,.06);
+}
+.plan-card.destacado{
+  border:2px solid var(--morado);
+  box-shadow:0 20px 50px -12px rgba(108,92,231,.25);
+}
+.plan-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.plan-precio{font-size:44px;font-weight:900;font-family:'Plus Jakarta Sans',sans-serif}
+.plan-precio .moneda{font-size:20px;color:var(--texto2);font-weight:700}
+.plan-nota{color:var(--texto2);font-size:14px;margin-bottom:24px}
+.plan-lista{list-style:none;margin-bottom:26px}
+.plan-lista li{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:9px 0;font-size:14.5px;color:var(--texto);
+  border-bottom:1px solid var(--borde);
+}
+.plan-lista li:last-child{border-bottom:none}
+.plan-lista .check{color:var(--verde);font-weight:900;flex-shrink:0}
+/* ── Banner de dinero/éxito (verde, como la sección "El dinero llega al instante") ── */
+.banner-verde{
+  background:var(--verde);color:#fff;border-radius:var(--radius-md);
+  padding:26px 30px;display:flex;gap:18px;align-items:center;
+}
+.banner-verde .ico-wrap{
+  width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.2);
+  display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;
+}
+.banner-verde h3{font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;font-size:18px;margin-bottom:4px}
+.banner-verde p{opacity:.92;font-size:14.5px}
+/* ── Testimonios / reseñas ── */
+.reseña-card{
+  background:var(--fondo-card);border-radius:var(--radius-md);
+  padding:26px;border:1px solid var(--borde);
+  box-shadow:0 8px 24px -10px rgba(20,18,31,.06);
+}
+.reseña-estrellas{color:var(--verde);font-size:14px;margin-bottom:12px;letter-spacing:2px}
+.reseña-texto{font-size:15px;line-height:1.55;color:var(--texto);margin-bottom:18px}
+.reseña-autor{display:flex;align-items:center;gap:12px}
+.reseña-avatar{
+  width:42px;height:42px;border-radius:50%;background:var(--morado-suave);
+  display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--morado-dark);
+}
+.reseña-nombre{font-weight:900;font-size:14.5px}
+.reseña-negocio{color:var(--texto2);font-size:13px}
+/* ── FAQ (acordeón simple) ── */
+.faq-item{
+  background:#fff;border-radius:var(--radius-sm);border:1px solid var(--borde);
+  margin-bottom:10px;overflow:hidden;
+}
+.faq-pregunta{
+  width:100%;text-align:left;padding:20px 24px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-weight:800;font-size:16px;background:none;
+}
+.faq-pregunta .signo{color:var(--morado);font-size:22px;transition:transform .2s}
+.faq-item.abierto .signo{transform:rotate(45deg)}
+.faq-respuesta{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.faq-item.abierto .faq-respuesta{max-height:300px}
+.faq-respuesta p{padding:0 24px 20px;color:var(--texto2);font-size:14.5px;line-height:1.55}
+/* ── CTA final ── */
+.cta-final{
+  background:var(--morado);border-radius:var(--radius-lg);
+  padding:60px 40px;text-align:center;color:#fff;
+  background-image:radial-gradient(circle at 20% 20%, rgba(255,255,255,.12), transparent 50%);
+}
+.cta-final h2{font-size:clamp(28px,4vw,42px);margin-bottom:16px}
+.cta-final p{opacity:.9;font-size:17px;margin-bottom:30px}
+.cta-final .btn-primario{background:#fff;color:var(--morado-dark)}
+/* ── Footer negro con marca en píldora ── */
+footer.pie{background:var(--negro);color:#fff;padding:26px 0 90px}
+.pie-inner{
+  max-width:1180px;margin:0 auto;padding:0 24px;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
+}
+.pie-frase{font-weight:800;font-size:15px}
+.pie-frase .acento{color:#7BE0A8}
+.pie-marca{
+  background:var(--morado);color:#fff;font-weight:900;font-size:14px;
+  padding:10px 22px;border-radius:999px;letter-spacing:.5px;
+}
+.pie-legal{
+  border-top:1px solid rgba(255,255,255,.1);margin-top:20px;padding-top:20px;
+  max-width:1180px;margin-left:auto;margin-right:auto;padding-left:24px;padding-right:24px;
+  color:rgba(255,255,255,.5);font-size:13px;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 24px;
+}
+.pie-legal a{color:rgba(255,255,255,.7)}
+.pie-legal-marca{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pie-logo-img{height:16px;width:auto;opacity:.85;flex-shrink:0}
+@media (max-width:720px){
+  .nav-links{display:none}
+  .pie-inner{flex-direction:column;text-align:center}
+  .nav-logo-img{height:26px}
+  .pie-legal{flex-direction:column;align-items:center;text-align:center}
+  .pie-legal-marca{justify-content:center}
+}
+/* ── Chat flotante (placeholder visual, sin lógica todavía) ── */
+.chat-float{
+  position:fixed;bottom:24px;right:24px;z-index:60;
+  width:60px;height:60px;border-radius:50%;
+  background:var(--morado);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 12px 30px -6px rgba(108,92,231,.5);
+}
+/* ══════════════════════════════════════
+   DEVMODE — panel de administración del landing, mismos tokens
+   oscuros que generar-tienda.html/suscripciones.html (panel interno,
+   no cara al público como el resto del landing). Accesible solo por
+   #dev en la URL — sin ningún botón visible en el landing público,
+   mismo criterio que generar-tienda.html/suscripciones.html, que
+   tampoco tienen ningún enlace desde ningún lado.
+══════════════════════════════════════ */
+:root{
+  --dev-negro:  #0E0E0E;
+  --dev-card:   #1E1E1E;
+  --dev-bg2:    #181818;
+  --dev-borde:  rgba(255,255,255,.08);
+  --dev-txt:    #F5F5F5;
+  --dev-txt2:   #A0A0A0;
+}
+#devGate{
+  position:fixed;inset:0;background:var(--dev-negro);
+  display:none;align-items:center;justify-content:center;
+  padding:24px;z-index:200;
+}
+#devGate.abierto{display:flex}
+.dev-gate-box{width:100%;max-width:360px;text-align:center;color:var(--dev-txt)}
+.dev-gate-box h2{font-size:24px;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif}
+.dev-gate-box p{color:var(--dev-txt2);font-size:14px;margin-bottom:20px}
+.dev-gate-box input{
+  width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--dev-borde);
+  background:var(--dev-bg2);color:var(--dev-txt);font-size:15px;margin-bottom:12px;
+}
+.dev-gate-box button{
+  width:100%;padding:14px;border-radius:12px;border:none;
+  background:var(--morado);color:#fff;font-weight:800;font-size:15px;
+}
+.dev-gate-err{color:#E53935;font-size:13px;margin-top:10px;min-height:18px}
+#devPanel{
+  position:fixed;inset:0;background:var(--dev-negro);color:var(--dev-txt);
+  display:none;flex-direction:column;z-index:150;overflow-y:auto;
+}
+#devPanel.abierto{display:flex}
+.dev-header{
+  padding:18px 20px;border-bottom:1px solid var(--dev-borde);
+  display:flex;justify-content:space-between;align-items:center;
+  position:sticky;top:0;background:var(--dev-negro);z-index:5;
+}
+.dev-header h1{font-size:22px;font-family:'Plus Jakarta Sans',sans-serif}
+.dev-close{background:none;border:none;color:var(--dev-txt2);font-size:24px;cursor:pointer}
+.dev-tabs{display:flex;gap:8px;padding:14px 20px;overflow-x:auto;border-bottom:1px solid var(--dev-borde)}
+.dev-tab{
+  background:var(--dev-card);border:1px solid var(--dev-borde);color:var(--dev-txt2);
+  padding:10px 18px;border-radius:999px;font-weight:700;font-size:13px;
+  white-space:nowrap;cursor:pointer;
+}
+.dev-tab.activa{background:var(--morado);color:#fff;border-color:var(--morado)}
+.dev-body{padding:20px;max-width:800px;margin:0 auto;width:100%}
+.dev-seccion{display:none}
+.dev-seccion.activa{display:block}
+.dev-campo{margin-bottom:16px}
+.dev-campo label{display:block;font-size:13px;color:var(--dev-txt2);font-weight:700;margin-bottom:6px}
+.dev-campo input,.dev-campo textarea{
+  width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--dev-borde);
+  background:var(--dev-card);color:var(--dev-txt);font-size:14px;font-family:inherit;
+}
+.dev-campo textarea{min-height:70px;resize:vertical}
+.dev-resena-card{
+  background:var(--dev-card);border:1px solid var(--dev-borde);border-radius:12px;
+  padding:16px;margin-bottom:12px;
+}
+.dev-resena-card .dev-fila{display:flex;gap:10px;margin-bottom:8px}
+.dev-resena-card .dev-fila input{flex:1}
+.dev-btn-del{background:rgba(229,57,53,.15);color:#E53935;border:none;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;flex-shrink:0}
+.dev-btn-add{background:var(--morado-suave);color:var(--morado-dark);border:none;border-radius:10px;padding:12px 18px;font-weight:800;cursor:pointer;margin-top:8px}
+.dev-metricas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.dev-metrica-card{background:var(--dev-card);border:1px solid var(--dev-borde);border-radius:14px;padding:16px;text-align:center}
+.dev-metrica-card .num{font-size:28px;font-weight:900;font-family:'Plus Jakarta Sans',sans-serif;color:var(--morado)}
+.dev-metrica-card .lbl{font-size:11.5px;color:var(--dev-txt2);font-weight:700;margin-top:2px}
+.dev-guardado{color:#2E7D32;font-size:13px;font-weight:700;margin-top:16px;opacity:0;transition:opacity .3s}
+.dev-guardado.visible{opacity:1}
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP — adaptacion a pantallas grandes (>=900px)
+   El diseno mobile queda intacto. Esto solo se activa en desktop.
+   ══════════════════════════════════════════════════════════════ */
+@media (min-width: 900px) {
+  .wrapper {
+    max-width: 1140px;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+  .nav {
+    padding-left: 40px;
+    padding-right: 40px;
+    max-width: 1140px;
+    margin: 0 auto;
+  }
+  .hero {
+    padding: 130px 0 110px;
+    text-align: center;
+  }
+  .hero h1 {
+    font-size: clamp(52px, 5vw, 80px);
+    max-width: 900px;
+    margin: 24px auto 28px;
+  }
+  .hero p.sub {
+    font-size: 21px;
+    max-width: 720px;
+    margin: 0 auto 40px;
+  }
+  .hero-ctas {
+    justify-content: center;
+  }
+  .section-tit {
+    font-size: clamp(38px, 4vw, 54px);
+    text-align: center;
+  }
+  .section-sub {
+    font-size: 18px;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
+  .features-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  .precios-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  #resenasGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  #faq .wrapper {
+    max-width: 900px;
+  }
+  .pie {
+    padding: 60px 40px 30px;
+    text-align: center;
+  }
+}
+@media (min-width: 1200px) {
+  .wrapper {
+    max-width: 1280px;
+  }
+  .nav {
+    max-width: 1280px;
+  }
+  .hero {
+    padding: 160px 0 140px;
+  }
+  .features-grid {
+    gap: 28px;
+  }
+}
+.img-feature-wrap{width:100%;max-width:720px;margin:32px auto 8px;border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(20,18,31,.10)}
+.img-feature{width:100%;height:auto;display:block}
+@media (min-width: 900px) {
+  .img-feature-wrap { max-width: 900px; margin: 44px auto 12px; }
+}
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- SEO: Open Graph (WhatsApp, Facebook, LinkedIn) -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://derlabs.cl/">
+  <meta property="og:title" content="Software para Delivery en Chile | DerLabs">
+  <meta property="og:description" content="Crea tu tienda online con delivery, gestiona pedidos en tiempo real y recibe el dinero directo a tu cuenta. Sin comisiones por venta.">
+  <meta property="og:image" content="https://derlabs.cl/img-gestor.png">
+  <meta property="og:locale" content="es_CL">
+  <meta property="og:site_name" content="DerLabs">
+  <!-- SEO: Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Software para Delivery en Chile | DerLabs">
+  <meta name="twitter:description" content="Crea tu tienda online con delivery, gestiona pedidos en tiempo real y recibe el dinero directo a tu cuenta.">
+  <meta name="twitter:image" content="https://derlabs.cl/img-gestor.png">
+  <!-- SEO: Canonical -->
+  <link rel="canonical" href="https://derlabs.cl/">
+  <!-- SEO: Robots -->
+  <meta name="robots" content="index, follow">
+  <!-- SEO: theme-color -->
+  <meta name="theme-color" content="#6C5CE7">
+  <!-- SEO: JSON-LD Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "DerLabs",
+    "description": "Plataforma para crear tiendas online con delivery, pagos integrados y gestion de pedidos en tiempo real.",
+    "url": "https://derlabs.cl/",
+    "image": "https://derlabs.cl/img-gestor.png",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "inLanguage": "es-CL",
+    "areaServed": {
+      "@type": "Country",
+      "name": "Chile"
+    },
+    "offers": {
+      "@type": "Offer",
+      "priceCurrency": "CLP",
+      "description": "Suscripcion mensual con pago en UF. Desarrollo a medida con pago unico."
+    }
+  }
+  </script>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <nav class="nav-links">
+      <a href="#features">Cómo funciona</a>
+      <a href="#precios">Precios</a>
+      <a href="#reseñas">Clientes</a>
+      <a href="#faq">Preguntas</a>
+    </nav>
+    <a href="#contacto" class="btn-nav-cta">Hablemos</a>
+  </div>
+</header>
+<section class="hero">
+  <div class="wrap">
+    <span class="badge"><span class="punto"></span>PARA TIENDAS Y DELIVERY</span>
+    <h1><span id="heroTituloPre">Tu tienda online,<br>lista para </span><span class="acento" id="heroAcento">vender hoy</span></h1>
+    <p class="sub" id="heroBajada">Catálogo, pagos, pedidos y reparto en un solo sistema. Con Google Maps integrado para calcular zonas, direcciones y tiempos de entrega.</p>
+    <div class="hero-ctas">
+      <a href="#contacto" class="btn-primario">Cotiza tu tienda →</a>
+      <a href="#features" class="btn-secundario">Ver cómo funciona</a>
+    </div>
+  </div>
+</section>
+<section id="features">
+  <div class="wrap">
+    <span class="badge">CÓMO FUNCIONA</span>
+    <h2 class="section-tit" style="margin-top:16px">Todo lo que necesita <span class="acento">tu negocio</span></h2>
+    <p class="section-sub">Una plataforma pensada para tiendas y delivery, no una página genérica adaptada.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/> <line x1="3" y1="6" x2="21" y2="6"/> <path d="M16 10a4 4 0 0 1-8 0"/> </svg></span></div>
+        <h3>Tu tienda lista para vender</h3>
+        <p>Productos con fotos, categorías, precios y variantes. Todo editable desde tu panel, sin depender de nadie.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="5" width="20" height="14" rx="2"/> <line x1="2" y1="10" x2="22" y2="10"/> </svg></span></div>
+        <h3>Cobra al instante</h3>
+        <p>El cliente paga, la pasarela confirma sola y el dinero cae directo a tu cuenta bancaria. Sin retenciones ni comisiones por parte de DerLabs.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/> </svg></span></div>
+        <h3>Notificaciones en tiempo real</h3>
+        <p>Recibe un aviso en tu celular al instante cuando entra un pedido, incluso con la pantalla bloqueada.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/> <circle cx="12" cy="10" r="3"/> </svg></span></div>
+        <h3>Reparto con Google Maps</h3>
+        <p>Define tus zonas en el mapa y el costo de cada una. El sistema valida direcciones y calcula el envío automáticamente al momento de la compra.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <span class="badge verde"><span class="punto"></span>EL DINERO, DIRECTO A TU CUENTA</span>
+    <h2 class="section-tit" style="margin-top:16px">Tu venta se paga. <span class="acento">Tu dinero llega</span></h2>
+    <p class="section-sub">El pago se procesa por una pasarela segura, se acredita al instante y cae directo en tu cuenta bancaria. Sin retenciones, sin esperas, sin intermediarios.</p>
+      <div class="img-feature-wrap"><img src="/img-pagos.png" alt="Flujo de pago DerLabs" class="img-feature"></div>
+    <div class="pasos-row">
+      <span class="paso-chip">Cliente paga</span>
+      <span class="paso-chip">Pasarela acredita</span>
+      <span class="paso-chip">Cae a tu cuenta</span>
+    </div>
+    <div class="banner-verde">
+      <div class="ico-wrap"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/> </svg></span></div>
+      <div>
+        <h3>0% de comisión por venta</h3>
+        <p>DerLabs no cobra comisiones sobre tus ventas. Solo se aplica la comisión estándar de la pasarela de pago.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="gestor">
+    <div class="wrap">
+      <span class="badge">GESTOR DE PEDIDOS</span>
+      <h2 class="section-tit" style="margin-top:16px">Cada pedido, <span class="acento">en su lugar</span></h2>
+      <p class="section-sub">Recibe, prepara, despacha y entrega desde una sola pantalla. Ve el estado de cada pedido en tiempo real, con mapa de la dirección y contacto directo con el cliente.</p>
+      <div class="img-feature-wrap"><img src="/img-gestor.png" alt="Gestor de pedidos DerLabs" class="img-feature"></div>
+    </div>
+  </section>
+  <section id="precios">
+  <div class="wrap">
+    <span class="badge">DOS FORMAS DE EMPEZAR</span>
+    <h2 class="section-tit" style="margin-top:16px">Elige la que <span class="acento">se ajuste a tu negocio</span></h2>
+    <p class="section-sub">Dos formas de trabajar con DerLabs. La mensualidad te da acceso a la plataforma lista para vender hoy. El desarrollo personalizado te entrega una tienda diseñada 100% a tu medida, con todas las mismas funciones y más.</p>
+    <div class="precios-grid">
+      <div class="plan-card">
+        <div class="plan-header">
+          <span class="badge">MENSUALIDAD</span>
+        </div>
+        <div class="plan-precio"><span id="precioMensual">0.5 UF</span><span class="moneda"> /mes + IVA</span></div>
+        <p class="plan-nota">Acceso completo a la plataforma DerLabs para vender desde el primer día. Personaliza colores, header y productos. Incluye todos los features de delivery, Google y fidelización. No incluye dominio propio.</p>
+        <ul class="plan-lista">
+          <li><span class="check">✓</span> Delivery propio integrado, sin depender de apps de delivery externas</li>
+          <li><span class="check">✓</span> Tienda activa desde el primer día</li>
+          <li><span class="check">✓</span> Panel de administración completo, sin programar</li>
+          <li><span class="check">✓</span> Gestor de pedidos con notificaciones en tiempo real</li>
+          <li><span class="check">✓</span> Pasarela de pago integrada, dinero directo a tu cuenta</li>
+          <li><span class="check">✓</span> Sistema de puntos para tus clientes</li>
+          <li><span class="check">✓</span> Sistema de cupones y descuentos</li>
+          <li><span class="check">✓</span> Login con Google y guardado de direcciones</li>
+          <li><span class="check">✓</span> Optimización SEO para aparecer en Google</li>
+          <li><span class="check">✓</span> Correos automáticos de confirmación de compra</li>
+          <li><span class="check">✓</span> Integración con Google Maps para zonas de reparto</li>
+          <li><span class="check">✓</span> Soporte 24/7 real — siempre hay alguien del otro lado</li>
+        <li><span class="check">✓</span> Actualizaciones y mejoras constantes de la plataforma — DerLabs evoluciona cada día, no estás solo</li>
+        </ul>
+        <a href="#contacto" class="btn-primario" style="width:100%;justify-content:center">Cotizar mensualidad</a>
+      </div>
+      <div class="plan-card destacado">
+        <div class="plan-header">
+          <span class="badge verde">DESARROLLO A MEDIDA</span>
+        </div>
+        <div class="plan-precio"><span id="precioUnico">10 UF</span><span class="moneda"> pago único + IVA</span></div>
+        <p class="plan-nota">Tu marca, tu diseño, tu tienda. Incluye todo lo del plan mensual más dominio .CL o .com. La mantención mensual de 0.5 UF + IVA cubre hosting, plataforma y soporte 24/7.</p>
+        <ul class="plan-lista">
+          <li><span class="check">✓</span> Todo lo del plan mensual</li>
+          <li><span class="check">✓</span> Diseño 100% personalizado para tu negocio</li>
+          <li><span class="check">✓</span> Identidad visual a medida (colores, tipografía, estilo)</li>
+          <li><span class="check">✓</span> Estructura adaptada a tu tipo de negocio</li>
+          <li><span class="check">✓</span> Pago único por el desarrollo a medida</li>
+          <li><span class="check">✓</span> Onboarding guiado y acompañamiento inicial</li>
+          <li><span class="check">✓</span> Arriendo mensual: hosting, plataforma y soporte 24/7</li>
+          <li><span class="check">✓</span> Soporte 24/7 real — siempre hay alguien del otro lado</li>
+        <li><span class="check">✓</span> Actualizaciones y mejoras constantes de la plataforma — DerLabs evoluciona cada día, no estás solo</li>
+        </ul>
+        <a href="#contacto" class="btn-primario" style="width:100%;justify-content:center">Cotizar desarrollo</a>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="reseñas">
+  <div class="wrap">
+    <span class="badge">CLIENTES</span>
+    <h2 class="section-tit" style="margin-top:16px">Lo que dicen <span class="acento">nuestros clientes</span></h2>
+    <div class="features-grid" id="resenasGrid">
+      <p class="section-sub"><b>Todavía no hay reseñas cargadas.</b> Se agregan desde el panel de administración.</p>
+    </div>
+  </div>
+</section>
+<section id="faq">
+  <div class="wrap">
+    <span class="badge">PREGUNTAS FRECUENTES</span>
+    <h2 class="section-tit" style="margin-top:16px">Resolvemos tus <span class="acento">dudas</span></h2>
+    <div id="faqLista">
+      <div class="faq-item">
+        <button class="faq-pregunta" data-faq>
+          <span>¿Necesito saber de programación para usar la tienda?</span>
+          <span class="signo">+</span>
+        </button>
+        <div class="faq-respuesta"><p>No. Todo se gestiona desde un panel simple donde puedes agregar productos, cambiar precios y personalizar tu tienda sin escribir una sola línea de código. Si sabes usar redes sociales, sabes usar DerLabs.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" data-faq>
+          <span>¿Cuánto tiempo tarda en estar lista mi tienda?</span>
+          <span class="signo">+</span>
+        </button>
+        <div class="faq-respuesta"><p>Con la suscripción mensual, tu tienda está operativa el mismo día que activas tu cuenta. Solo cargas tus productos, configuras tus zonas de reparto y empiezas a vender.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" data-faq>
+          <span>¿El dinero de mis ventas pasa por DerLabs?</span>
+          <span class="signo">+</span>
+        </button>
+        <div class="faq-respuesta"><p>No. Los pagos van directo a tu cuenta bancaria a través de la pasarela integrada. DerLabs nunca retiene tu dinero ni cobra comisiones por venta.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="contacto">
+  <div class="wrap">
+    <div class="cta-final">
+      <h2>Tu tienda puede estar vendiendo <span class="acento">esta semana</span></h2>
+      <p>Sin inversiones grandes, sin conocimientos técnicos, sin perder tiempo. Escríbenos y en pocos días estás vendiendo.</p>
+      <a href="https://wa.me/56930025299" class="btn-primario" target="_blank" rel="noopener">Empezar ahora →</a>
+    </div>
+  </div>
+</section>
+<footer class="pie">
+  <div class="pie-inner">
+    <span class="pie-frase">Hecho en Chile para <span class="acento" id="fraseFooter">negocios que quieren vender más</span></span>
+    <span class="pie-marca">DERLABS</span>
+  </div>
+  <div class="pie-legal">
+    <span class="pie-legal-marca">
+      <span>© 2026 DerLabs. Todos los derechos reservados.</span>
+    </span>
+    <span><a href="#">Términos</a> · <a href="#">Privacidad</a> · <a href="https://wa.me/56930025299" target="_blank" rel="noopener">Contacto</a></span>
+  </div>
+</footer>
+<a href="https://wa.me/56930025299" class="chat-float" target="_blank" rel="noopener" title="Escríbenos por WhatsApp"><span class="ico-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/> </svg></span></a>
+<!-- ══════════════════════════════════════════════════════════════
+     DEVMODE — solo accesible por #dev en la URL, sin ningún botón
+     visible en el landing público. Misma clave ADMIN_SECRET que
+     generar-tienda.html/suscripciones.html. ══════════════════════════════════════════════════════════════ -->
+<div id="devGate">
+  <div class="dev-gate-box">
+    <h2>🔐 Panel del landing</h2>
+    <p>Iniciá sesión con tu cuenta de administrador.</p>
+    <input type="email" id="devGateEmail" placeholder="Email" autocomplete="username">
+    <input type="password" id="devGateInput" placeholder="Contraseña" autocomplete="current-password">
+    <button id="devGateBtn">Entrar</button>
+    <div class="dev-gate-err" id="devGateErr"></div>
+  </div>
+</div>
+<div id="devPanel">
+  <div class="dev-header">
+    <h1>Panel del landing</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a href="/generar-tienda.html" class="dev-tab" style="text-decoration:none">+ Nueva tienda</a>
+      <a href="/suscripciones.html" class="dev-tab" style="text-decoration:none">Suscripciones</a>
+      <button class="dev-close" id="devClose">✕</button>
+    </div>
+  </div>
+  <div class="dev-tabs">
+    <button class="dev-tab activa" data-tab="contenido">Contenido</button>
+    <button class="dev-tab" data-tab="resenas">Reseñas</button>
+    <button class="dev-tab" data-tab="metricas">Métricas</button>
+  </div>
+  <div class="dev-body">
+    <div class="dev-seccion activa" id="tabContenido">
+      <div class="dev-campo">
+        <label for="devHeroTitulo">Título del hero</label>
+        <input id="devHeroTitulo" data-campo="heroTitulo">
+      </div>
+      <div class="dev-campo">
+        <label for="devHeroAcento">Palabra destacada del hero (en morado)</label>
+        <input id="devHeroAcento" data-campo="heroAcento">
+      </div>
+      <div class="dev-campo">
+        <label for="devHeroBajada">Bajada del hero</label>
+        <textarea id="devHeroBajada" data-campo="heroBajada"></textarea>
+      </div>
+      <div class="dev-campo">
+        <label for="devPrecioMensual">Precio mensualidad (texto libre, ej. "$25.000/mes")</label>
+        <input id="devPrecioMensual" data-campo="precioMensual">
+      </div>
+      <div class="dev-campo">
+        <label for="devPrecioUnico">Precio desarrollo a medida (texto libre, ej. "Desde $500.000")</label>
+        <input id="devPrecioUnico" data-campo="precioUnico">
+      </div>
+      <div class="dev-campo">
+        <label for="devFraseFooter">Frase del footer (después de "Sitios web para delivery con")</label>
+        <input id="devFraseFooter" data-campo="fraseFooter">
+      </div>
+      <button class="dev-btn-add" id="devGuardarContenido">Guardar contenido</button>
+      <div class="dev-guardado" id="devGuardadoContenido">Guardado ✓</div>
+    </div>
+    <div class="dev-seccion" id="tabResenas">
+      <div id="devResenasLista"></div>
+      <button class="dev-btn-add" id="devAgregarResena">+ Agregar reseña</button>
+    </div>
+    <div class="dev-seccion" id="tabMetricas">
+      <div class="dev-campo" id="devSecretoWrap">
+        <label for="devAdminSecretInput">Clave de administrador (para ver métricas de facturación)</label>
+        <input type="password" id="devAdminSecretInput" placeholder="Misma clave de ADMIN_SECRET">
+        <button class="dev-btn-add" id="devVerMetricas" style="margin-top:8px">Ver métricas</button>
+      </div>
+      <div class="dev-metricas-grid" id="devMetricasGrid" style="display:none"></div>
+      <p style="color:var(--dev-txt2);font-size:13px">Datos en vivo desde Firestore — tiendas registradas y estado de mensualidades. Para el detalle completo de cada tienda, usá <a href="/suscripciones.html" style="color:var(--morado)">suscripciones.html</a>.</p>
+    </div>
+  </div>
+</div>
+<script>
+/* ══════════════════════════════════════════════════════════════
+   FIREBASE — mismo proyecto compartido que index.html/pedidos.html.
+   El landing no es una tienda, así que no usa STORE_ID — su
+   contenido vive en un documento fijo: plataforma/landing.
+   ══════════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBuzHcQezxE36F6nDJWqYsE5rOKUvQbMBM",
+  authDomain:        "tienda-test-burgers.firebaseapp.com",
+  projectId:         "tienda-test-burgers",
+  storageBucket:     "tienda-test-burgers.firebasestorage.app",
+  messagingSenderId: "406623629835",
+  appId:             "1:406623629835:web:31152eac803ed8c679cd0e"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.firestore();
+const docLanding = db.doc("plataforma/landing");
+const colResenas = db.collection("plataforma/landing/resenas");
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+const qs = s => document.querySelector(s);
+/* ── Carga del contenido público — corre siempre, sin necesitar la
+   clave de administrador. Si el documento no existe todavía (primera
+   vez), se queda con el texto que ya está escrito a mano en el HTML,
+   sin sobrescribir nada. ── */
+async function cargarContenidoPublico(){
+  try {
+    const doc = await docLanding.get();
+    if (!doc.exists) return;
+    const d = doc.data();
+    if (d.heroTituloPre != null) qs("#heroTituloPre").innerHTML = esc(d.heroTituloPre).replace(/\n/g, "<br>");
+    if (d.heroAcento != null) qs("#heroAcento").textContent = d.heroAcento;
+    if (d.heroBajada != null) qs("#heroBajada").textContent = d.heroBajada;
+    if (d.precioMensual != null) qs("#precioMensual").textContent = d.precioMensual;
+    if (d.precioUnico != null) qs("#precioUnico").textContent = d.precioUnico;
+    if (d.fraseFooter != null) qs("#fraseFooter").textContent = d.fraseFooter;
+  } catch(e){ console.warn("No se pudo cargar el contenido del landing:", e); }
+}
+async function cargarResenasPublico(){
+  try {
+    const snap = await colResenas.orderBy("orden").get();
+    const grid = qs("#resenasGrid");
+    if (snap.empty) return; // se queda con el mensaje "todavía no hay reseñas" que ya está en el HTML
+    grid.innerHTML = snap.docs.map(doc => {
+      const r = doc.data();
+      const iniciales = (r.nombre || "").split(" ").map(p => p[0]).join("").slice(0,2).toUpperCase();
+      return `
+        <div class="reseña-card">
+          <div class="reseña-estrellas">${"★".repeat(Math.max(1,Math.min(5,r.estrellas||5)))}</div>
+          <p class="reseña-texto">"${esc(r.texto)}"</p>
+          <div class="reseña-autor">
+            <div class="reseña-avatar">${esc(iniciales)}</div>
+            <div>
+              <div class="reseña-nombre">${esc(r.nombre)}</div>
+              <div class="reseña-negocio">${esc(r.negocio)}</div>
+            </div>
+          </div>
+        </div>`;
+    }).join("");
+  } catch(e){ console.warn("No se pudieron cargar las reseñas:", e); }
+}
+cargarContenidoPublico();
+cargarResenasPublico();
+/* ══════════════════════════════════════════════════════════════
+   DEVMODE — solo se activa si la URL tiene #dev. Protegido con
+   Firebase Auth (no con un secreto compartido): la cuenta que entra
+   necesita roles.plataforma = "propietario" en usuarios/{uid} — mismo
+   mecanismo que ya protege el devmode de cada tienda (ver
+   resolverRolPropietario en index.html), reutilizado acá porque el
+   devmode del landing escribe directo a Firestore desde el navegador,
+   sin pasar por ninguna función de Netlify — así que las reglas de
+   Firestore son la única barrera real, y esas reglas solo pueden
+   verificar una sesión de Firebase Auth, no un secreto que compara el
+   propio JS del cliente.
+   ══════════════════════════════════════════════════════════════ */
+const auth = firebase.auth();
+let ADMIN_SECRET = ""; // se sigue usando aparte, solo para listarSuscripciones.js (ver pestaña Métricas)
+function abrirDevGate(){
+  qs("#devGate").classList.add("abierto");
+}
+async function intentarEntrarDev(){
+  const email = qs("#devGateEmail").value.trim();
+  const pass = qs("#devGateInput").value;
+  const err = qs("#devGateErr");
+  err.textContent = "";
+  if (!email || !pass){ err.textContent = "Completá email y contraseña"; return; }
+  try {
+    const cred = await auth.signInWithEmailAndPassword(email, pass);
+    const doc = await db.doc("usuarios/" + cred.user.uid).get();
+    const roles = doc.exists ? (doc.data().roles || {}) : {};
+    if (roles.plataforma !== "propietario"){
+      await auth.signOut();
+      err.textContent = "Esta cuenta no tiene acceso al panel del landing";
+      return;
+    }
+    qs("#devGate").classList.remove("abierto");
+    abrirDevPanel();
+  } catch(e){
+    err.textContent = "Email o contraseña incorrectos";
+  }
+}
+if (location.hash === "#dev"){
+  auth.onAuthStateChanged(async user => {
+    if (!user){ abrirDevGate(); return; }
+    const doc = await db.doc("usuarios/" + user.uid).get();
+    const roles = doc.exists ? (doc.data().roles || {}) : {};
+    if (roles.plataforma === "propietario") abrirDevPanel();
+    else abrirDevGate();
+  });
+}
+qs("#devGateBtn").addEventListener("click", intentarEntrarDev);
+qs("#devGateInput").addEventListener("keydown", e => { if (e.key === "Enter") intentarEntrarDev(); });
+qs("#devClose").addEventListener("click", () => {
+  qs("#devPanel").classList.remove("abierto");
+  history.replaceState(null, "", location.pathname);
+});
+document.querySelectorAll(".dev-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".dev-tab").forEach(t => t.classList.remove("activa"));
+    document.querySelectorAll(".dev-seccion").forEach(s => s.classList.remove("activa"));
+    tab.classList.add("activa");
+    qs("#tab" + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add("activa");
+  });
+});
+function abrirDevPanel(){
+  qs("#devPanel").classList.add("abierto");
+  cargarContenidoDev();
+  cargarResenasDev();
+  // Métricas no se cargan automático — necesitan ADMIN_SECRET, que se
+  // pide aparte en esa misma pestaña (ver botón #devVerMetricas).
+}
+/* ── Pestaña Contenido — precarga los campos con lo que ya hay
+   guardado (o lo que está escrito a mano en el HTML, como valor de
+   partida razonable la primera vez). ── */
+async function cargarContenidoDev(){
+  try {
+    const doc = await docLanding.get();
+    const d = doc.exists ? doc.data() : {};
+    qs("#devHeroTitulo").value = d.heroTituloPre ?? qs("#heroTituloPre").textContent.trim();
+    qs("#devHeroAcento").value = d.heroAcento ?? qs("#heroAcento").textContent.trim();
+    qs("#devHeroBajada").value = d.heroBajada ?? qs("#heroBajada").textContent.trim();
+    qs("#devPrecioMensual").value = d.precioMensual ?? qs("#precioMensual").textContent.trim();
+    qs("#devPrecioUnico").value = d.precioUnico ?? qs("#precioUnico").textContent.trim();
+    qs("#devFraseFooter").value = d.fraseFooter ?? qs("#fraseFooter").textContent.trim();
+  } catch(e){ console.warn(e); }
+}
+qs("#devGuardarContenido").addEventListener("click", async () => {
+  try {
+    await docLanding.set({
+      heroTituloPre: qs("#devHeroTitulo").value,
+      heroAcento:    qs("#devHeroAcento").value,
+      heroBajada:    qs("#devHeroBajada").value,
+      precioMensual: qs("#devPrecioMensual").value,
+      precioUnico:   qs("#devPrecioUnico").value,
+      fraseFooter:   qs("#devFraseFooter").value
+    }, { merge: true });
+    await cargarContenidoPublico(); // refleja el cambio en la propia página al toque
+    const av = qs("#devGuardadoContenido");
+    av.classList.add("visible");
+    setTimeout(() => av.classList.remove("visible"), 2000);
+  } catch(e){
+    alert("Error al guardar: " + e.message);
+  }
+});
+/* ── Pestaña Reseñas — lista editable, cada tarjeta se guarda
+   individualmente al perder el foco de cualquiera de sus campos. ── */
+async function cargarResenasDev(){
+  try {
+    const snap = await colResenas.orderBy("orden").get();
+    const lista = qs("#devResenasLista");
+    lista.innerHTML = snap.docs.map(doc => renderResenaDevCard(doc.id, doc.data())).join("");
+    conectarEventosResenas();
+  } catch(e){ console.warn(e); }
+}
+function renderResenaDevCard(id, r){
+  return `
+    <div class="dev-resena-card" data-id="${esc(id)}">
+      <div class="dev-fila">
+        <input placeholder="Nombre" value="${esc(r.nombre||"")}" data-campo="nombre">
+        <input placeholder="Negocio" value="${esc(r.negocio||"")}" data-campo="negocio">
+      </div>
+      <div class="dev-fila">
+        <input type="number" min="1" max="5" placeholder="Estrellas (1-5)" value="${r.estrellas||5}" data-campo="estrellas" style="max-width:120px">
+        <button class="dev-btn-del" data-accion="borrar">Borrar</button>
+      </div>
+      <textarea placeholder="Texto de la reseña" data-campo="texto">${esc(r.texto||"")}</textarea>
+    </div>`;
+}
+function conectarEventosResenas(){
+  document.querySelectorAll(".dev-resena-card").forEach(card => {
+    const id = card.dataset.id;
+    card.querySelectorAll("[data-campo]").forEach(campo => {
+      campo.addEventListener("blur", () => guardarResena(id, card));
+    });
+    const btnBorrar = card.querySelector("[data-accion='borrar']");
+    if (btnBorrar) btnBorrar.addEventListener("click", async () => {
+      if (!confirm("¿Borrar esta reseña?")) return;
+      await colResenas.doc(id).delete();
+      card.remove();
+      await cargarResenasPublico();
+    });
+  });
+}
+async function guardarResena(id, card){
+  try {
+    const datos = {
+      nombre: card.querySelector('[data-campo="nombre"]').value,
+      negocio: card.querySelector('[data-campo="negocio"]').value,
+      estrellas: Number(card.querySelector('[data-campo="estrellas"]').value) || 5,
+      texto: card.querySelector('[data-campo="texto"]').value
+    };
+    await colResenas.doc(id).set(datos, { merge: true });
+    await cargarResenasPublico();
+  } catch(e){ console.warn(e); }
+}
+qs("#devAgregarResena").addEventListener("click", async () => {
+  try {
+    const snap = await colResenas.get();
+    const nuevoDoc = await colResenas.add({
+      nombre: "", negocio: "", estrellas: 5, texto: "", orden: snap.size
+    });
+    const lista = qs("#devResenasLista");
+    lista.insertAdjacentHTML("beforeend", renderResenaDevCard(nuevoDoc.id, { estrellas: 5 }));
+    conectarEventosResenas();
+  } catch(e){ alert("Error al agregar reseña: " + e.message); }
+});
+/* ── Pestaña Métricas — lee suscripciones_plataforma vía la misma
+   función backend que ya usa suscripciones.html, no directo a
+   Firestore (esa colección está cerrada por completo del lado del
+   cliente — ver README-FIRESTORE-RULES.md). ── */
+qs("#devVerMetricas").addEventListener("click", () => {
+  ADMIN_SECRET = qs("#devAdminSecretInput").value.trim();
+  if (!ADMIN_SECRET) return;
+  cargarMetricasDev();
+});
+async function cargarMetricasDev(){
+  const grid = qs("#devMetricasGrid");
+  grid.style.display = "grid";
+  grid.innerHTML = '<div class="dev-metrica-card"><div class="num">…</div><div class="lbl">Cargando</div></div>';
+  try {
+    const res = await fetch("/.netlify/functions/listarSuscripciones", {
+      headers: { "X-Admin-Secret": ADMIN_SECRET }
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok){
+      grid.innerHTML = '<p style="color:var(--dev-txt2)">No se pudieron cargar las métricas — revisá la clave.</p>';
+      return;
+    }
+    qs("#devSecretoWrap").style.display = "none";
+    const lista = j.suscripciones || [];
+    const activas = lista.filter(s => s.estado === "activa").length;
+    const totalMensual = lista.filter(s => s.estado === "activa").reduce((sum, s) => sum + (s.montoMensual||0), 0);
+    grid.innerHTML = `
+      <div class="dev-metrica-card"><div class="num">${lista.length}</div><div class="lbl">Tiendas totales</div></div>
+      <div class="dev-metrica-card"><div class="num">${activas}</div><div class="lbl">Suscripciones activas</div></div>
+      <div class="dev-metrica-card"><div class="num">$${totalMensual.toLocaleString("es-CL")}</div><div class="lbl">Facturación mensual</div></div>
+    `;
+  } catch(e){
+    grid.innerHTML = '<p style="color:var(--dev-txt2)">Error de red al cargar métricas.</p>';
+  }
+}
+document.querySelectorAll("[data-faq]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    btn.closest(".faq-item").classList.toggle("abierto");
+  });
+});
+</script>
+</body>
+</html>

@@ -59,10 +59,7 @@ export function fmtPrecio(n){
 }
 
 export function resumenItems(items){
-  return (items || []).map(function(i){
-    const v = i.variantes && typeof i.variantes === "object" ? Object.keys(i.variantes).map(function(k){ return i.variantes[k]; }).filter(Boolean).join(", ") : "";
-    return i.cantidad + "x " + i.nombre + (v ? " (" + v + ")" : "");
-  }).join(", ");
+  return (items || []).map(function(i){ return i.cantidad + "x " + i.nombre; }).join(", ");
 }
 
 export function esc(s){
@@ -127,70 +124,6 @@ export async function validarCuponServidor(db, storeId, codigoCrudo, clienteUid,
   return { ok: true, codigo, descuento: Math.max(0, Math.min(descuento, subtotal)) };
 }
 
-/* P23 — cálculo de extras/armado. MISMA lógica en la tienda (app.js,
-   gxCalcular) y en el servidor (_firebase.js, calcularExtras): la tienda
-   la usa para mostrar el precio en vivo, el servidor para cobrar. Si se
-   cambia una, cambiar la otra.
-   prod.gruposExtras = [idGrupo, ...]  (orden en que se muestran)
-   lib = config/general.gruposExtras = [{ id, nombre, tipo, obligatorio, max, opciones:[{id,nombre,precio,activo}] }]
-     tipo: "uno" (elige 1) | "varios" (elige hasta max) | "cantidad" (hasta max de cada uno) | "quitar" (sin costo)
-   sel = { idGrupo: { idOpcion: cantidad } } */
-export function calcularExtras(prod, lib, sel){
-  var ids = Array.isArray(prod && prod.gruposExtras) ? prod.gruposExtras : [];
-  var mapa = {};
-  (Array.isArray(lib) ? lib : []).forEach(function(g){ if (g && g.id) mapa[g.id] = g; });
-  sel = (sel && typeof sel === "object") ? sel : {};
-  var r = { ok: true, error: "", falta: null, faltaId: null, unit: 0, variantes: {}, detalle: [], sel: {}, nombres: [] };
-  ids.forEach(function(gid){
-    var g = mapa[gid];
-    if (!g) return;
-    var ops = (Array.isArray(g.opciones) ? g.opciones : []).filter(function(o){ return o && o.id && String(o.nombre || "").trim(); });
-    if (!ops.length) return;
-    var nombreG = String(g.nombre || "Extras").trim();
-    r.nombres.push(nombreG);
-    var tipo = ["uno", "varios", "cantidad", "quitar"].indexOf(g.tipo) >= 0 ? g.tipo : "uno";
-    var req = tipo !== "quitar" && g.obligatorio === true;
-    var max = Math.max(0, Math.floor(Number(g.max) || 0));
-    var s = (sel[gid] && typeof sel[gid] === "object") ? sel[gid] : {};
-    var elegidas = [], total = 0;
-    ops.forEach(function(o){
-      var c = Math.floor(Number(s[o.id]) || 0);
-      if (c <= 0) return;
-      if (o.activo === false){ if (r.ok){ r.ok = false; r.error = "\"" + o.nombre + "\" no está disponible ahora"; } return; }
-      if (tipo === "cantidad"){ var lim = max || 10; if (c > lim) c = lim; } else c = 1;
-      elegidas.push({ o: o, c: c }); total += c;
-    });
-    if (tipo === "uno" && elegidas.length > 1){ elegidas = elegidas.slice(0, 1); total = 1; }
-    if (tipo === "varios" && max && elegidas.length > max){ elegidas = elegidas.slice(0, max); total = max; }
-    if (req && total < 1 && r.ok){ r.ok = false; r.falta = nombreG; r.faltaId = gid; r.error = "falta completar «" + nombreG + "»"; }
-    if (!elegidas.length) return;
-    var textos = [];
-    r.sel[gid] = {};
-    elegidas.forEach(function(e){
-      var precio = tipo === "quitar" ? 0 : Math.max(0, Math.round(Number(e.o.precio) || 0));
-      r.unit += precio * e.c;
-      r.sel[gid][e.o.id] = e.c;
-      r.detalle.push({ grupo: nombreG, opcion: String(e.o.nombre).trim(), cantidad: e.c, precio: precio });
-      var n = String(e.o.nombre).trim();
-      textos.push(tipo === "quitar" ? "sin " + n.toLowerCase() : (e.c > 1 ? n + " x" + e.c : n));
-    });
-    r.variantes[nombreG] = textos.join(", ");
-  });
-  return r;
-}
-
-/* Variantes que manda el navegador (texto libre de grupos sin precio):
-   solo strings cortos, máximo 10 claves. */
-function _limpiarVariantes(v){
-  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
-  const out = {};
-  Object.keys(v).slice(0, 10).forEach(function(k){
-    const val = v[k];
-    if (typeof val === "string" && val.trim()) out[String(k).slice(0, 60)] = val.trim().slice(0, 160);
-  });
-  return Object.keys(out).length ? out : null;
-}
-
 export async function validarItemsCatalogo(db, storeId, items){
   const idsUnicos = Array.from(new Set((items || []).map(function(i){ return i.id; })));
   const prodDocs = await Promise.all(idsUnicos.map(function(pid){
@@ -198,15 +131,6 @@ export async function validarItemsCatalogo(db, storeId, items){
   }));
   const catalogo = {};
   prodDocs.forEach(function(doc){ if (doc.exists) catalogo[doc.id] = doc.data(); });
-
-  /* P23: grupos de extras de la tienda — se leen solo si algún producto los usa */
-  let _libExtras = null;
-  async function libExtras(){
-    if (_libExtras) return _libExtras;
-    const d = await db.doc("tiendas/" + storeId + "/config/general").get();
-    _libExtras = d.exists && Array.isArray(d.data().gruposExtras) ? d.data().gruposExtras : [];
-    return _libExtras;
-  }
 
   const itemsValidados = [];
   for (const it of (items || [])) {
@@ -218,29 +142,11 @@ export async function validarItemsCatalogo(db, storeId, items){
     if (prod.stock !== null && prod.stock !== undefined && prod.stock !== "" && Number(prod.stock) < cantidad) {
       return { ok: false, error: "No hay stock suficiente de \"" + prod.nombre + "\"" };
     }
-    let precio = Number(prod.precio) || 0;
-    let variantes = _limpiarVariantes(it.variantes);
-    let extras = null, extrasDetalle = null;
-    if (Array.isArray(prod.gruposExtras) && prod.gruposExtras.length) {
-      const cx = calcularExtras(prod, await libExtras(), it.extras);
-      if (!cx.ok) return { ok: false, error: "\"" + prod.nombre + "\": " + cx.error };
-      precio += cx.unit;
-      /* el texto de los grupos con precio lo escribe el servidor, no el navegador */
-      if (variantes) cx.nombres.forEach(function(n){ delete variantes[n]; });
-      variantes = Object.assign({}, variantes || {}, cx.variantes);
-      if (!Object.keys(variantes).length) variantes = null;
-      if (Object.keys(cx.sel).length) { extras = cx.sel; extrasDetalle = cx.detalle; }
-    }
     itemsValidados.push({
       id: it.id,
       nombre: prod.nombre,
-      precio,
-      cantidad,
-      cat: typeof prod.categoria === "string" ? prod.categoria.slice(0, 40) : null,   /* para separar cocina / barra */
-      variantes,
-      notaPersonal: typeof it.notaPersonal === "string" && it.notaPersonal.trim() ? it.notaPersonal.trim().slice(0, 140) : null,
-      extras,
-      extrasDetalle
+      precio: Number(prod.precio) || 0,
+      cantidad
     });
   }
 
@@ -248,45 +154,7 @@ export async function validarItemsCatalogo(db, storeId, items){
   return { ok: true, itemsValidados, subtotal };
 }
 
-/* ─── ¿La tienda está recibiendo pedidos? ───
-   MISMA lógica que hrEstado() en app.js (si se cambia una, cambiar la otra):
-   config.abierto === false → cerrada a mano. Con horario activo
-   (config.horario = { activo, dias: { "0".."6": [{ a:"12:00", c:"23:00" }] } }, 0 = domingo),
-   abierta solo si la hora de Chile cae dentro de un tramo; un tramo que cierra
-   "antes" de abrir cruza la medianoche. Devuelve { abierta, abre }. */
-export function estadoHorario(cfg, fecha){
-  cfg = cfg || {};
-  if (cfg.abierto === false) return { abierta: false, manual: true };
-  const h = cfg.horario;
-  const min = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "")); return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? Number(m[1]) * 60 + Number(m[2]) : null; };
-  const tramos = d => { const t = h && h.dias && h.dias[d];
-    return (Array.isArray(t) ? t : []).map(x => ({ a: min(x && x.a), c: min(x && x.c), ta: x && x.a }))
-      .filter(x => x.a != null && x.c != null && x.a !== x.c).sort((x, y) => x.a - y.a); };
-  let tiene = false;
-  if (h && h.activo === true) for (let d = 0; d < 7; d++) if (tramos(d).length) tiene = true;
-  if (!tiene) return { abierta: true };
-  const o = {};
-  new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false })
-    .formatToParts(fecha || new Date()).forEach(x => { o[x.type] = x.value; });
-  const dia = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(o.weekday), ahora = (Number(o.hour) % 24) * 60 + Number(o.minute);
-  if (tramos((dia + 6) % 7).some(t => t.c < t.a && ahora < t.c)) return { abierta: true };
-  const hoy = tramos(dia);
-  if (hoy.some(t => (t.c > t.a ? ahora >= t.a && ahora < t.c : ahora >= t.a))) return { abierta: true };
-  const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-  let abre = null; const prox = hoy.filter(t => t.a > ahora)[0];
-  if (prox) abre = "hoy a las " + prox.ta;
-  else for (let k = 1; k <= 7 && !abre; k++){ const d = (dia + k) % 7, tr = tramos(d); if (tr.length) abre = (k === 1 ? "mañana" : "el " + DIAS[d]) + " a las " + tr[0].ta; }
-  return { abierta: false, abre };
-}
-
 export async function validarPedidoCompleto(db, storeId, items, costoDelivery, cuponAplicado, clienteUid){
-  /* Cerrado es cerrado: ni efectivo, ni Mercado Pago, ni Webpay crean un pedido fuera de horario,
-     aunque el navegador del cliente tenga la página abierta desde antes del cierre. */
-  try {
-    const cfgD = await db.doc("tiendas/" + storeId + "/config/general").get();
-    const eh = estadoHorario(cfgD.exists ? cfgD.data() : {});
-    if (!eh.abierta) return { ok: false, cerrada: true, error: eh.abre ? "Estamos cerrados. Abrimos " + eh.abre + "." : "La tienda está cerrada por ahora." };
-  } catch (e) { console.warn("horario:", e.message); }
   const resItems = await validarItemsCatalogo(db, storeId, items);
   if (!resItems.ok) return resItems;
 

@@ -135,7 +135,7 @@ export async function validarCuponServidor(db, storeId, codigoCrudo, clienteUid,
    lib = config/general.gruposExtras = [{ id, nombre, tipo, obligatorio, max, opciones:[{id,nombre,precio,activo}] }]
      tipo: "uno" (elige 1) | "varios" (elige hasta max) | "cantidad" (hasta max de cada uno) | "quitar" (sin costo)
    sel = { idGrupo: { idOpcion: cantidad } } */
-export function calcularExtras(prod, lib, sel){
+function calcularExtras(prod, lib, sel){
   var ids = Array.isArray(prod && prod.gruposExtras) ? prod.gruposExtras : [];
   var mapa = {};
   (Array.isArray(lib) ? lib : []).forEach(function(g){ if (g && g.id) mapa[g.id] = g; });
@@ -236,7 +236,6 @@ export async function validarItemsCatalogo(db, storeId, items){
       nombre: prod.nombre,
       precio,
       cantidad,
-      cat: typeof prod.categoria === "string" ? prod.categoria.slice(0, 40) : null,   /* para separar cocina / barra */
       variantes,
       notaPersonal: typeof it.notaPersonal === "string" && it.notaPersonal.trim() ? it.notaPersonal.trim().slice(0, 140) : null,
       extras,
@@ -248,45 +247,7 @@ export async function validarItemsCatalogo(db, storeId, items){
   return { ok: true, itemsValidados, subtotal };
 }
 
-/* ─── ¿La tienda está recibiendo pedidos? ───
-   MISMA lógica que hrEstado() en app.js (si se cambia una, cambiar la otra):
-   config.abierto === false → cerrada a mano. Con horario activo
-   (config.horario = { activo, dias: { "0".."6": [{ a:"12:00", c:"23:00" }] } }, 0 = domingo),
-   abierta solo si la hora de Chile cae dentro de un tramo; un tramo que cierra
-   "antes" de abrir cruza la medianoche. Devuelve { abierta, abre }. */
-export function estadoHorario(cfg, fecha){
-  cfg = cfg || {};
-  if (cfg.abierto === false) return { abierta: false, manual: true };
-  const h = cfg.horario;
-  const min = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "")); return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? Number(m[1]) * 60 + Number(m[2]) : null; };
-  const tramos = d => { const t = h && h.dias && h.dias[d];
-    return (Array.isArray(t) ? t : []).map(x => ({ a: min(x && x.a), c: min(x && x.c), ta: x && x.a }))
-      .filter(x => x.a != null && x.c != null && x.a !== x.c).sort((x, y) => x.a - y.a); };
-  let tiene = false;
-  if (h && h.activo === true) for (let d = 0; d < 7; d++) if (tramos(d).length) tiene = true;
-  if (!tiene) return { abierta: true };
-  const o = {};
-  new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false })
-    .formatToParts(fecha || new Date()).forEach(x => { o[x.type] = x.value; });
-  const dia = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(o.weekday), ahora = (Number(o.hour) % 24) * 60 + Number(o.minute);
-  if (tramos((dia + 6) % 7).some(t => t.c < t.a && ahora < t.c)) return { abierta: true };
-  const hoy = tramos(dia);
-  if (hoy.some(t => (t.c > t.a ? ahora >= t.a && ahora < t.c : ahora >= t.a))) return { abierta: true };
-  const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-  let abre = null; const prox = hoy.filter(t => t.a > ahora)[0];
-  if (prox) abre = "hoy a las " + prox.ta;
-  else for (let k = 1; k <= 7 && !abre; k++){ const d = (dia + k) % 7, tr = tramos(d); if (tr.length) abre = (k === 1 ? "mañana" : "el " + DIAS[d]) + " a las " + tr[0].ta; }
-  return { abierta: false, abre };
-}
-
 export async function validarPedidoCompleto(db, storeId, items, costoDelivery, cuponAplicado, clienteUid){
-  /* Cerrado es cerrado: ni efectivo, ni Mercado Pago, ni Webpay crean un pedido fuera de horario,
-     aunque el navegador del cliente tenga la página abierta desde antes del cierre. */
-  try {
-    const cfgD = await db.doc("tiendas/" + storeId + "/config/general").get();
-    const eh = estadoHorario(cfgD.exists ? cfgD.data() : {});
-    if (!eh.abierta) return { ok: false, cerrada: true, error: eh.abre ? "Estamos cerrados. Abrimos " + eh.abre + "." : "La tienda está cerrada por ahora." };
-  } catch (e) { console.warn("horario:", e.message); }
   const resItems = await validarItemsCatalogo(db, storeId, items);
   if (!resItems.ok) return resItems;
 

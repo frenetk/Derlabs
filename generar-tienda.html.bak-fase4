@@ -173,27 +173,6 @@ header p{color:var(--txt2);font-size:14px}
 .opcional-bloque{display:none}
 .opcional-bloque.abierto{display:block}
 </style>
-<style id="p20-dom">
-.modo-dom{flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
-.modo-dom.activo{background:#6C5CE7;border-color:#6C5CE7;color:#fff}
-</style>
-<style id="p28-planes">
-#planes{margin-top:44px;padding-top:28px;border-top:1px solid var(--borde)}
-#planes h2{font-size:19px;font-weight:900;margin-bottom:6px}
-#planes p{color:var(--txt2);font-size:13.5px;margin-bottom:14px;line-height:1.45}
-#btnPlanes{padding:12px 18px;border-radius:12px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-weight:800;cursor:pointer}
-#planesMsg{font-size:13px;color:var(--txt2);min-height:18px;margin:10px 0}
-#planesMsg.error{color:#FF8A80}
-.pl-fila{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;background:var(--card);border:1px solid var(--borde)}
-.pl-txt{flex:1;min-width:0}
-.pl-txt b{display:block;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pl-txt small{display:block;font-size:12px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pl-seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--bg2);flex:none}
-.pl-seg button{min-height:40px;padding:0 13px;border-radius:9px;border:0;background:transparent;color:var(--txt2);font:inherit;font-size:13px;font-weight:800;cursor:pointer}
-.pl-seg button.activo{background:#F5F5F5;color:#111}
-.pl-seg button:disabled{opacity:.5;cursor:default}
-.pl-nota{font-size:12px;color:var(--txt3);flex:none}
-</style>
 </head>
 <body>
 
@@ -223,12 +202,6 @@ header p{color:var(--txt2);font-size:14px}
     <div class="campo">
       <label>Rubro</label>
       <div class="rubro-grid" id="rubroGrid"></div>
-<div class="rubro-grid" id="subrubroGrid" style="margin-top:10px"></div>
-    </div>
-
-    <div class="campo" id="campoCajaLocal">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="fCajaLocal" style="width:20px;height:20px"> 🧾 Plan Pro (caja local, mesas y cocina)</label>
-      <div class="ayuda">Sin marcar queda en plan Básico: tienda online, gestor de pedidos, GPS y repartidores. El Pro agrega la caja del local (tutienda.cl/caja) con mesas, cocina, cobro e impresión. Solo para tiendas de comida. Se puede cambiar después en «Planes de las tiendas», más abajo.</div>
     </div>
 
     <div class="campo">
@@ -277,12 +250,8 @@ header p{color:var(--txt2);font-size:14px}
 
     <div class="campo">
       <label for="fHostname">Dominio del cliente</label>
-      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-        <button type="button" id="btnModoSub" class="modo-dom activo">🌐 Subdominio gratis</button>
-        <button type="button" id="btnModoPropio" class="modo-dom">Dominio propio</button>
-      </div>
-      <input type="text" id="fHostname" placeholder="pizzeriajuan.derlabs.store" required>
-      <div class="ayuda" id="ayudaDom">Queda en <b>nombre.derlabs.store</b> y funciona al instante, sin configurar nada. Puedes editar la parte antes del punto.</div>
+      <input type="text" id="fHostname" placeholder="pizzeriajuan.cl" required>
+      <div class="ayuda">Sin "https://" ni barra final. El DNS y el alta en Netlify siguen siendo manuales (ver LEEME.md) — esto solo registra el mapeo dominio → tienda en la base de datos.</div>
     </div>
 
     <button type="button" class="opcional-toggle" id="toggleOpcional">+ Crear también la cuenta de propietario ahora</button>
@@ -292,9 +261,8 @@ header p{color:var(--txt2);font-size:14px}
         <input type="email" id="fEmailProp" placeholder="dueño@sunegocio.cl">
       </div>
       <div class="campo">
-        <label for="fPassProp">Contraseña <span style="font-weight:400;opacity:.7">(recomendado: dejar vacía)</span></label>
-        <input type="password" id="fPassProp" placeholder="Vacía = el dueño crea su propia clave" autocomplete="new-password">
-        <div class="ayuda"><b>Déjala vacía:</b> le llega un correo al dueño para que él mismo cree su clave. Así tú nunca la conoces. Solo escribe una si el cliente no tiene acceso a su correo.</div>
+        <label for="fPassProp">Contraseña</label>
+        <input type="password" id="fPassProp" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
         <div class="ayuda">Esta cuenta va a poder entrar al devmode de esta tienda y crear cupones, cambiar precios y ver la caja (ver LEEME.md, sección 8). <b>Si lo dejas en blanco, nadie va a poder entrar al devmode de esta tienda hasta que crees esta cuenta</b> — se puede hacer después a mano en Firebase Console, o volviendo a correr este formulario con el mismo dominio.</div>
       </div>
     </div>
@@ -312,14 +280,6 @@ header p{color:var(--txt2);font-size:14px}
     <div class="estado-msg" id="estadoMsg"></div>
     <div class="resultado-box" id="resultadoBox" style="display:none"></div>
   </form>
-
-  <section id="planes">
-    <h2>Planes de las tiendas</h2>
-    <p>Básico: tienda online y delivery. Pro: además caja local, mesas y cocina (solo comida).</p>
-    <button type="button" id="btnPlanes">Ver tiendas</button>
-    <div id="planesMsg" role="status"></div>
-    <div id="planesLista"></div>
-  </section>
 </div>
 
 <script>
@@ -329,30 +289,14 @@ header p{color:var(--txt2);font-size:14px}
    también.
 ══════════════════════════════════════════════════════════════ */
 const RUBROS = [
-  { id:"comida", nombre:"Comida", ico:"🍔", subrubros:[
-      { id:"hamburguesas",   nombre:"Hamburguesas",          ico:"🍔", color:"#9B1B30" },
-      { id:"comida-rapida",  nombre:"Comida rápida",         ico:"🌭", color:"#C83D09" },
-      { id:"cafeteria",      nombre:"Cafetería",             ico:"☕", color:"#5C3D2E" },
-      { id:"pasteleria",     nombre:"Pastelería",            ico:"🧁", color:"#C2185B" },
-      { id:"servicios",      nombre:"Servicios y reservas",  ico:"📅", color:"#1565C0" },
-  ]},
-  { id:"retail", nombre:"Retail", ico:"🛍️", subrubros:[
-      { id:"tecnologia",     nombre:"Tecnología",            ico:"📱", color:"#0066FF" },
-      { id:"ropa",           nombre:"Ropa y accesorios",     ico:"👕", color:"#1A1A1A" },
-      { id:"belleza",        nombre:"Belleza y estética",    ico:"💄", color:"#D46A9F" },
-      { id:"limpieza",       nombre:"Productos de limpieza", ico:"🧴", color:"#00A88A" },
-      { id:"hogar",          nombre:"Hogar y deco",          ico:"🛋️", color:"#8B6914" },
-  ]},
-  /* Boutique: mismo rubro "retail" para el motor, pero con la plantilla
-     index-boutique.html (worker.js la elige por config.plantilla) y el
-     gestor de pedidos simple, sin repartidores propios ni GPS. */
-  { id:"boutique", nombre:"Tienda Pro (estilo Shopify)", ico:"🛒", rubroMotor:"retail", plantilla:"boutique", subrubros:[
-      { id:"ropa",           nombre:"Moda y accesorios",     ico:"👗", color:"#121212" },
-      { id:"tecnologia",     nombre:"Tecnología",            ico:"📱", color:"#1F4FD8" },
-      { id:"belleza",        nombre:"Cosmética y belleza",   ico:"💄", color:"#B0607A" },
-      { id:"hogar",          nombre:"Hogar y deco",          ico:"🛋️", color:"#6B6B4E" },
-      { id:"limpieza",       nombre:"Otros productos",       ico:"📦", color:"#0F766E" },
-  ]},
+  { id:"hamburguesas",  nombre:"Hamburguesas",         ico:"🍔", color:"#9B1B30" },
+  { id:"comida-rapida", nombre:"Comida rápida",        ico:"🌭", color:"#C83D09" },
+  { id:"cafeteria",     nombre:"Cafetería",            ico:"☕", color:"#5C3D2E" },
+  { id:"pasteleria",    nombre:"Pastelería",           ico:"🧁", color:"#C2185B" },
+  { id:"ropa",          nombre:"Ropa y accesorios",    ico:"👕", color:"#1A1A1A" },
+  { id:"belleza",       nombre:"Belleza y estética",   ico:"💅", color:"#D46A9F" },
+  { id:"servicios",     nombre:"Servicios y reservas", ico:"📅", color:"#1565C0" },
+  { id:"otro",          nombre:"Otro rubro",           ico:"🏪", color:"#546E7A" }
 ];
 
 /* ── Utilidades de color — mismas fórmulas que index.html (HSL,
@@ -438,8 +382,7 @@ function fondoSuaveDesde(hex){
 }
 
 /* ── Estado ── */
-let rubroSeleccionado = "comida";
-let subrubroSeleccionado = "hamburguesas";
+let rubroSeleccionado = "hamburguesas";
 let colorTocadoAMano = false;
 let ADMIN_SECRET = "";
 let logoBase64 = "";
@@ -496,127 +439,6 @@ function comprimirImagen(file, maxLado, maxBytes){
   });
 }
 
-/* Logo: conserva transparencia (PNG/WebP), quita el fondo liso, limpia el
-   borde y recorta lo vacío. Se guarda hasta 1000x800 px: el splash lo
-   muestra casi a pantalla completa y con menos resolución se ve pixelado. */
-function procesarLogo(dataURL){
-  return new Promise(function(resolve, reject){
-    const img = new Image();
-    img.onload = function(){
-      /* fotos enormes: se trabajan a 1600 px como máximo para no trabar el teléfono */
-      const e0 = Math.min(1, 1600 / Math.max(img.width, img.height, 1));
-      const W = Math.max(1, Math.round(img.width * e0)), H = Math.max(1, Math.round(img.height * e0));
-      const c0 = document.createElement("canvas"); c0.width = W; c0.height = H;
-      const x0 = c0.getContext("2d"); x0.imageSmoothingQuality = "high"; x0.drawImage(img, 0, 0, W, H);
-      let datos = null; try { datos = x0.getImageData(0, 0, W, H); } catch(e){ datos = null; }
-      let minX = 0, minY = 0, maxX = W - 1, maxY = H - 1;
-      if (datos){
-        const px = datos.data;
-        const dif = function(i, r, g, b){ return Math.abs(px[i]-r) + Math.abs(px[i+1]-g) + Math.abs(px[i+2]-b); };
-        /* Fondo liso (las 4 esquinas del mismo color): se vuelve transparente,
-           rellenando solo desde los bordes para no borrar partes internas del logo. */
-        const esq = [0, (W-1)*4, (H-1)*W*4, ((H-1)*W + W-1)*4];
-        const r0 = px[0], g0 = px[1], b0 = px[2];
-        const opaco = esq.every(function(i){ return px[i+3] > 240; });
-        const liso = opaco && esq.every(function(i){ return dif(i, r0, g0, b0) < 30; });
-        if (liso){
-          const TOL = 70, N = W * H, visto = new Uint8Array(N), pila = [];
-          const empujar = function(x, y){ const k = y*W + x; if (!visto[k] && dif(k*4, r0, g0, b0) < TOL){ visto[k] = 1; pila.push(k); } };
-          for (let x = 0; x < W; x++){ empujar(x, 0); empujar(x, H-1); }
-          for (let y = 0; y < H; y++){ empujar(0, y); empujar(W-1, y); }
-          while (pila.length){
-            const k = pila.pop(), x = k % W, y = (k - x) / W;
-            if (x > 0) empujar(x-1, y); if (x < W-1) empujar(x+1, y);
-            if (y > 0) empujar(x, y-1); if (y < H-1) empujar(x, y+1);
-          }
-          /* Borde limpio. Los píxeles pegados al fondo vienen mezclados con él
-             (en un JPG, además, con un halo): si solo se borra el fondo queda un
-             filo claro y dentado. A las 3 capas del borde se les devuelve el color
-             del interior del logo y se les da la transparencia que les toca. */
-          const CAPAS = 3, capa = new Uint8Array(N), porCapa = [];
-          let frente = [];
-          for (let k = 0; k < N; k++){
-            if (visto[k]) continue;
-            const x = k % W, y = (k - x) / W;
-            if ((x > 0 && visto[k-1]) || (x < W-1 && visto[k+1]) || (y > 0 && visto[k-W]) || (y < H-1 && visto[k+W])){ capa[k] = 1; frente.push(k); }
-          }
-          porCapa[1] = frente;
-          for (let L = 2; L <= CAPAS; L++){
-            const sig = [];
-            for (let j = 0; j < frente.length; j++){
-              const k = frente[j], x = k % W, y = (k - x) / W;
-              const ver = function(q){ if (!visto[q] && !capa[q]){ capa[q] = L; sig.push(q); } };
-              if (x > 0) ver(k-1); if (x < W-1) ver(k+1); if (y > 0) ver(k-W); if (y < H-1) ver(k+W);
-            }
-            porCapa[L] = sig; frente = sig;
-          }
-          /* color "real" de cada píxel del borde: promedio de sus vecinos más adentro */
-          const fr = new Float32Array(N), fg = new Float32Array(N), fb = new Float32Array(N), tiene = new Uint8Array(N);
-          for (let L = CAPAS; L >= 1; L--){
-            const lista = porCapa[L];
-            for (let j = 0; j < lista.length; j++){
-              const k = lista[j], x = k % W, y = (k - x) / W;
-              let sr = 0, sg = 0, sb = 0, n = 0;
-              for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){
-                if (!dx && !dy) continue;
-                const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-                const q = yy * W + xx; if (visto[q]) continue;
-                if (!capa[q]){ sr += px[q*4]; sg += px[q*4+1]; sb += px[q*4+2]; n++; }
-                else if (capa[q] > L && tiene[q]){ sr += fr[q]; sg += fg[q]; sb += fb[q]; n++; }
-              }
-              if (n){ fr[k] = sr / n; fg[k] = sg / n; fb[k] = sb / n; tiene[k] = 1; }
-            }
-          }
-          for (let k = 0; k < N; k++){
-            if (visto[k]){ px[k*4+3] = 0; continue; }
-            if (!capa[k]) continue;
-            const i = k * 4, d = dif(i, r0, g0, b0);
-            if (tiene[k]){
-              const dF = Math.abs(fr[k]-r0) + Math.abs(fg[k]-g0) + Math.abs(fb[k]-b0);
-              if (dF < 60) continue;                         /* esa parte del logo es casi del color del fondo: no se toca */
-              const a = Math.min(1, d / dF);
-              if (a > 0.96) continue;
-              px[i] = Math.round(fr[k]); px[i+1] = Math.round(fg[k]); px[i+2] = Math.round(fb[k]);
-              px[i+3] = Math.round(px[i+3] * a);
-            } else if (capa[k] === 1 && d < 180){             /* trazos muy finos: borde suave simple */
-              px[i+3] = Math.round(px[i+3] * d / 180);
-            }
-          }
-          x0.putImageData(datos, 0, 0);
-        }
-        /* Recorte: todo lo transparente (o del color de fondo) alrededor del logo */
-        const a0 = px[3];
-        const vacio = function(i){ return px[i+3] < 16 || (a0 >= 16 && dif(i, r0, g0, b0) < 40); };
-        minX = W; minY = H; maxX = -1; maxY = -1;
-        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
-          if (!vacio((y*W + x) * 4)){ if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
-        }
-        if (maxX < 0){ minX = 0; minY = 0; maxX = W - 1; maxY = H - 1; }
-        const pad = Math.round(Math.max(maxX - minX, maxY - minY) * 0.02);
-        minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
-        maxX = Math.min(W - 1, maxX + pad); maxY = Math.min(H - 1, maxY + pad);
-      }
-      const w = maxX - minX + 1, h = maxY - minY + 1;
-      /* Se guarda dentro de la configuración de la tienda: si pesa mucho, se achica de a poco */
-      const PESO_MAX = 300000;
-      let esc = Math.min(1, 1000 / w, 800 / h), out = "";
-      for (let intento = 0; intento < 6; intento++){
-        const c = document.createElement("canvas");
-        c.width = Math.max(1, Math.round(w * esc)); c.height = Math.max(1, Math.round(h * esc));
-        const x = c.getContext("2d"); x.imageSmoothingQuality = "high";
-        x.drawImage(c0, minX, minY, w, h, 0, 0, c.width, c.height);
-        out = c.toDataURL("image/png");
-        if (out.length > PESO_MAX){ const wp = c.toDataURL("image/webp", 0.9); if (wp.indexOf("data:image/webp") === 0 && wp.length < out.length) out = wp; }
-        if (out.length <= PESO_MAX) break;
-        esc *= 0.8;
-      }
-      resolve(out);
-    };
-    img.onerror = function(){ reject(new Error("No se pudo cargar la imagen")); };
-    img.src = dataURL;
-  });
-}
-
 function renderImgPreview(wrapId, base64, onQuitar){
   const wrap = qs(wrapId);
   if (!base64){ wrap.innerHTML = ""; return; }
@@ -635,11 +457,8 @@ qs("#fLogo").addEventListener("change", async (e) => {
   if (!file) return;
   qs("#logoUpload .img-upload-txt").textContent = "Procesando…";
   try {
-    /* Mismo tratamiento que el logo subido desde el panel de la tienda: fondo fuera,
-       borde limpio y resolución suficiente para el splash (antes quedaba en 256 px) */
-    if (file.size > IMG_MAX_ARCHIVO_ENTRADA) throw new Error("La imagen es demasiado grande para procesarla. Usá una de menos de 15MB.");
-    const original = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(new Error("No pudimos leer esta imagen. Probá con otro archivo.")); fr.readAsDataURL(file); });
-    logoBase64 = await procesarLogo(original);
+    // 256px de lado: de sobra para un ícono de acceso directo y para el favicon.
+    logoBase64 = await comprimirImagen(file, 256, 200 * 1024);
     renderImgPreview("#logoPreviewWrap", logoBase64, () => {
       logoBase64 = ""; e.target.value = "";
       renderImgPreview("#logoPreviewWrap", "", null);
@@ -675,55 +494,25 @@ if (secretGuardado){
 }
 
 /* ── Render de chips de rubro ── */
-function rubroActual(){ return RUBROS.find(x => x.id === rubroSeleccionado) || RUBROS[0]; }
-function subrubroActual(){
-  const r = rubroActual();
-  return r.subrubros.find(x => x.id === subrubroSeleccionado) || r.subrubros[0];
-}
 function renderRubros(){
   qs("#rubroGrid").innerHTML = RUBROS.map(r => `
     <button type="button" class="rubro-chip${r.id === rubroSeleccionado ? ' activo' : ''}"
-      data-rubro="${r.id}" style="--chip-color:#1D1D1F">
+            data-rubro="${r.id}" style="--chip-color:${r.color}">
       <span class="ico">${r.ico}</span>
       <span>${r.nombre}</span>
     </button>
   `).join("");
-  const r = rubroActual();
-  qs("#subrubroGrid").innerHTML = r.subrubros.map(s => `
-    <button type="button" class="rubro-chip${s.id === subrubroSeleccionado ? ' activo' : ''}"
-      data-subrubro="${s.id}" style="--chip-color:${s.color}">
-      <span class="ico">${s.ico}</span>
-      <span>${s.nombre}</span>
-    </button>
-  `).join("");
 }
 renderRubros();
-function syncCajaLocal(){ var c = qs("#campoCajaLocal"); if (c) c.style.display = rubroSeleccionado === "comida" ? "" : "none"; }
-syncCajaLocal();
-qs("#rubroGrid").addEventListener("click", function(){ setTimeout(syncCajaLocal, 0); });
 
 qs("#rubroGrid").addEventListener("click", e => {
   const chip = e.target.closest("[data-rubro]");
   if (!chip) return;
   rubroSeleccionado = chip.dataset.rubro;
-  subrubroSeleccionado = rubroActual().subrubros[0].id;
   renderRubros();
   if (!colorTocadoAMano){
-    const s = subrubroActual();
-    qs("#fColor").value = s.color;
-    actualizarColorHex();
-  }
-  actualizarPreview();
-});
-
-qs("#subrubroGrid").addEventListener("click", e => {
-  const chip = e.target.closest("[data-subrubro]");
-  if (!chip) return;
-  subrubroSeleccionado = chip.dataset.subrubro;
-  renderRubros();
-  if (!colorTocadoAMano){
-    const s = subrubroActual();
-    qs("#fColor").value = s.color;
+    const r = RUBROS.find(x => x.id === rubroSeleccionado);
+    qs("#fColor").value = r.color;
     actualizarColorHex();
   }
   actualizarPreview();
@@ -740,15 +529,15 @@ qs("#fColor").addEventListener("input", () => {
 });
 qs("#btnResetColor").addEventListener("click", () => {
   colorTocadoAMano = false;
-  const s = subrubroActual();
-  qs("#fColor").value = s.color;
+  const r = RUBROS.find(x => x.id === rubroSeleccionado);
+  qs("#fColor").value = r.color;
   actualizarColorHex();
   actualizarPreview();
 });
 
 /* ── Vista previa ── */
 function actualizarPreview(){
-  const r = subrubroActual();
+  const r = RUBROS.find(x => x.id === rubroSeleccionado);
   const color = qs("#fColor").value;
   const hover = colorHover(color);
   const fondo = fondoSuaveDesde(color);
@@ -807,7 +596,7 @@ qs("#formTienda").addEventListener("submit", async (e) => {
     estadoMsg.classList.add("error");
     return;
   }
-  if (emailPropietario && passwordPropietario && passwordPropietario.length < 6){
+  if (emailPropietario && (!passwordPropietario || passwordPropietario.length < 6)){
     estadoMsg.textContent = "Si vas a crear la cuenta de propietario, la contraseña debe tener al menos 6 caracteres.";
     estadoMsg.classList.add("error");
     return;
@@ -825,10 +614,7 @@ qs("#formTienda").addEventListener("submit", async (e) => {
       },
       body: JSON.stringify({
         nombreNegocio,
-        rubro: rubroActual().rubroMotor || rubroSeleccionado,
-        plantilla: rubroActual().plantilla || undefined,
-        cajaLocal: (rubroSeleccionado === "comida" && qs("#fCajaLocal").checked) || undefined,
-        subrubro: subrubroSeleccionado,
+        rubro: rubroSeleccionado,
         hostname,
         colorPrimario: qs("#fColor").value,
         logoBase64: logoBase64 || undefined,
@@ -861,9 +647,7 @@ qs("#formTienda").addEventListener("submit", async (e) => {
     if (j.avisoPropietario){
       avisoProp = `<div class="estado-msg error" style="display:block;margin-top:10px">${j.avisoPropietario}</div>`;
     } else if (j.propietario){
-      avisoProp = `<p style="margin-top:8px">👤 Cuenta de propietario creada: <b>${j.propietario.email}</b></p>` +
-        (j.propietario.correoClave ? `<p style="margin-top:4px">📧 Le enviamos un correo para que cree su clave. Si no le llega, puede usar "¿Olvidaste tu contraseña?" en el acceso de administrador.</p>`
-          : (j.propietario.claveTemporal ? `<div class="estado-msg error" style="display:block;margin-top:10px">No se pudo enviar el correo para crear la clave. Pídele que use "¿Olvidaste tu contraseña?" en el acceso de administrador.</div>` : ""));
+      avisoProp = `<p style="margin-top:8px">👤 Cuenta de propietario creada: <b>${j.propietario.email}</b></p>`;
     }
 
     /* Suscripción mensual — opcional, solo si el vendedor completó el
@@ -872,9 +656,6 @@ qs("#formTienda").addEventListener("submit", async (e) => {
        generar el link de cobro). No bloquea el resultado de "tienda
        creada" si esto falla: la tienda ya existe igual, la mensualidad
        se puede reintentar después sin perder nada de lo demás. */
-    if (j.avisoDominio){
-      avisoProp += `<div class="estado-msg error" style="display:block;margin-top:10px">${j.avisoDominio}</div>`;
-    }
     let avisoSuscripcion = "";
     const montoMensual = qs("#fMontoMensual").value.replace(/\D/g, "");
     const emailParaSuscripcion = qs("#fEmailProp").value.trim();
@@ -910,10 +691,10 @@ qs("#formTienda").addEventListener("submit", async (e) => {
       ${avisoProp}
       ${avisoSuscripcion}
       <div class="pasos-siguientes">
-        <p style="margin-bottom:6px"><b>Lo que sigue:</b></p>
+        <p style="margin-bottom:6px"><b>Lo que sigue siendo manual (ver LEEME.md, sección 9):</b></p>
         <ul>
-          <li>La tienda ya está en línea: <a href="https://${j.hostname}" target="_blank" style="color:var(--rojo)">https://${j.hostname}</a></li>
-          <li>¿El cliente tiene dominio propio? Que entre a <a href="https://${j.hostname}/dominio" target="_blank" style="color:var(--rojo)">${j.hostname}/dominio</a> con su cuenta y siga los pasos (se conecta solo).</li>
+          <li>Apuntar el DNS de <b>${j.hostname}</b> hacia Netlify, en el registrador del cliente.</li>
+          <li>Netlify → Domain management → Add custom domain → <b>${j.hostname}</b>.</li>
           <li>El cliente pega su Access Token de MercadoPago desde <code>${j.hostname}/?dev=1</code> → tab Pagos.</li>
           ${j.propietario ? "" : "<li><b>Nadie va a poder entrar al devmode de esta tienda todavía</b> — creá la cuenta de propietario a mano en Firebase Console (ver LEEME.md, Paso 5) o volviendo a correr este formulario con el mismo dominio.</li>"}
         </ul>
@@ -925,101 +706,6 @@ qs("#formTienda").addEventListener("submit", async (e) => {
     btn.disabled = false; btn.textContent = "Crear tienda";
   }
 });
-</script>
-<script id="p20-subdominio">
-/* P20: subdominio automático nombre.derlabs.store (el Worker atiende *.derlabs.store) */
-(function(){
-  var RES = ["www","api","app","admin","mail","derlabs","panel","static","cdn","ftp","delivery","caja","cocina"];
-  var campo = document.getElementById("fHostname"), nom = document.getElementById("fNombre");
-  var bSub = document.getElementById("btnModoSub"), bPro = document.getElementById("btnModoPropio"), ay = document.getElementById("ayudaDom");
-  if (!campo || !nom || !bSub) return;
-  var modo = "sub", tocado = false;
-  /* P21: comida → .derlabs.store · retail y Tienda Pro → .derlabs.online */
-  function base(){
-    try { var r = (typeof rubroActual === "function") ? rubroActual() : null; var m = r ? (r.rubroMotor || r.id) : "comida"; return m === "retail" ? "derlabs.online" : "derlabs.store"; }
-    catch(e){ return "derlabs.store"; }
-  }
-  function slug(t){
-    var s = String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-      .replace(/&/g, "y").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
-    if (RES.indexOf(s) > -1) s += "-tienda";
-    return s;
-  }
-  function sugerir(){ if (modo === "sub" && !tocado){ var s = slug(nom.value); campo.value = s ? s + "." + base() : ""; } }
-  function poner(m){
-    modo = m; tocado = false;
-    bSub.classList.toggle("activo", m === "sub"); bPro.classList.toggle("activo", m !== "sub");
-    if (m === "sub"){
-      campo.placeholder = "pizzeriajuan." + base();
-      ay.innerHTML = 'Queda en <b>nombre.' + base() + '</b> y funciona al instante, sin configurar nada. Puedes editar la parte antes del punto.';
-      sugerir();
-    } else {
-      campo.placeholder = "pizzeriajuan.cl"; campo.value = "";
-      ay.innerHTML = 'Solo si el dominio ya está conectado a DerLabs. Lo normal: crea la tienda con subdominio y luego el cliente conecta su dominio desde <b>su-tienda/dominio</b> (automático).';
-    }
-  }
-  bSub.addEventListener("click", function(){ poner("sub"); });
-  bPro.addEventListener("click", function(){ poner("propio"); });
-  nom.addEventListener("input", sugerir);
-  campo.addEventListener("input", function(){ tocado = true; });
-  campo.addEventListener("blur", function(){
-    if (modo !== "sub") return;
-    var v = campo.value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/\.derlabs\.(store|online)$/, "");
-    v = slug(v); campo.value = v ? v + "." + base() : "";
-  });
-  var rg = document.getElementById("rubroGrid");
-  if (rg) rg.addEventListener("click", function(){ setTimeout(function(){
-    if (modo !== "sub") return;
-    if (tocado){ var v = campo.value.replace(/\.derlabs\.(store|online)$/, ""); campo.value = v ? v + "." + base() : ""; }
-    else sugerir();
-    ay.innerHTML = 'Queda en <b>nombre.' + base() + '</b> y funciona al instante, sin configurar nada. Puedes editar la parte antes del punto.';
-    campo.placeholder = "pizzeriajuan." + base();
-  }, 0); });
-  sugerir();
-})();
-
-/* ── Planes de las tiendas (Básico / Pro) ── */
-(function(){
-  var btn = qs("#btnPlanes"), msg = qs("#planesMsg"), lista = qs("#planesLista");
-  if (!btn) return;
-  var tiendas = [];
-  function e(t){ return String(t == null ? "" : t).replace(/[&<>"']/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
-  function aviso(t, err){ msg.textContent = t || ""; msg.classList.toggle("error", !!err); }
-  async function api(cuerpo){
-    var r = await fetch("/api/planTienda", { method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Secret": ADMIN_SECRET }, body: JSON.stringify(cuerpo) });
-    var j = await r.json().catch(function(){ return {}; });
-    if (r.status === 401) throw new Error("Clave de administrador incorrecta — recarga la página.");
-    if (!r.ok || !j.ok) throw new Error(j.error || ("Error " + r.status));
-    return j;
-  }
-  function pintar(){
-    lista.innerHTML = tiendas.map(function(t){
-      var seg = t.comida
-        ? '<div class="pl-seg" role="group" aria-label="Plan de ' + e(t.nombre) + '">' +
-            '<button type="button" data-plan="basico" data-tienda="' + e(t.storeId) + '"' + (t.plan === "basico" ? ' class="activo" aria-pressed="true"' : ' aria-pressed="false"') + '>Básico</button>' +
-            '<button type="button" data-plan="pro" data-tienda="' + e(t.storeId) + '"' + (t.plan === "pro" ? ' class="activo" aria-pressed="true"' : ' aria-pressed="false"') + '>Pro</button></div>'
-        : '<span class="pl-nota">Retail</span>';
-      return '<div class="pl-fila"><div class="pl-txt"><b>' + e(t.nombre) + '</b><small>' + e((t.dominios || [])[0] || t.storeId) + '</small></div>' + seg + '</div>';
-    }).join("") || '<p>No hay tiendas todavía.</p>';
-  }
-  async function cargar(){
-    btn.disabled = true; aviso("Cargando…");
-    try { tiendas = (await api({ accion: "listar" })).tiendas || []; pintar(); aviso(tiendas.length + " tiendas"); btn.textContent = "Actualizar lista"; }
-    catch(err){ aviso(err.message, true); }
-    btn.disabled = false;
-  }
-  btn.addEventListener("click", cargar);
-  lista.addEventListener("click", async function(ev){
-    var b = ev.target.closest("[data-plan]"); if (!b || b.classList.contains("activo")) return;
-    var t = tiendas.find(function(x){ return x.storeId === b.dataset.tienda; }); if (!t) return;
-    var plan = b.dataset.plan;
-    if (!confirm("¿Pasar «" + t.nombre + "» al plan " + (plan === "pro" ? "Pro" : "Básico") + "?" + (plan === "basico" ? "\n\nLa caja local, las mesas y la cocina quedarán bloqueadas en esa tienda." : ""))) return;
-    lista.querySelectorAll("button").forEach(function(x){ x.disabled = true; });
-    try { await api({ accion: "cambiar", storeId: t.storeId, plan: plan }); t.plan = plan; aviso("«" + t.nombre + "» quedó en plan " + (plan === "pro" ? "Pro" : "Básico") + ". Puede tardar un minuto en verse en la tienda."); }
-    catch(err){ aviso(err.message, true); }
-    pintar();
-  });
-})();
 </script>
 </body>
 </html>

@@ -1028,7 +1028,7 @@ let editing = false, pendingRender = false;
 function renderAll(){
   if (editing){ pendingRender = true; return; }
   aplicarColor();
-  hrPintar();
+  document.body.classList.toggle("cerrada", state.config.abierto === false);
   renderNombre();
   renderInicio();
   renderMenu();
@@ -1093,7 +1093,7 @@ function renderConfTextos(){
   txt("#tl3", state.config.timeline3 || "En camino");
   txt("#tl4", state.config.timeline4 || "Entregado");
   const gps = qs("#gpsCard");
-  if (gps) gps.style.display = "none";   /* decía "GPS próximamente": el seguimiento en vivo ya existe (botón "Ver seguimiento en vivo") */
+  if (gps) gps.style.display = (state.config.mostrarGPS === false) ? "none" : "block";
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -1875,7 +1875,7 @@ function claveCarrito(prodId, variantes, notaPersonal){
   return partes.join("|");
 }
 function agregarAlCarrito(prodId, variantes, notaPersonal, extrasSel){
-  if (!tiendaAbierta()){ toast("🔴 " + hrAviso()); return; }
+  if (state.config.abierto === false){ toast("🔴 La tienda está cerrada por ahora"); return; }
   const p = state.productos.find(x => x.id === prodId);
   if (!p) return;
   /* P23: con pasos obligatorios y sin elección → abrir la hoja para elegir */
@@ -2014,7 +2014,7 @@ function initCarrito(){
    CHECKOUT
    ════════════════════════════════════════════════════════════════ */
 let tipoEntrega = "delivery";
-let metodoPago  = "mercadopago"; /* "efectivo" | "mercadopago" | "flow" (Webpay vía Flow) */
+let metodoPago  = "mercadopago"; /* "efectivo" | "mercadopago" */
 let _pagoElegido = false;         /* true cuando el cliente toca una forma de pago */
 
 function renderSelectorDirecciones(){
@@ -2167,7 +2167,6 @@ function evaluarGate(){
    El servidor aplica la misma regla al enviar (enviarEmails.js). */
 function pideCorreoCheckout(){
   if (clienteUser && clienteUser.email) return false;
-  if (metodoPago === "flow") return true;   /* Flow exige el correo del pagador */
   return !(typeof _vtEsComida === "function" && _vtEsComida());
 }
 var _DOMINIOS_MAL = { "gmial.com":"gmail.com", "gmai.com":"gmail.com", "gamil.com":"gmail.com", "gmail.con":"gmail.com", "gmail.co":"gmail.com", "gmal.com":"gmail.com", "gmil.com":"gmail.com", "gnail.com":"gmail.com", "gmail.cm":"gmail.com", "gmaill.com":"gmail.com",
@@ -2195,7 +2194,7 @@ function actualizarCampoEmail(){
     if (em.dataset.auto){ em.value = ""; em.classList.remove("lleno"); delete em.dataset.auto; }
     if (campo) campo.style.display = "";
     const lab = campo ? campo.querySelector('label[for="fEmail"]') : null;
-    if (lab) lab.textContent = metodoPago === "flow" ? "Correo (Webpay envía ahí tu comprobante)" : "Correo (opcional, para tu comprobante)";
+    if (lab && !/opcional/i.test(lab.textContent)) lab.textContent = "Correo (opcional, para tu comprobante)";
   }
 }
 
@@ -2414,7 +2413,6 @@ function renderCheckout(){
     if (noteMP) noteMP.style.display = "block";
     if (btnConf && !btnConf.disabled) btnConf.textContent = _txt("btnMP", "Ir a MercadoPago →");
   }
-  v29AjustarPago(mpDisponible);
 
   actualizarZonaBadge();
 }
@@ -2440,9 +2438,6 @@ function validarCheckout(){
     } else if (_sug){
       marcarError("fEmail"); toast("¿Quisiste decir " + _sug + "? Corrige el correo"); ok = false;
     }
-  }
-  if (metodoPago === "flow" && !(clienteUser && clienteUser.email) && !_email){
-    marcarError("fEmail"); toast("Para pagar con Webpay escribe tu correo: ahí llega el comprobante"); ok = false;
   }
   if (tipoEntrega === "delivery" && !qs("#fDireccion").value.trim()){ marcarError("fDireccion"); ok = false; }
   /* Solo exigir comuna si hay zonas configuradas Y el campo es visible */
@@ -2539,9 +2534,25 @@ function initCheckout(){
   if (btnQ) btnQ.addEventListener("click", quitarCupon);
 
   /* Forma de pago */
-  v29OpcionFlow();   /* la opción de Webpay (Flow) se crea antes de enlazar los toques */
   document.querySelectorAll(".pago-opt").forEach(function(opt){
-    opt.addEventListener("click", function(){ _pagoElegido = true; v29ElegirPago(opt.dataset.pago); });
+    opt.addEventListener("click", function(){
+      _pagoElegido = true;
+      document.querySelectorAll(".pago-opt").forEach(function(o){ o.classList.remove("sel"); });
+      opt.classList.add("sel");
+      metodoPago = opt.dataset.pago;
+      var noteEf = qs("#pagoEfectivoNote");
+      var noteMP = qs("#pagoMPNote");
+      var btnConf = qs("#btnConfirmar");
+      if (metodoPago === "efectivo"){
+        if(noteEf) noteEf.style.display = "block";
+        if(noteMP) noteMP.style.display = "none";
+        if(btnConf) btnConf.textContent = _txt("btnEfectivo", "Confirmar pedido →");
+      } else {
+        if(noteEf) noteEf.style.display = "none";
+        if(noteMP) noteMP.style.display = "block";
+        if(btnConf) btnConf.textContent = _txt("btnMP", "Ir a MercadoPago →");
+      }
+    });
   });
 }
 
@@ -2636,7 +2647,7 @@ function _resetCuponPostCompra(){
 }
 
 async function confirmarPedido(){
-  if (!tiendaAbierta()){ toast("🔴 " + hrAviso()); return; }
+  if (state.config.abierto === false){ toast("🔴 La tienda está cerrada por ahora"); return; }
   if (!carrito.length){ toast("Tu carrito está vacío"); irPagina("menu"); return; }
   if (!validarCheckout()) return;
 
@@ -2644,8 +2655,8 @@ async function confirmarPedido(){
 
   /* ── EFECTIVO ── */
   if (metodoPago === "efectivo" || !functionsListas()){
-    if (metodoPago !== "efectivo"){
-      toast("⚙️ El pago en línea aún no está configurado en esta tienda");
+    if (metodoPago === "mercadopago"){
+      toast("⚙️ MercadoPago aún no está configurado en esta tienda");
       return;
     }
     const pedidoIdLocal = "TB" + Date.now().toString().slice(-5);
@@ -2737,9 +2748,7 @@ async function confirmarPedido(){
      formas. El pedido en sí nunca lo crea el cliente — nace en
      webhookPago.js recién cuando MercadoPago confirma el pago. */
   const btn = qs("#btnConfirmar");
-  const esFlow = metodoPago === "flow";
-  const txtBtnPago = esFlow ? "Ir a pagar con Webpay →" : _txt("btnMP", "Ir a MercadoPago →");
-  btn.disabled = true; btn.textContent = esFlow ? "Conectando con Webpay…" : "Conectando con MercadoPago…";
+  btn.disabled = true; btn.textContent = "Conectando con MercadoPago…";
   try {
     const pedidoId = "TB" + Date.now().toString().slice(-5);
     const ped = construirPedido(pedidoId, cliente);
@@ -2750,7 +2759,6 @@ async function confirmarPedido(){
       body: JSON.stringify({
         storeId: STORE_ID,
         pedidoId: pedidoId,
-        pasarela: esFlow ? "flow" : "mercadopago",
         items: ped.items.map(function(i){ return { id: i.id, cantidad: i.cantidad, variantes: i.variantes || null, notaPersonal: i.notaPersonal || null, extras: i.extras || null }; }),
         cliente: cliente,
         cuponAplicado: ped.cuponAplicado,
@@ -2766,7 +2774,7 @@ async function confirmarPedido(){
          confirmó (producto agotado, cupón vencido justo ahora), acá
          llega el motivo real en vez de un error genérico de red. */
       toast(j.error || ("No se pudo iniciar el pago (HTTP " + res.status + ")"));
-      btn.disabled = false; btn.textContent = txtBtnPago;
+      btn.disabled = false; btn.textContent = _txt("btnMP", "Ir a MercadoPago →");
       return;
     }
     if (j.pedidoId && j.pedidoId !== ped.id){ ped.id = j.pedidoId; guardarUltimoPedido(ped); }
@@ -2774,7 +2782,7 @@ async function confirmarPedido(){
   } catch(e){
     console.error("Error creando pago:", e);
     toast("No se pudo iniciar el pago. Intenta de nuevo.");
-    btn.disabled = false; btn.textContent = txtBtnPago;
+    btn.disabled = false; btn.textContent = _txt("btnMP", "Ir a MercadoPago →");
   }
 }
 
@@ -2934,7 +2942,7 @@ function actualizarTimeline(estado){
   if (!cont) return;
   if (estado === "esperando" || estado === "pendiente_pago"){
     const sub = qs("#confSub");
-    if (sub) sub.textContent = "⏳ Verificando tu pago…";
+    if (sub) sub.textContent = "⏳ Verificando tu pago con MercadoPago…";
     return;
   }
   const est = normEstado(estado);
@@ -2992,27 +3000,20 @@ function renderBannerPedidoActivo(){
   const p = _pedidoActivo;
   const est = p ? normEstado(p.estado) : null;
   const activo = p && est !== "listo" && est !== "cancelado" && p.estado !== "pendiente_pago" && p.estado !== "esperando";
-  if (!activo){ w.style.display = "none"; w.innerHTML = ""; w._html = ""; return; }
+  if (!activo){ w.style.display = "none"; w.innerHTML = ""; return; }
   const ICO = { nuevo:"🧾", preparacion:"👨‍🍳", camino:"🛵" };
   const TIT = { nuevo:"Recibimos tu pedido", preparacion:"Estamos preparando tu pedido", camino:"Tu pedido está en camino" };
   w.style.display = "block";
   if (_sk("bannerPedidoActivo")){ w.innerHTML = SKIN.bannerPedidoActivo(p, est); return; }
-  const PASO = { nuevo: 1, preparacion: 2, camino: 3 };
-  const IC = { nuevo: "bag", preparacion: "flame", camino: "scooter" };
-  const n = PASO[est] || 1;
-  const ico = typeof _vtI === "function" ? _vtI(IC[est] || "bag", 22) : (ICO[est] || "🧾");
-  const flecha = typeof _vtI === "function" ? _vtI("chev", 15, 2.6) : "›";
-  const html =
-    '<button type="button" class="ped-activo e-' + esc(est) + '" id="btnPedActivo">' +
-      '<span class="pa-ico">' + ico + '</span>' +
-      '<span class="pa-txt">' +
-        '<span class="pa-titulo">' + (TIT[est] || "Pedido en curso") + '</span>' +
-        '<span class="pa-sub">Pedido #' + esc(p.id) + (est === "camino" && p.repartidor ? ' · lo lleva ' + esc(p.repartidor.nombre || "tu repartidor") : '') + '</span>' +
-        '<span class="pa-pasos" aria-hidden="true">' + [1, 2, 3, 4].map(function(k){ return '<i class="' + (k < n ? "on" : k === n ? "on act" : "") + '"></i>'; }).join("") + '</span>' +
-      '</span>' +
-      '<span class="pa-ver">' + (est === "camino" && p.repartidor ? "Mapa" : "Ver") + flecha + '</span>' +
-    '</button>';
-  if (w._html !== html){ w.innerHTML = html; w._html = html; }
+  w.innerHTML =
+    '<div class="ped-activo e-' + esc(est) + '" id="btnPedActivo" role="button" tabindex="0">' +
+      '<span class="pa-ico">' + (ICO[est] || "🧾") + '</span>' +
+      '<div class="pa-txt">' +
+        '<p class="pa-titulo">' + (TIT[est] || "Pedido en curso") + '</p>' +
+        '<p class="pa-sub">#' + esc(p.id) + (est === "camino" && p.repartidor ? ' · 🛵 ' + esc(p.repartidor.nombre || "Repartidor") + ' · Ver en el mapa →' : ' · Ver estado →') + '</p>' +
+      '</div>' +
+      '<span class="pa-flecha">›</span>' +
+    '</div>';
 }
 
 function _horaCorta(iso){
@@ -3135,7 +3136,7 @@ function _pintarCliPedBase(p){
       (p.tipo === "delivery" ? '<div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-weight:600"><span>Delivery</span><span>' + fmtPrecio(p.costoDelivery || 0) + '</span></div>' : "") +
       '<div style="display:flex;justify-content:space-between;font-size:14.5px;font-weight:900;margin-top:6px;padding-top:8px;border-top:1px dashed var(--borde)"><span>Total</span><span>' + fmtPrecio(p.total) + '</span></div>' +
       '<div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:8px">' +
-        (p.metodoPago === "mercadopago" ? "💳 MercadoPago" : p.metodoPago === "flow" ? "💳 Webpay" : "💵 Efectivo") + " · " +
+        (p.metodoPago === "mercadopago" ? "💳 MercadoPago" : "💵 Efectivo") + " · " +
         (p.tipo === "retiro" ? "Retiro en " + esc((p.cliente && p.cliente.local) || "local")
                              : "Delivery a " + esc((p.cliente && p.cliente.direccion) || "")) +
       '</div>';
@@ -3424,44 +3425,22 @@ function tieneAccesoDevmode(){
    resuelve el mecanismo (bloquear, registrar quién/cuándo/qué
    versión), no reemplaza la revisión legal del contenido. */
 const CONTRATO_VERSION = 2;
-/* Recuerdo local de que esta cuenta ya aceptó (solo se escribe cuando el registro quedó guardado) */
-function _contratoClave(uid){ return "dl_contrato_" + STORE_ID + "_" + uid; }
 async function yaAceptoContrato(uid){
-  try { if (Number(lsGet(_contratoClave(uid))) >= CONTRATO_VERSION) return true; } catch(e){}
   try {
     const doc = await db.doc("tiendas/" + STORE_ID + "/contratos/" + uid).get();
-    const ok = doc.exists && Number(doc.data().version) >= CONTRATO_VERSION;
-    if (ok) try { lsSet(_contratoClave(uid), String(doc.data().version)); } catch(e){}
-    return ok;
+    return doc.exists && doc.data().version === CONTRATO_VERSION;
   } catch(e){
     console.warn("No se pudo verificar el contrato:", e);
     return false; // ante la duda, mostrar el modal — mejor pedir de más que dejar pasar sin registro
   }
 }
-/* La aceptación se registra en el servidor (contrato.js): las reglas de Firestore no dejan
-   modificar un registro ya creado, así que quien había aceptado una versión anterior no podía
-   guardar la nueva y el aviso le salía cada vez. Si el servidor no responde, se intenta el
-   registro directo (sirve para cuentas que aceptan por primera vez). */
-async function registrarAceptacionContrato(uid, email){
-  const ua = navigator.userAgent || null;
-  let ok = false;
-  try {
-    const token = auth && auth.currentUser ? await auth.currentUser.getIdToken() : "";
-    const r = await fetch(functionsURL() + "/aceptarContrato", {
-      method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({ storeId: STORE_ID, version: CONTRATO_VERSION, email: email || null, userAgent: ua })
-    });
-    const j = await r.json().catch(function(){ return {}; });
-    ok = r.ok && j.ok === true;
-  } catch(e){ console.warn("Contrato (servidor):", e); }
-  if (!ok){
-    try {
-      await db.doc("tiendas/" + STORE_ID + "/contratos/" + uid).set({ version: CONTRATO_VERSION, email: email || null, aceptadoEn: new Date().toISOString(), userAgent: ua });
-      ok = true;
-    } catch(e){ console.warn("Contrato (directo):", e); }
-  }
-  if (ok) try { lsSet(_contratoClave(uid), String(CONTRATO_VERSION)); } catch(e){}
-  return ok;
+function registrarAceptacionContrato(uid, email){
+  return db.doc("tiendas/" + STORE_ID + "/contratos/" + uid).set({
+    version: CONTRATO_VERSION,
+    email: email || null,
+    aceptadoEn: new Date().toISOString(),
+    userAgent: navigator.userAgent || null // registro adicional, útil como evidencia de que se mostró en un navegador real
+  });
 }
 /* Muestra el modal y devuelve una Promise que se resuelve true/false
    según lo que elija — así intentarLogin() puede "esperar" la
@@ -3966,18 +3945,15 @@ async function confirmarImagen(){
   }
 }
 
-/* Logo: conserva transparencia (PNG/WebP), quita el fondo liso, limpia el
-   borde y recorta lo vacío. Se guarda hasta 1000x800 px: el splash lo
-   muestra casi a pantalla completa y con menos resolución se ve pixelado. */
+/* Logo: conserva transparencia (PNG/WebP), recorta bordes vacíos o del
+   color de fondo, y limita a 700x280 px para que se vea nítido en el header. */
 function procesarLogo(dataURL){
   return new Promise(function(resolve, reject){
     const img = new Image();
     img.onload = function(){
-      /* fotos enormes: se trabajan a 1600 px como máximo para no trabar el teléfono */
-      const e0 = Math.min(1, 1600 / Math.max(img.width, img.height, 1));
-      const W = Math.max(1, Math.round(img.width * e0)), H = Math.max(1, Math.round(img.height * e0));
+      const W = img.width, H = img.height;
       const c0 = document.createElement("canvas"); c0.width = W; c0.height = H;
-      const x0 = c0.getContext("2d"); x0.imageSmoothingQuality = "high"; x0.drawImage(img, 0, 0, W, H);
+      const x0 = c0.getContext("2d"); x0.drawImage(img, 0, 0);
       let datos = null; try { datos = x0.getImageData(0, 0, W, H); } catch(e){ datos = null; }
       let minX = 0, minY = 0, maxX = W - 1, maxY = H - 1;
       if (datos){
@@ -3990,7 +3966,7 @@ function procesarLogo(dataURL){
         const opaco = esq.every(function(i){ return px[i+3] > 240; });
         const liso = opaco && esq.every(function(i){ return dif(i, r0, g0, b0) < 30; });
         if (liso){
-          const TOL = 70, N = W * H, visto = new Uint8Array(N), pila = [];
+          const TOL = 70, visto = new Uint8Array(W * H), pila = [];
           const empujar = function(x, y){ const k = y*W + x; if (!visto[k] && dif(k*4, r0, g0, b0) < TOL){ visto[k] = 1; pila.push(k); } };
           for (let x = 0; x < W; x++){ empujar(x, 0); empujar(x, H-1); }
           for (let y = 0; y < H; y++){ empujar(0, y); empujar(W-1, y); }
@@ -3999,58 +3975,12 @@ function procesarLogo(dataURL){
             if (x > 0) empujar(x-1, y); if (x < W-1) empujar(x+1, y);
             if (y > 0) empujar(x, y-1); if (y < H-1) empujar(x, y+1);
           }
-          /* Borde limpio. Los píxeles pegados al fondo vienen mezclados con él
-             (en un JPG, además, con un halo): si solo se borra el fondo queda un
-             filo claro y dentado. A las 3 capas del borde se les devuelve el color
-             del interior del logo y se les da la transparencia que les toca. */
-          const CAPAS = 3, capa = new Uint8Array(N), porCapa = [];
-          let frente = [];
-          for (let k = 0; k < N; k++){
-            if (visto[k]) continue;
-            const x = k % W, y = (k - x) / W;
-            if ((x > 0 && visto[k-1]) || (x < W-1 && visto[k+1]) || (y > 0 && visto[k-W]) || (y < H-1 && visto[k+W])){ capa[k] = 1; frente.push(k); }
-          }
-          porCapa[1] = frente;
-          for (let L = 2; L <= CAPAS; L++){
-            const sig = [];
-            for (let j = 0; j < frente.length; j++){
-              const k = frente[j], x = k % W, y = (k - x) / W;
-              const ver = function(q){ if (!visto[q] && !capa[q]){ capa[q] = L; sig.push(q); } };
-              if (x > 0) ver(k-1); if (x < W-1) ver(k+1); if (y > 0) ver(k-W); if (y < H-1) ver(k+W);
-            }
-            porCapa[L] = sig; frente = sig;
-          }
-          /* color "real" de cada píxel del borde: promedio de sus vecinos más adentro */
-          const fr = new Float32Array(N), fg = new Float32Array(N), fb = new Float32Array(N), tiene = new Uint8Array(N);
-          for (let L = CAPAS; L >= 1; L--){
-            const lista = porCapa[L];
-            for (let j = 0; j < lista.length; j++){
-              const k = lista[j], x = k % W, y = (k - x) / W;
-              let sr = 0, sg = 0, sb = 0, n = 0;
-              for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){
-                if (!dx && !dy) continue;
-                const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-                const q = yy * W + xx; if (visto[q]) continue;
-                if (!capa[q]){ sr += px[q*4]; sg += px[q*4+1]; sb += px[q*4+2]; n++; }
-                else if (capa[q] > L && tiene[q]){ sr += fr[q]; sg += fg[q]; sb += fb[q]; n++; }
-              }
-              if (n){ fr[k] = sr / n; fg[k] = sg / n; fb[k] = sb / n; tiene[k] = 1; }
-            }
-          }
-          for (let k = 0; k < N; k++){
+          for (let k = 0; k < W*H; k++){
             if (visto[k]){ px[k*4+3] = 0; continue; }
-            if (!capa[k]) continue;
-            const i = k * 4, d = dif(i, r0, g0, b0);
-            if (tiene[k]){
-              const dF = Math.abs(fr[k]-r0) + Math.abs(fg[k]-g0) + Math.abs(fb[k]-b0);
-              if (dF < 60) continue;                         /* esa parte del logo es casi del color del fondo: no se toca */
-              const a = Math.min(1, d / dF);
-              if (a > 0.96) continue;
-              px[i] = Math.round(fr[k]); px[i+1] = Math.round(fg[k]); px[i+2] = Math.round(fb[k]);
-              px[i+3] = Math.round(px[i+3] * a);
-            } else if (capa[k] === 1 && d < 180){             /* trazos muy finos: borde suave simple */
-              px[i+3] = Math.round(px[i+3] * d / 180);
-            }
+            /* borde suave: píxeles vecinos al fondo, parecidos a él, quedan semitransparentes */
+            const x = k % W, y = (k - x) / W;
+            const vecino = (x > 0 && visto[k-1]) || (x < W-1 && visto[k+1]) || (y > 0 && visto[k-W]) || (y < H-1 && visto[k+W]);
+            if (vecino){ const d = dif(k*4, r0, g0, b0); if (d < 180) px[k*4+3] = Math.round(px[k*4+3] * d / 180); }
           }
           x0.putImageData(datos, 0, 0);
         }
@@ -4067,19 +3997,13 @@ function procesarLogo(dataURL){
         maxX = Math.min(W - 1, maxX + pad); maxY = Math.min(H - 1, maxY + pad);
       }
       const w = maxX - minX + 1, h = maxY - minY + 1;
-      /* Se guarda dentro de la configuración de la tienda: si pesa mucho, se achica de a poco */
-      const PESO_MAX = 300000;
-      let esc = Math.min(1, 1000 / w, 800 / h), out = "";
-      for (let intento = 0; intento < 6; intento++){
-        const c = document.createElement("canvas");
-        c.width = Math.max(1, Math.round(w * esc)); c.height = Math.max(1, Math.round(h * esc));
-        const x = c.getContext("2d"); x.imageSmoothingQuality = "high";
-        x.drawImage(c0, minX, minY, w, h, 0, 0, c.width, c.height);
-        out = c.toDataURL("image/png");
-        if (out.length > PESO_MAX){ const wp = c.toDataURL("image/webp", 0.9); if (wp.indexOf("data:image/webp") === 0 && wp.length < out.length) out = wp; }
-        if (out.length <= PESO_MAX) break;
-        esc *= 0.8;
-      }
+      const esc = Math.min(1, 700 / w, 280 / h);
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(w * esc)); c.height = Math.max(1, Math.round(h * esc));
+      const x = c.getContext("2d"); x.imageSmoothingQuality = "high";
+      x.drawImage(c0, minX, minY, w, h, 0, 0, c.width, c.height);
+      let out = c.toDataURL("image/png");
+      if (out.length > 250000){ const wp = c.toDataURL("image/webp", 0.9); if (wp.indexOf("data:image/webp") === 0 && wp.length < out.length) out = wp; }
       resolve(out);
     };
     img.onerror = function(){ reject(new Error("No se pudo cargar la imagen")); };
@@ -4134,7 +4058,6 @@ function actualizarPreviews(){
 }
 
 function fillPanel(forzar){
-  try { hrRenderEditor(); v30PintarPagos(); v30PintarApariencia(); } catch(e){ console.warn("panel v30:", e); }
   const setVal = (id, v) => {
     const el = qs("#" + id);
     if (!el) return;
@@ -4520,7 +4443,6 @@ function renderMpEstado(){
   qs("#mpEstado").textContent = (!t || t === "CONFIGURAR_TOKEN")
     ? "⚠️ No configurado"
     : "✅ Conectado correctamente";
-  try { v29PanelFlow(); v29PintarFlow(); } catch(e){ console.warn("flow:", e); }
 }
 
 /* Editor de grupos de variantes — hasta 3 grupos por producto (ej.
@@ -7401,7 +7323,6 @@ function _vtMontar(){
 }
 function _vtDesmontar(){
   document.body.classList.remove("v-app");
-  v30UbicarBanner(false);
   var hero = qs(".hero");
   if (_vt.montada && hero && _vt.heroPadre && hero.parentNode !== _vt.heroPadre) _vt.heroPadre.insertBefore(hero, _vt.heroSig);
 }
@@ -7431,9 +7352,8 @@ function vitrinaApp(){
     var logo = c.logoBase64 || "";
     var icoHTML = logo ? '<img src="' + esc(logo) + '" alt="' + esc(nom) + '">' : '<span class="vt-inicial">' + esc((nom || "?").trim().charAt(0).toUpperCase()) + '</span>';
     if (ico.getAttribute("data-k") !== (logo ? logo.slice(-40) : nom)){ ico.innerHTML = icoHTML; ico.setAttribute("data-k", logo ? logo.slice(-40) : nom); }
-    var eh = hrEstado(), abierto = eh.abierta, est = qs("#vtEstado");
-    est.textContent = eh.texto; est.classList.toggle("cerr", !abierto);
-    v30UbicarBanner(true);
+    var abierto = c.abierto !== false, est = qs("#vtEstado");
+    est.textContent = abierto ? "Abierto ahora" : "Cerrado por ahora"; est.classList.toggle("cerr", !abierto);
     var tEl = qs("#vtTiempo"); tEl.style.display = c.tiempoEntrega ? "" : "none"; tEl.querySelector("span").textContent = c.tiempoEntrega || "";
     qs("#vtPts").style.display = c.puntosActivo === false ? "none" : "";
     var delOn = c.deliveryActivo !== false, retOn = c.retiroActivo !== false;
@@ -7467,16 +7387,16 @@ function instalarPanelVitrina(){
   try {
     if (!_vtEsComida()) return;
     var cfgTab = qs("#pt-config"); if (!cfgTab || qs("#vtPanelEstilo")) return;
-    var box = document.createElement("div"); box.id = "vtPanelEstilo"; box.className = "pcard";
-    var miniApp = '<span class="mini"><i style="height:36px;background:var(--rojo)"></i><i style="width:28px;height:28px;border-radius:9px;background:#1A1A1A;border:2px solid #fff;margin:-15px 0 0 8px"></i><i style="height:5px;width:60%;border-radius:3px;background:#D9D4D0;margin:6px 0 0 8px"></i><i style="height:5px;width:40%;border-radius:3px;background:#E6E1DD;margin:5px 0 0 8px"></i></span>';
-    var miniCla = '<span class="mini" style="align-items:center"><i style="height:7px;width:46%;border-radius:4px;background:var(--rojo);margin-top:9px"></i><i style="height:40px;width:84%;border-radius:8px;background:#EDE8E4;margin-top:9px"></i><i style="height:5px;width:50%;border-radius:3px;background:#D9D4D0;margin-top:7px"></i></span>';
-    box.innerHTML = '<b class="pcard-t">Diseño de la tienda</b><p class="pnota" style="font-size:12.5px;margin:2px 0 0">Elige cómo se ven la portada y el menú.</p>' +
-      '<div class="pest"><button type="button" data-vtest="app">' + miniApp + '<b>App</b><small>Ícono sobre la portada</small></button>' +
-      '<button type="button" data-vtest="clasico">' + miniCla + '<b>Clásico</b><small>El diseño anterior</small></button></div>' +
-      '<button type="button" class="pill pill-outline pill-sm panel-full" id="vtBtnPortada">Cambiar foto de portada</button>';
-    var slot = qs("#pEstiloSlot"), ref = qs("#btnMiDominio");
-    if (slot) slot.appendChild(box); else cfgTab.insertBefore(box, ref ? ref.nextSibling : cfgTab.firstChild);
-    function pintar(){ qsa("#vtPanelEstilo [data-vtest]").forEach(function(b){ var on = b.dataset.vtest === _vtEstilo(); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); }); }
+    var box = document.createElement("div"); box.id = "vtPanelEstilo";
+    box.style.cssText = "margin:0 0 18px;padding:14px;border-radius:18px;background:var(--crema,#FBF7F5)";
+    box.innerHTML = '<h4 style="margin:0 0 4px">Estilo de la tienda</h4>' +
+      '<p class="pnota" style="margin:0 0 10px">“App” es el diseño nuevo; “Clásico” es el diseño anterior.</p>' +
+      '<div style="display:flex;gap:8px;margin-bottom:10px"><button type="button" class="pill pill-sm" data-vtest="app" style="flex:1">📱 App</button><button type="button" class="pill pill-sm" data-vtest="clasico" style="flex:1">Clásico</button></div>' +
+      '<button type="button" class="pill pill-outline pill-sm panel-full" id="vtBtnPortada">🖼 Cambiar imagen de portada</button>' +
+      '<p class="pnota" style="margin:6px 0 0">La portada es la foto de arriba con el corte diagonal (estilo App). El ícono usa tu logo.</p>';
+    var ref = qs("#btnMiDominio");
+    cfgTab.insertBefore(box, ref ? ref.nextSibling : cfgTab.firstChild);
+    function pintar(){ qsa("#vtPanelEstilo [data-vtest]").forEach(function(b){ var on = b.dataset.vtest === _vtEstilo(); b.className = "pill pill-sm " + (on ? "pill-solid" : "pill-outline"); }); }
     pintar();
     qsa("#vtPanelEstilo [data-vtest]").forEach(function(b){ b.addEventListener("click", async function(){
       state.config.estiloComida = b.dataset.vtest; pintar(); vitrinaApp();
@@ -8411,13 +8331,10 @@ function _v26Titulo(pt){
 }
 function v26PanelHome(){
   var p = qs("#adminPanel"), h = qs("#pHome"); if (!p || !h) return;
-  var abierta = state.config.abierto !== false, eh = hrEstado();
-  var tit = !abierta ? "Tienda cerrada" : eh.abierta ? "Tienda abierta" : "Cerrada por horario";
-  var subt = !abierta ? "La cerraste tú: los clientes no pueden pedir" : eh.sinHorario ? "Estás recibiendo pedidos" : eh.abierta ? (eh.hasta ? "Recibes pedidos hasta las " + eh.hasta : "Estás recibiendo pedidos") : (eh.abre ? "Abre " + eh.abre : "Hoy no abre");
+  var abierta = state.config.abierto !== false;
   h.innerHTML =
-    '<div class="pv-estado"><div><b>' + tit + '</b><small>' + subt + '</small></div>' +
+    '<div class="pv-estado"><div><b>' + (abierta ? "Tienda abierta" : "Tienda cerrada") + '</b><small>' + (abierta ? "Estás recibiendo pedidos" : "Los clientes no pueden pedir") + '</small></div>' +
       '<label class="switch"><input type="checkbox" id="pvAbierto"' + (abierta ? " checked" : "") + '><span class="slider"></span></label></div>' +
-    (v28EsComida() && !hrTiene(state.config.horario) ? '<button type="button" class="pv-fila pv-aviso" data-pvir="tienda"><span class="pv-ico">🕒</span><span class="pv-txt"><b>Agrega tu horario de atención</b><small>La tienda abre y cierra sola a la hora que indiques</small></span><span class="pv-chev">›</span></button>' : '') +
     V26_GRUPOS.map(function(g){
       var filas = g.items.filter(function(it){
         var tab = qs('.ptab[data-pt="' + it[0] + '"]');
@@ -8502,7 +8419,7 @@ function v26PanelInit(){
 /* ─────────── Planes: acceso a la caja del local (P28) ───────────
    Básico → la fila se ve, pero al tocarla avisa que es del plan Pro.
    Pro    → abre /caja. El servidor (cajaLocal.js) revisa el plan igual. */
-function v28Whatsapp(){ return "56930025299"; }
+var V28_WHATSAPP = "56930025299";
 function v28EsComida(){
   var c = state.config || {};
   /* misma regla que el servidor: todo lo que no es retail ni boutique es comida */
@@ -8524,7 +8441,7 @@ function v28AbrirCaja(){
     '<h4 id="v28Tit">Caja y mesas</h4>' +
     '<p><b>Solo disponible en el plan Pro.</b></p>' +
     '<p>Incluye mesas, comandas a cocina y cobro en el local.</p>' +
-    '<a class="v28-si" target="_blank" rel="noopener" href="https://wa.me/' + v28Whatsapp() + '?text=' + encodeURIComponent(msj) + '">Pasar al plan Pro</a>' +
+    '<a class="v28-si" target="_blank" rel="noopener" href="https://wa.me/' + V28_WHATSAPP + '?text=' + encodeURIComponent(msj) + '">Pasar al plan Pro</a>' +
     '<button type="button" class="v28-no">Ahora no</button></div>';
   o.addEventListener("click", function(e){ if (e.target === o || e.target.closest(".v28-no") || e.target.closest(".v28-si")) o.remove(); });
   document.body.appendChild(o);
@@ -8548,276 +8465,3 @@ function v28AbrirCaja(){
 })();
 
 try { v26PanelInit(); } catch(e){ console.warn("panel v26:", e); }
-
-/* ─────────── P29 · Segunda pasarela: Flow (Webpay, tarjetas y transferencia) ───────────
-   config/privado: flowApiKey, flowSecretKey, flowSandbox · config/general: flowActivo.
-   El cobro lo hace el servidor (crearPago.js → flow.js); aquí solo va la opción en el
-   checkout y la tarjeta para pegar las llaves en el panel. */
-function v29NotaFlow(){ return "🔒 Serás redirigido a Webpay (Flow) para pagar de forma segura y vuelves aquí al terminar."; }
-function v29OpcionFlow(){
-  var ya = document.querySelector('.pago-opt[data-pago="flow"]'); if (ya) return ya;
-  var mp = document.querySelector('.pago-opt[data-pago="mercadopago"]'), ef = document.querySelector('.pago-opt[data-pago="efectivo"]');
-  if (!mp || !ef) return null;
-  var op = mp.cloneNode(true);
-  op.dataset.pago = "flow"; op.classList.remove("sel"); op.style.display = "none";
-  var t = op.querySelector(".pago-label, .pay-title"), sb = op.querySelector(".pago-sub, .pay-sub");
-  if (t) t.textContent = "Webpay";
-  if (sb) sb.textContent = "Débito, crédito o transferencia";
-  ef.parentNode.insertBefore(op, ef);
-  return op;
-}
-function v29ElegirPago(m){
-  metodoPago = m;
-  document.querySelectorAll(".pago-opt").forEach(function(o){
-    o.classList.toggle("sel", o.dataset.pago === m);
-    if (o.hasAttribute("role")) o.setAttribute("aria-checked", o.dataset.pago === m ? "true" : "false");
-  });
-  var noteEf = qs("#pagoEfectivoNote"), noteMP = qs("#pagoMPNote"), btn = qs("#btnConfirmar");
-  if (noteEf) noteEf.style.display = m === "efectivo" ? "block" : "none";
-  if (noteMP){
-    if (noteMP.dataset.mp == null){
-      noteMP.dataset.mp = noteMP.innerHTML;
-      /* en las plantillas donde la nota va pegada a su opción, se mueve junto a la elegida */
-      var prev = noteMP.previousElementSibling;
-      noteMP.dataset.pegada = prev && prev.classList.contains("pago-opt") ? "1" : "";
-    }
-    noteMP.style.display = m === "efectivo" ? "none" : "block";
-    noteMP.innerHTML = m === "flow" ? v29NotaFlow() : noteMP.dataset.mp;
-    if (noteMP.dataset.pegada && m !== "efectivo"){
-      var dueno = document.querySelector('.pago-opt[data-pago="' + m + '"]');
-      if (dueno && dueno.nextElementSibling !== noteMP) dueno.parentNode.insertBefore(noteMP, dueno.nextSibling);
-    }
-  }
-  if (btn && !btn.disabled) btn.textContent = m === "efectivo" ? _txt("btnEfectivo", "Confirmar pedido →") : m === "flow" ? "Ir a pagar con Webpay →" : _txt("btnMP", "Ir a MercadoPago →");
-  if (typeof actualizarCampoEmail === "function") actualizarCampoEmail();
-}
-/* Muestra u oculta Webpay según la tienda y deja elegida una forma de pago que exista */
-function v29AjustarPago(mpDisponible){
-  var op = v29OpcionFlow(); if (!op) return;
-  var disp = functionsListas() && state.config.flowActivo === true;
-  op.style.display = disp ? "" : "none";
-  if (!disp && metodoPago === "flow") v29ElegirPago(mpDisponible ? "mercadopago" : "efectivo");
-  else if (disp && !mpDisponible && !_pagoElegido && metodoPago !== "flow") v29ElegirPago("flow");
-}
-/* Panel → Pagos: tarjeta de Flow, debajo de la de Mercado Pago */
-function v29PanelFlow(){
-  var yaEsta = qs("#flowApiKey");
-  if (yaEsta && yaEsta.dataset.listo) return;
-  if (yaEsta){ yaEsta.dataset.listo = "1"; v29EnlazarFlow(); return; }
-  var ref = qs("#btnGuardarMP"); if (!ref) return;
-  var tarjeta = ref.closest(".acard"), div = document.createElement("div");
-  var oculto = ' autocomplete="off" data-lpignore="true" data-form-type="other" spellcheck="false"';
-  var disco = ' style="-webkit-text-security:disc;text-security:disc"';
-  var pasos = ["Crea tu cuenta de comercio en flow.cl y completa los datos de tu negocio.", "En tu cuenta de Flow, busca los datos de integración: API Key y Secret Key.", "Pégalas aquí y guarda. Tus clientes verán la opción «Webpay» al pagar."];
-  var check = '<label style="display:flex;align-items:center;gap:8px;margin:10px 0;font-size:13px;cursor:pointer"><input type="checkbox" id="flowSandbox" style="width:18px;height:18px;flex:none"> Modo de pruebas (llaves del sandbox de Flow)</label>';
-  if (tarjeta){
-    div.className = "acard";
-    div.innerHTML = '<h3 class="acard-title">Webpay con Flow</h3><ol class="mp-guia">' + pasos.map(function(x){ return "<li>" + x + "</li>"; }).join("") + '</ol>' +
-      '<div class="ffield"><label for="flowApiKey">API Key</label><input id="flowApiKey" type="text"' + oculto + '></div>' +
-      '<div class="ffield"><label for="flowSecret">Secret Key</label><input id="flowSecret" type="text"' + oculto + disco + '></div>' + check +
-      '<div class="save-bar"><button id="btnGuardarFlow" class="btn btn-primary" type="button">Guardar Flow</button></div>' +
-      '<p class="mp-estado" id="flowEstado"></p><button id="btnQuitarFlow" class="btn" type="button" style="display:none">Dejar de ofrecer Webpay</button>' +
-      '<p class="pnota">Las llaves se usan solo en el servidor: nunca llegan al navegador de tus clientes.</p>';
-    tarjeta.parentNode.insertBefore(div, tarjeta.nextSibling);
-  } else {
-    var est = qs("#mpEstado") || ref;
-    div.innerHTML = '<h4>💳 Configurar Webpay (Flow)</h4><div class="mp-guia">' + pasos.map(function(x, i){ return "Paso " + (i + 1) + ": " + x; }).join("<br>") + '</div>' +
-      '<label class="plabel" for="flowApiKey">API Key</label><input class="field" id="flowApiKey" type="text"' + oculto + '>' +
-      '<label class="plabel" for="flowSecret">Secret Key</label><input class="field" id="flowSecret" type="text"' + oculto + disco + '>' + check +
-      '<button class="pill pill-solid pill-sm panel-full" id="btnGuardarFlow" type="button">Guardar Flow</button>' +
-      '<div class="mp-estado" id="flowEstado"></div><button class="pill pill-sm panel-full" id="btnQuitarFlow" type="button" style="display:none;margin-top:8px">Dejar de ofrecer Webpay</button>';
-    est.parentNode.insertBefore(div, est.nextSibling);
-  }
-  qs("#flowApiKey").dataset.listo = "1";
-  v29EnlazarFlow();
-}
-function v29EnlazarFlow(){
-  qs("#btnGuardarFlow").addEventListener("click", async function(){
-    var k = qs("#flowApiKey").value.trim(), sk = qs("#flowSecret").value.trim();
-    if (!k || !sk){ qs("#flowEstado").textContent = "❌ Faltan la API Key o la Secret Key"; return; }
-    var ok = await saveConfigPrivado("flowApiKey", k);
-    if (ok) ok = await saveConfigPrivado("flowSecretKey", sk);
-    if (ok) ok = await saveConfigPrivado("flowSandbox", qs("#flowSandbox").checked);
-    if (ok) await saveConfig("flowActivo", true);
-    v29PintarFlow();
-    if (ok) toast(DEMO ? "💳 Demo: llaves guardadas en esta sesión" : "💳 Flow guardado — haz una compra de prueba para confirmar que conecta");
-  });
-  qs("#btnQuitarFlow").addEventListener("click", async function(){
-    await saveConfig("flowActivo", false); v29PintarFlow(); toast("Webpay ya no se ofrece en el checkout");
-  });
-}
-function v29PintarFlow(){
-  var k = qs("#flowApiKey"); if (!k) return;
-  var cp = state.configPrivado || {}, sk = qs("#flowSecret"), sb = qs("#flowSandbox");
-  if (document.activeElement !== k && !k.value) k.value = cp.flowApiKey || "";
-  if (document.activeElement !== sk && !sk.value) sk.value = cp.flowSecretKey || "";
-  if (cp.flowSandbox != null && document.activeElement !== sb) sb.checked = cp.flowSandbox === true;
-  var listo = !!(cp.flowApiKey && cp.flowSecretKey), activo = listo && state.config.flowActivo === true;
-  qs("#flowEstado").textContent = activo ? "✅ Activo en el checkout" + (cp.flowSandbox === true ? " (modo de pruebas)" : "") : listo ? "⏸ Llaves guardadas, pero Webpay no se ofrece" : "⚠️ No configurado";
-  qs("#btnQuitarFlow").style.display = activo ? "" : "none";
-  try { v30PintarPagos(); } catch(e){}
-}
-
-/* ─────────── P30 · Horario de atención, barra de pedido en curso y panel en tarjetas ───────────
-   config.horario = { activo: true, dias: { "0": [{ a: "12:00", c: "23:00" }], … "6": [...] } }   (0 = domingo)
-   Hasta dos tramos por día; un tramo que cierra "antes" de abrir cruza la medianoche (18:00 a 02:00).
-   La tienda está abierta si «Recibir pedidos» (config.abierto) está encendido Y, cuando hay horario,
-   la hora de Chile cae dentro de un tramo. */
-function hrDias(){ return ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]; }
-function hrAhora(){
-  try {
-    var o = {};
-    new Intl.DateTimeFormat("en-US", { timeZone: "America/Santiago", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false })
-      .formatToParts(window.__hrFecha || new Date()).forEach(function(x){ o[x.type] = x.value; });
-    var d = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(o.weekday);
-    if (d < 0) throw new Error("día");
-    return { dia: d, min: (Number(o.hour) % 24) * 60 + Number(o.minute) };
-  } catch(e){ var n = new Date(); return { dia: n.getDay(), min: n.getHours() * 60 + n.getMinutes() }; }
-}
-function hrMin(t){ var m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "")); return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? Number(m[1]) * 60 + Number(m[2]) : null; }
-function hrTramos(h, dia){
-  var t = h && h.dias && h.dias[dia];
-  return (Array.isArray(t) ? t : []).map(function(x){ return { a: hrMin(x && x.a), c: hrMin(x && x.c), ta: x && x.a, tc: x && x.c }; })
-    .filter(function(x){ return x.a != null && x.c != null && x.a !== x.c; }).sort(function(x, y){ return x.a - y.a; });
-}
-function hrTiene(h){
-  if (!h || h.activo !== true) return false;
-  for (var d = 0; d < 7; d++) if (hrTramos(h, d).length) return true;
-  return false;
-}
-/* → { abierta, texto, manual, sinHorario, hasta: "23:00", abre: "hoy a las 12:00" } */
-function hrEstado(){
-  var c = state.config || {}, h = c.horario;
-  if (c.abierto === false) return { abierta: false, manual: true, texto: "Cerrado por ahora" };
-  if (!hrTiene(h)) return { abierta: true, sinHorario: true, texto: "Abierto ahora" };
-  var n = hrAhora(), i, t;
-  var ayer = hrTramos(h, (n.dia + 6) % 7);
-  for (i = 0; i < ayer.length; i++){ t = ayer[i]; if (t.c < t.a && n.min < t.c) return { abierta: true, texto: "Abierto ahora", hasta: t.tc }; }
-  var hoy = hrTramos(h, n.dia);
-  for (i = 0; i < hoy.length; i++){ t = hoy[i]; if (t.c > t.a ? (n.min >= t.a && n.min < t.c) : n.min >= t.a) return { abierta: true, texto: "Abierto ahora", hasta: t.tc }; }
-  var abre = null, prox = hoy.filter(function(x){ return x.a > n.min; })[0];
-  if (prox) abre = "hoy a las " + prox.ta;
-  else for (var k = 1; k <= 7 && !abre; k++){
-    var d = (n.dia + k) % 7, tr = hrTramos(h, d);
-    if (tr.length) abre = (k === 1 ? "mañana" : "el " + hrDias()[d].toLowerCase()) + " a las " + tr[0].ta;
-  }
-  return { abierta: false, texto: abre ? "Cerrado · abre " + abre : "Cerrado", abre: abre };
-}
-function tiendaAbierta(){ return hrEstado().abierta; }
-function hrAviso(){ var e = hrEstado(); return e.abre ? "Estamos cerrados. Abrimos " + e.abre : "La tienda está cerrada por ahora"; }
-function hrPintar(){
-  var e = hrEstado();
-  document.body.classList.toggle("cerrada", !e.abierta);
-  var b = qs("#bannerCerrada");
-  if (b){ if (b.dataset.orig == null) b.dataset.orig = b.textContent; b.textContent = e.abre ? "🔴 Estamos cerrados · abrimos " + e.abre : b.dataset.orig; }
-  var est = qs("#vtEstado"); if (est){ est.textContent = e.texto; est.classList.toggle("cerr", !e.abierta); }
-  window._hrUlt = e.abierta;
-}
-/* la tienda abre y cierra sola aunque la página quede abierta */
-setInterval(function(){
-  try {
-    if (tiendaAbierta() === window._hrUlt) return;
-    hrPintar();
-    var p = qs("#adminPanel"); if (p && p.classList.contains("open") && p.classList.contains("en-home")) v26PanelHome();
-  } catch(e){}
-}, 30000);
-
-/* Editor del horario (Panel → Datos y estado) */
-function hrLeer(){
-  var h = (state.config || {}).horario, o = { activo: !!(h && h.activo === true), dias: {} };
-  for (var d = 0; d < 7; d++) o.dias[d] = ((h && h.dias && Array.isArray(h.dias[d])) ? h.dias[d] : []).slice(0, 2).map(function(x){ return { a: String(x.a || ""), c: String(x.c || "") }; });
-  return o;
-}
-function hrGuardar(h, repintar){
-  state.config.horario = h;
-  try { saveConfig("horario", h); } catch(e){ console.warn("horario:", e); }
-  hrPintar();
-  if (repintar) hrRenderEditor(true);
-}
-function hrRenderEditor(forzar){
-  var box = qs("#hrEditor"); if (!box) return;
-  if (!forzar && box.contains(document.activeElement)) return;
-  var h = hrLeer(), act = qs("#hrActivo");
-  if (act && document.activeElement !== act) act.checked = h.activo;
-  if (!h.activo){ box.innerHTML = '<p class="pnota" style="font-size:12.5px;margin:0">Sin horario, la tienda recibe pedidos todo el tiempo mientras «Recibir pedidos» esté encendido.</p>'; return; }
-  box.innerHTML = [1, 2, 3, 4, 5, 6, 0].map(function(d){
-    var tr = h.dias[d];
-    return '<div class="hr-dia" data-hd="' + d + '"><div class="hr-cab"><label class="hr-nom"><input type="checkbox" data-hon' + (tr.length ? " checked" : "") + '>' + hrDias()[d] + '</label>' +
-      (tr.length ? (tr.length < 2 ? '<button type="button" class="hr-mas" data-hmas>＋ tramo</button>' : '') : '<span class="hr-cerr">Cerrado</span>') + '</div>' +
-      tr.map(function(t, i){
-        return '<div class="hr-tramo"><input type="time" data-ha="' + i + '" value="' + esc(t.a) + '" aria-label="' + hrDias()[d] + ', abre"><span>a</span><input type="time" data-hc="' + i + '" value="' + esc(t.c) + '" aria-label="' + hrDias()[d] + ', cierra">' +
-          (i ? '<button type="button" class="hr-x" data-hx="' + i + '" aria-label="Quitar este tramo">✕</button>' : '') + '</div>';
-      }).join("") + '</div>';
-  }).join("") +
-    '<button type="button" class="pill pill-outline-muted pill-sm panel-full" id="hrCopiar">Copiar el lunes a todos los días</button>' +
-    '<p class="pnota" style="font-size:12px;margin:8px 0 0">Si cierras después de medianoche, pon la hora tal cual (ej. 18:00 a 02:00). «＋ tramo» sirve para quien cierra a media tarde y vuelve a abrir.</p>';
-}
-(function(){
-  var card = qs("#hrCard"); if (!card) return;
-  card.addEventListener("change", function(e){
-    var h = hrLeer(), fila = e.target.closest("[data-hd]"), d = fila ? fila.dataset.hd : null;
-    if (e.target.id === "hrActivo"){
-      h.activo = e.target.checked;
-      /* primera vez: se propone un horario parejo para que solo haya que ajustarlo */
-      if (h.activo && !hrTiene(h)) for (var k = 0; k < 7; k++) h.dias[k] = [{ a: "12:00", c: "22:00" }];
-      hrGuardar(h, true); return;
-    }
-    if (d == null) return;
-    if (e.target.hasAttribute("data-hon")){ h.dias[d] = e.target.checked ? [{ a: "12:00", c: "22:00" }] : []; hrGuardar(h, true); return; }
-    var ia = e.target.dataset.ha, ic = e.target.dataset.hc;
-    if (ia != null && h.dias[d][ia]){ h.dias[d][ia].a = e.target.value; hrGuardar(h, false); }
-    if (ic != null && h.dias[d][ic]){ h.dias[d][ic].c = e.target.value; hrGuardar(h, false); }
-  });
-  card.addEventListener("click", function(e){
-    var h = hrLeer(), fila = e.target.closest("[data-hd]"), d = fila ? fila.dataset.hd : null, b;
-    if (e.target.closest("#hrCopiar")){
-      for (var k = 0; k < 7; k++) h.dias[k] = h.dias[1].map(function(x){ return { a: x.a, c: x.c }; });
-      hrGuardar(h, true); if (typeof toast === "function") toast("Horario copiado a todos los días"); return;
-    }
-    if (d == null) return;
-    if (e.target.closest("[data-hmas]")){ h.dias[d].push({ a: "19:00", c: "23:00" }); hrGuardar(h, true); return; }
-    if ((b = e.target.closest("[data-hx]"))){ h.dias[d].splice(Number(b.dataset.hx), 1); hrGuardar(h, true); }
-  });
-})();
-
-/* La barra «pedido en curso»: en el estilo App va dentro de la ficha (bajo el nombre), no encima de la portada */
-function v30UbicarBanner(app){
-  var b = qs("#bannerPedidoActivo"), ini = qs("#page-inicio"), cab = qs("#vtCab");
-  if (!b || !ini) return;
-  var bl = cab ? cab.querySelector(".vt-bloque") : null;
-  if (app && bl){ if (bl.firstElementChild !== b) bl.insertBefore(b, bl.firstChild); }
-  else if (ini.firstElementChild !== b) ini.insertBefore(b, ini.firstChild);
-}
-
-/* Panel → Pagos: estado de cada medio y formulario plegado cuando ya está conectado */
-function v30PintarPagos(){
-  var _v30Abrir = window._v30Abrir || (window._v30Abrir = { mp: false, flow: false });
-  var cp = state.configPrivado || {}, c = state.config || {};
-  var fin = function(t){ t = String(t || ""); return t.length > 4 ? t.slice(-4) : "••••"; };
-  var chip = function(id, txt, cls){ var e = qs(id); if (e){ e.textContent = txt; e.className = "pchip" + (cls ? " " + cls : ""); } };
-  var mpOk = !!cp.mpToken && cp.mpToken !== "CONFIGURAR_TOKEN";
-  if (qs("#mpChip")){
-    chip("#mpChip", mpOk ? "Conectado" : "Sin configurar", mpOk ? "ok" : "");
-    qs("#mpResumen").style.display = mpOk && !_v30Abrir.mp ? "" : "none";
-    qs("#mpResumenTxt").textContent = "Token guardado · termina en " + fin(cp.mpToken);
-    qs("#mpForm").style.display = mpOk && !_v30Abrir.mp ? "none" : "";
-  }
-  if (qs("#flowChip")){
-    var fl = !!(cp.flowApiKey && cp.flowSecretKey), act = fl && c.flowActivo === true;
-    chip("#flowChip", act ? (cp.flowSandbox === true ? "Activo · pruebas" : "Activo") : fl ? "En pausa" : "Sin configurar", act ? (cp.flowSandbox === true ? "warn" : "ok") : "");
-    qs("#flowResumen").style.display = fl && !_v30Abrir.flow ? "" : "none";
-    qs("#flowResumenTxt").textContent = "Llaves guardadas · API Key termina en " + fin(cp.flowApiKey);
-    qs("#flowForm").style.display = fl && !_v30Abrir.flow ? "none" : "";
-  }
-}
-(function(){
-  var a = qs("#mpCambiar"), b = qs("#flowCambiar");
-  if (a) a.addEventListener("click", function(){ v30PintarPagos(); window._v30Abrir.mp = true; v30PintarPagos(); var t = qs("#mpToken"); if (t) t.focus(); });
-  if (b) b.addEventListener("click", function(){ v30PintarPagos(); window._v30Abrir.flow = true; v30PintarPagos(); var t = qs("#flowApiKey"); if (t) t.focus(); });
-  var gm = qs("#btnGuardarMP"), gf = qs("#btnGuardarFlow");
-  if (gm) gm.addEventListener("click", function(){ setTimeout(function(){ if (window._v30Abrir) window._v30Abrir.mp = false; v30PintarPagos(); }, 600); });
-  if (gf) gf.addEventListener("click", function(){ setTimeout(function(){ if (window._v30Abrir) window._v30Abrir.flow = false; v30PintarPagos(); }, 600); });
-})();
-function v30PintarApariencia(){
-  var d = qs("#pDominioTxt"); if (d) d.textContent = location.hostname;
-}

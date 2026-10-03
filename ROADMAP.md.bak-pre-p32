@@ -552,7 +552,8 @@ funcionamiento sin conexión.
   pedidos"). La portada dice "Abierto ahora" o "Cerrado · abre hoy a las
   18:00", y la tienda cambia sola cada 30 s aunque la página quede abierta.
   El inicio del panel avisa si falta el horario.
-  Desde P31 el servidor también lo exige (ver punto 19).
+  Pendiente: el servidor todavía no rechaza pedidos fuera de horario (una
+  pestaña abierta desde antes del cierre podría pedir).
 - **Barra de pedido en curso:** rediseñada (ícono, pasos, "Ver") y, en el
   estilo App, ubicada dentro de la ficha bajo el nombre (`v30UbicarBanner`):
   antes quedaba encima de la portada, tapando los botones. Ya no parpadea
@@ -565,28 +566,3 @@ funcionamiento sin conexión.
   las plantillas retail y Tienda Pro dejaron de mostrar el texto de ejemplo.
 - **Flow:** ya no se envía `optional` (Flow se lo mostraba al comprador).
   Probado con una cuenta real: pago, confirmación y pedido funcionan.
-
-## 19. Cerrado es cerrado + logo nítido (P32) — ✅ hecho
-
-- **Horario en el servidor:** `estadoHorario()` en `_firebase.js` repite la
-  lógica de `hrEstado()` del navegador y `validarPedidoCompleto()` la revisa
-  antes que cualquier otra cosa. Con la tienda cerrada (a mano o por horario)
-  no se crea un pedido en efectivo ni se inicia un pago con Mercado Pago o
-  Webpay, aunque el cliente tenga la página abierta desde antes del cierre.
-  El cliente ve "Estamos cerrados. Abrimos mañana a las 12:00."
-  No afecta a: un pago que se inició con la tienda abierta y se confirma
-  después del cierre (ese pedido sí entra, porque ya está pagado), ni a la
-  caja local (el personal vende en el mostrador a cualquier hora).
-- **Logo del splash pixelado y con el borde dentado:** el logo se guardaba a
-  256 px (al crear la tienda) o 280 px (desde el panel) y el splash lo muestra
-  casi a pantalla completa. Además, al quitar el fondo blanco de un JPG
-  quedaba un filo claro. `procesarLogo()` (misma función en `app.js` y
-  `generar-tienda.html`) ahora guarda hasta 1000x800 px, devuelve a las tres
-  capas del borde el color del interior del logo con la transparencia que
-  corresponde, y se achica sola si pasa de 300 KB. Las tiendas que ya tienen
-  logo deben subirlo de nuevo: el guardado quedó en baja resolución.
-- **Programa de vendedores: descartado.** Se alcanzó a entregar en P31
-  (página `/vendedores`, invitación en el landing, postulaciones en
-  `/leads.html`) y se investigó cómo lo hacen Bsale, Toteat, Fudo y
-  Rindegastos, pero el dueño decidió no seguir. P32 lo retira si estaba
-  instalado.

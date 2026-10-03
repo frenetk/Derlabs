@@ -1,0 +1,2871 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta name="color-scheme" content="only light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>TEST BURGERS</title>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<meta name="description" content="Hamburguesería — pide online, junta puntos y canjea cupones.">
+<meta name="theme-color" content="#9B1B30">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════
+   IDENTIDAD VISUAL — tokens
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  color-scheme: only light;
+  --rojo:   #9B1B30;
+  --rojo-h: #C4273A;
+  --rojo-texto: #FFFFFF;
+  --blanco: #FFFFFF;
+  --crema:  #FBF7F5;
+  --texto:  #1A1A1A;
+  --muted:  #6B6B6B;
+  --dorado: #D4A017;
+  --sombra: rgba(155,27,48,0.15);
+  --verde:  #1E7B3C;
+  --borde:  #EEEEEE;
+  --nav-h:  56px;
+  --tab-h:  64px;
+}
+*{box-sizing:border-box}
+.ico-inline{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:1em;height:1em;vertical-align:-0.14em;
+  flex-shrink:0;
+}
+.ico-inline svg{width:100%;height:100%;display:block}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:#F0F0F0;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  color:var(--texto);
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+}
+img{display:block;max-width:100%}
+button{font-family:'Plus Jakarta Sans',sans-serif;color:inherit}
+input,select,textarea{font-family:'Plus Jakarta Sans',sans-serif;color:var(--texto)}
+.bc{font-family:'Barlow Condensed',sans-serif;font-weight:700}
+
+.wrapper{
+  max-width:480px;margin:0 auto;
+  background:var(--blanco);
+  min-height:100vh;position:relative;
+  box-shadow:0 0 30px rgba(0,0,0,.06);
+  padding-bottom:calc(var(--tab-h) + 0px + 24px);
+}
+
+/* ─── Botones pill ─── */
+.pill{
+  border-radius:999px;
+  padding:12px 24px;
+  font-weight:800;font-size:15px;
+  border:2px solid transparent;
+  cursor:pointer;
+  transition:all .2s ease;
+  line-height:1.2;
+}
+.pill:active{transform:scale(.97)}
+.pill-solid{background:var(--rojo);color:var(--rojo-texto)}
+
+.pill-outline{background:transparent;border-color:var(--rojo);color:var(--rojo)}
+
+.pill-white{background:#fff;color:var(--rojo)}
+.pill-gris{background:#F5F5F5;color:var(--muted)}
+.pill-outline-white{background:transparent;border-color:#fff;color:#fff}
+.pill-outline-muted{background:transparent;border-color:#D8D8D8;color:#8A8A8A}
+.pill-sm{padding:8px 16px;font-size:13px}
+.pill-lg{height:52px;font-size:16px;width:100%}
+
+/* ─── Cards ─── */
+.card{
+  background:#fff;border-radius:20px;
+  box-shadow:0 4px 24px var(--sombra);
+  transition:all .2s ease;
+}
+@media (hover:hover){ .card.lift:hover{transform:translateY(-4px)} }
+
+.sec-title{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:28px;letter-spacing:.5px;text-transform:uppercase;
+  margin:0 0 14px;
+}
+.vacio{font-size:13.5px;color:var(--muted);font-weight:600;padding:8px 2px}
+
+/* NAV */
+/* ══════════════════════════════════════════════════════════════
+   NAV
+   ══════════════════════════════════════════════════════════════ */
+.navbar{
+  position:sticky;top:0;z-index:130;
+  height:var(--nav-h);
+  background:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.06);
+}
+.nav-icon{
+  background:none;border:none;font-size:21px;cursor:pointer;
+  width:40px;height:40px;border-radius:999px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s ease;position:relative;
+}
+.nav-icon:active{transform:scale(.9)}
+#btnBack{display:none}
+body[data-page]:not([data-page="inicio"]) #btnBack{display:flex}
+body[data-page]:not([data-page="inicio"]) #btnBurger{display:none}
+.logo{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:24px;letter-spacing:1.5px;color:var(--rojo);
+  cursor:pointer;user-select:none;-webkit-user-select:none;
+  position:absolute;left:50%;transform:translateX(-50%);
+  white-space:nowrap;
+  height:calc(var(--nav-h) - 10px);
+  display:inline-flex;align-items:center;justify-content:center;
+  max-width:min(220px, 60vw);overflow:hidden;
+}
+.logo img{
+  max-height:100%;max-width:100%;width:auto;height:auto;
+  object-fit:contain;display:block;
+  mix-blend-mode:multiply;
+}
+.logo #logoTexto{white-space:nowrap}
+/* Con logo cargado, el navbar crece para darle mas espacio al logo
+   horizontal (aspect ~3:1): mas alto = mas ancho visible. */
+body.con-logo{ --nav-h: 72px; }
+body.con-logo .logo{ height:calc(var(--nav-h) - 10px); max-width:min(320px, 78vw); }
+body.con-logo .logo img{ max-height:100%; max-width:100%; }
+#cartBadge{
+  position:absolute;top:2px;right:0;
+  min-width:18px;height:18px;padding:0 5px;
+  background:var(--rojo);color:var(--rojo-texto);border-radius:999px;
+  font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s ease;
+}
+#cartBadge.oculto{transform:scale(0)}
+#cartBadge.pop{animation:badgePop .35s ease}
+@keyframes badgePop{0%{transform:scale(1)}50%{transform:scale(1.45)}100%{transform:scale(1)}}
+
+#menuDrop{
+  position:fixed;top:calc(var(--nav-h) + 4px);z-index:135;
+  left:max(12px, calc(50% - 240px + 12px));
+  background:#fff;border-radius:16px;
+  box-shadow:0 8px 30px rgba(0,0,0,.14);
+  padding:8px;display:none;min-width:190px;
+}
+body.dev-on #menuDrop{top:calc(var(--nav-h) + 48px)}
+#menuDrop.open{display:block}
+.mlink{
+  display:block;width:100%;text-align:left;background:none;border:none;
+  padding:10px 14px;font-size:14px;font-weight:700;border-radius:10px;
+  cursor:pointer;transition:all .2s ease;
+}
+
+
+/* ─── Banner tienda cerrada ─── */
+#bannerCerrada{
+  display:none;
+  background:#FDECEC;color:#8A1220;
+  font-size:13px;font-weight:800;text-align:center;
+  padding:9px 14px;
+}
+body.cerrada #bannerCerrada{display:block}
+
+/* TABBAR */
+/* ══════════════════════════════════════════════════════════════
+   TABBAR
+   ══════════════════════════════════════════════════════════════ */
+.tabbar{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;
+  /* La altura incluye el safe-area inset (iPhone con notch): sin franja blanca debajo */
+  height:calc(var(--tab-h) + 0px);
+  background:#fff;border-top:1px solid #EEEEEE;
+  display:flex;z-index:140;box-sizing:border-box;
+  padding-bottom:0px;
+}
+.tab{
+  flex:1;background:none;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font-size:10.5px;font-weight:800;color:var(--muted);
+  transition:all .2s ease;
+}
+.tab .t-svg{width:22px;height:22px;display:block;stroke-width:1.9}
+.tab.active{color:var(--rojo)}
+.tab.active .t-svg{stroke-width:2.3}
+.nav-icon .ico-svg{width:22px;height:22px;display:block}
+
+/* ─── Botón flotante ─── */
+.float-btn{
+  position:fixed;bottom:calc(var(--tab-h) + 14px);
+  right:max(16px, calc(50% - 240px + 16px));
+  z-index:138;display:none;
+  background:var(--rojo);color:var(--rojo-texto);border:none;
+  border-radius:999px;padding:12px 22px;
+  font-size:14px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 18px rgba(155,27,48,0.35);
+  transition:all .2s ease;
+  opacity:.92;
+  max-width:calc(100vw - 32px);
+}
+.float-btn:active{transform:scale(.97)}
+body[data-page="inicio"] .float-btn{display:block}
+
+/* SPA NAVIGATION */
+/* ══════════════════════════════════════════════════════════════
+   SPA NAVIGATION — páginas
+   ══════════════════════════════════════════════════════════════ */
+.page{display:none;opacity:0;transition:opacity .25s ease}
+.page.active{display:block;opacity:1}
+
+/* INICIO */
+/* ══════════════════════════════════════════════════════════════
+   INICIO
+   ══════════════════════════════════════════════════════════════ */
+.hero{
+  margin:16px;position:relative;
+  height:220px;border-radius:20px;overflow:hidden;
+  background:#E8E4E1;
+  box-shadow:0 4px 24px var(--sombra);
+}
+.hero img{width:100%;height:100%;object-fit:cover}
+.hero::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.78) 100%);
+  pointer-events:none;
+}
+.hero-content{
+  position:absolute;left:16px;right:16px;bottom:14px;z-index:2;
+}
+.hero-badge{
+  display:inline-block;background:var(--crema);color:var(--rojo);
+  border-radius:999px;padding:5px 13px;
+  font-size:11.5px;font-weight:800;letter-spacing:.3px;margin-bottom:8px;
+}
+.hero-title{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:36px;letter-spacing:1px;line-height:1;
+  color:#fff;margin:0 0 3px;text-transform:uppercase;
+}
+.hero-sub{color:rgba(255,255,255,.92);font-size:13px;font-weight:600;margin:0 0 12px}
+
+.club-card{
+  margin:0 16px 26px;
+  background:var(--crema);border-radius:20px;
+  display:flex;align-items:center;gap:13px;
+  padding:16px;
+}
+.club-ico{
+  width:46px;height:46px;flex-shrink:0;border-radius:999px;
+  background:var(--dorado);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;box-shadow:0 3px 10px rgba(212,160,23,.4);
+}
+.club-txt{flex:1;font-size:14px;font-weight:800;line-height:1.35}
+
+.bloque{padding:0 16px;margin-bottom:28px}
+
+/* — Ofertas de hoy: carrusel — */
+.ofertas-scroll{
+  display:flex;gap:14px;overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  padding:4px 16px 14px;margin:0 -16px;
+  scrollbar-width:none;
+}
+.ofertas-scroll::-webkit-scrollbar{display:none}
+.oferta-card{
+  flex:0 0 200px;scroll-snap-align:start;
+  position:relative;border-radius:20px;overflow:hidden;
+  aspect-ratio:3/4;background:#E8E4E1;
+  box-shadow:0 4px 24px var(--sombra);
+  transition:all .2s ease;cursor:pointer;
+}
+@media (hover:hover){ .oferta-card:hover{transform:translateY(-4px)} }
+.oferta-card img{width:100%;height:100%;object-fit:cover}
+.oferta-card::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.78) 100%);
+  pointer-events:none;
+}
+.oferta-info{
+  position:absolute;left:12px;right:12px;bottom:12px;z-index:2;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:8px;
+}
+.oferta-nombre{
+  color:#fff;font-weight:800;font-size:15px;line-height:1.25;
+  margin:0 0 8px;text-shadow:0 1px 6px rgba(0,0,0,.4);
+}
+.oferta-precio{
+  display:inline-block;background:#fff;color:var(--texto);
+  border-radius:999px;padding:5px 12px;
+  font-size:13px;font-weight:800;
+}
+.btn-add-circ{
+  width:38px;height:38px;flex-shrink:0;border-radius:999px;
+  background:var(--rojo);color:var(--rojo-texto);border:none;
+  font-size:20px;font-weight:800;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 12px rgba(155,27,48,.5);
+  transition:all .2s ease;
+}
+
+.btn-add-circ:active{transform:scale(.9)}
+
+/* — Categorías grid — */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cat-tile{
+  position:relative;border-radius:16px;overflow:hidden;
+  aspect-ratio:1/1;background:#E8E4E1;cursor:pointer;
+  box-shadow:0 4px 24px var(--sombra);
+  border:none;padding:0;transition:all .2s ease;
+}
+.cat-tile img{width:100%;height:100%;object-fit:cover}
+
+.cat-tile span{
+  position:absolute;inset:0;z-index:2;
+  display:flex;align-items:flex-end;justify-content:flex-start;
+  padding:0 14px 14px;
+  color:#fff;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  font-weight:600;
+  font-size:14px;
+  letter-spacing:.3px;
+  text-align:left;
+  text-shadow:0 1px 4px rgba(0,0,0,.5);
+  line-height:1.25;
+}
+.cat-tile .cat-arrow{display:none}
+.cat-tile::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(to bottom, rgba(0,0,0,0) 45%, rgba(0,0,0,.75) 100%);
+  pointer-events:none;
+}
+@media (hover:hover){
+  .cat-tile:hover{
+    background:var(--rojo);
+    transform:translateY(-2px);
+    box-shadow:0 6px 18px var(--sombra);
+  }
+}
+.cat-tile:active{transform:scale(.97)}
+
+.cat-tile .cat-arrow{
+  font-family:'Anton',sans-serif;
+  font-size:20px;line-height:1;
+  color:var(--rojo);flex-shrink:0;
+  transition:all .18s ease;
+}
+@media (hover:hover){
+  .cat-tile:hover .cat-tile-nombre{color:#fff}
+  .cat-tile:hover .cat-arrow{color:#fff;transform:translateX(3px)}
+}
+
+/* — Más pedidos / lista de productos — */
+.prod-item{
+  display:flex;align-items:center;gap:13px;
+  padding:14px 0;border-bottom:1px solid #F0F0F0;
+}
+.prod-item:last-child{border-bottom:none}
+.prod-img{
+  width:80px;height:80px;flex-shrink:0;
+  border-radius:16px;overflow:hidden;background:#E8E4E1;
+}
+.prod-img img{width:100%;height:100%;object-fit:cover;aspect-ratio:1/1}
+.prod-info{flex:1;min-width:0}
+.prod-nombre{font-weight:800;font-size:15px;margin:0 0 3px;line-height:1.3}
+.prod-desc{
+  font-size:13px;color:var(--muted);margin:0 0 5px;line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.prod-precio{color:var(--rojo);font-weight:800;font-size:15px}
+.prod-cta{flex-shrink:0;align-self:center}
+
+/* MENU */
+/* ══════════════════════════════════════════════════════════════
+   MENU
+   ══════════════════════════════════════════════════════════════ */
+.filtros{
+  display:flex;gap:8px;overflow-x:auto;
+  padding:14px 16px 6px;scrollbar-width:none;
+  position:sticky;top:var(--nav-h);z-index:120;background:#fff;
+}
+body.dev-on .filtros{top:calc(var(--nav-h) + 48px)}
+.filtros::-webkit-scrollbar{display:none}
+.fpill{
+  flex-shrink:0;border:none;border-radius:999px;
+  padding:9px 18px;font-size:13.5px;font-weight:800;cursor:pointer;
+  background:#F5F5F5;color:var(--muted);
+  transition:all .2s ease;
+}
+.fpill.active{background:var(--rojo);color:var(--rojo-texto)}
+.fpill:active{transform:scale(.97)}
+.menu-list{padding:6px 16px 10px}
+.menu-list .prod-img{width:100px;height:100px;border-radius:12px}
+
+/* CARRITO */
+/* ══════════════════════════════════════════════════════════════
+   CARRITO — bottom sheet
+   ══════════════════════════════════════════════════════════════ */
+#cartOverlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,.35);
+  -webkit-backdrop-filter:blur(4px) brightness(0.7);
+  backdrop-filter:blur(4px) brightness(0.7);
+  opacity:0;pointer-events:none;transition:opacity .25s ease;
+}
+#cartOverlay.open{opacity:1;pointer-events:auto}
+#cartSheet{
+  position:fixed;bottom:0;left:50%;transform:translate(-50%,105%);
+  width:100%;max-width:480px;z-index:310;
+  background:#fff;border-radius:24px 24px 0 0;
+  max-height:85vh;display:flex;flex-direction:column;
+  transition:transform .3s ease;
+  box-shadow:0 -8px 40px rgba(0,0,0,.2);
+}
+#cartSheet.open{transform:translate(-50%,0)}
+.sheet-handle{
+  width:44px;height:5px;border-radius:999px;background:#DDD;
+  margin:10px auto 2px;flex-shrink:0;
+}
+.cart-head{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 18px 12px;border-bottom:1px solid var(--borde);
+}
+.cart-head h3{margin:0;font-size:17px;font-weight:900;flex:1}
+.cart-count{
+  background:#F5F5F5;color:var(--muted);border-radius:999px;
+  padding:3px 11px;font-size:12px;font-weight:800;
+}
+.cart-close{background:none;border:none;font-size:19px;cursor:pointer;padding:4px 8px;color:var(--muted)}
+.cart-items{overflow-y:auto;flex:1;padding:6px 18px}
+.citem{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 0;border-bottom:1px solid #F5F5F5;
+}
+.citem:last-child{border-bottom:none}
+.citem-img{width:60px;height:60px;border-radius:10px;overflow:hidden;background:#E8E4E1;flex-shrink:0}
+.citem-img img{width:100%;height:100%;object-fit:cover}
+.citem-info{flex:1;min-width:0}
+.citem-nombre{font-weight:800;font-size:14px;margin:0 0 2px}
+.citem-var{font-size:12px;color:var(--muted);font-weight:600}
+.qty-ctrl{
+  display:flex;align-items:center;gap:2px;
+  background:#F5F5F5;border-radius:999px;padding:2px;margin-top:7px;
+  width:max-content;
+}
+.qty-btn{
+  width:36px;height:36px;border:none;background:none;border-radius:999px;
+  font-size:17px;font-weight:800;cursor:pointer;color:var(--texto);
+  transition:all .2s ease;line-height:1;
+}
+.qty-btn:active{transform:scale(.9);background:#fff}
+.qty-num{min-width:24px;text-align:center;font-weight:800;font-size:14px}
+.citem-precio{font-weight:800;font-size:14.5px;flex-shrink:0;align-self:flex-start;margin-top:4px}
+.cart-foot{
+  border-top:1px solid var(--borde);padding:14px 18px 18px;
+  background:#fff;border-radius:0 0 0 0;flex-shrink:0;
+  padding-bottom:calc(18px + 0px);
+}
+.tot-row{display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;color:var(--muted);margin-bottom:5px}
+.tot-row.grande{font-size:18px;font-weight:900;color:var(--texto);margin:8px 0 14px}
+.free-del{color:var(--verde);font-weight:800;font-size:13px;margin:2px 0 6px;display:none}
+.free-del.show{display:block}
+
+/* CHECKOUT */
+/* ══════════════════════════════════════════════════════════════
+   CHECKOUT
+   ══════════════════════════════════════════════════════════════ */
+.ck-wrap{padding:18px 16px 120px}
+.tipo-selector{display:flex;gap:10px;margin-bottom:22px}
+.tipo-btn{
+  flex:1;border-radius:999px;padding:12px;
+  font-weight:800;font-size:14.5px;cursor:pointer;
+  border:2px solid var(--rojo);color:var(--rojo);background:transparent;
+  transition:all .2s ease;
+}
+.tipo-btn.active{background:var(--rojo);color:var(--rojo-texto)}
+.tipo-btn:active{transform:scale(.97)}
+
+.ffield{position:relative;margin-bottom:16px}
+.ffield input,.ffield textarea,.ffield select{
+  width:100%;padding:16px 14px 8px;
+  border:2px solid #E0E0E0;border-radius:12px;
+  font-size:14.5px;outline:none;background:#fff;
+  transition:all .2s ease;
+}
+.ffield textarea{min-height:74px;resize:vertical}
+.ffield label{
+  position:absolute;left:15px;top:13px;
+  font-size:14px;color:var(--muted);font-weight:600;
+  pointer-events:none;transition:all .2s ease;background:transparent;
+}
+.ffield input:focus,.ffield textarea:focus,.ffield select:focus{border-color:var(--rojo)}
+.ffield input:focus + label,
+.ffield input:not(:placeholder-shown) + label,
+.ffield textarea:focus + label,
+.ffield textarea:not(:placeholder-shown) + label,
+.ffield select:focus + label,
+.ffield select.lleno + label{
+  top:5px;font-size:11px;color:var(--rojo);font-weight:800;
+}
+.ffield.error input,.ffield.error textarea,.ffield.error select{border-color:var(--rojo);background:#FFF8F8}
+.ffield.shake{animation:shake .4s ease}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-7px)}40%{transform:translateX(7px)}
+  60%{transform:translateX(-5px)}80%{transform:translateX(5px)}
+}
+
+.ck-resumen{
+  position:fixed;bottom:var(--tab-h);left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;z-index:125;
+  background:var(--crema);border-radius:20px 20px 0 0;
+  padding:0 18px 16px;
+  box-shadow:0 -6px 24px rgba(0,0,0,.12);
+  transition:padding .25s ease;
+}
+.ck-resumen-handle{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0 10px;cursor:pointer;user-select:none;
+}
+.ck-resumen-handle-label{font-size:13px;font-weight:700;color:var(--muted)}
+.ck-resumen-handle-total{font-size:17px;font-weight:900;color:var(--texto)}
+.ck-resumen-handle-arrow{font-size:18px;color:var(--muted);transition:transform .25s}
+.ck-resumen.expandido .ck-resumen-handle-arrow{transform:rotate(180deg)}
+.ck-resumen-body{
+  max-height:0;overflow:hidden;
+  transition:max-height .3s ease;
+}
+.ck-resumen.expandido .ck-resumen-body{
+  /* Antes era un valor fijo (420px) que recortaba el contenido sin
+     poder scrollear apenas se agregaron cupones y más opciones de pago.
+     Ahora se limita a un porcentaje del alto de pantalla disponible y
+     permite scroll interno, así el botón de pagar siempre es alcanzable
+     sin importar cuánto contenido haya arriba. */
+  max-height:min(420px, 70vh);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding-right:4px; /* espacio para que la scrollbar no tape el contenido */
+}
+.ck-items{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:8px;max-height:76px;overflow-y:auto;line-height:1.55}
+/* SPLASH */
+#splashScreen{
+  position:fixed;inset:0;z-index:9999;
+  background:#ffffff;
+  background-size:cover;background-position:center;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:20px;
+  transition:opacity .6s ease .1s,visibility .6s ease .1s;
+}
+#splashScreen.oculto{opacity:0;visibility:hidden;pointer-events:none}
+/* Splash con logo (estilo Ágil / Roof Burger). El servidor agrega .con-logo
+   cuando la tienda tiene logo. Parte con fondo blanco y el logo grande; la
+   página le agrega .sobre-tienda cuando lo de atrás YA es la tienda real, y
+   recién ahí el fondo pasa a transparente oscurecido. Así nunca se ve la
+   página de muestra detrás. */
+#splashScreen.con-logo{transition:background-color .3s ease,opacity .35s ease,visibility .35s ease}
+#splashScreen.con-logo .splash-titulo,
+#splashScreen.con-logo .splash-subtitulo{display:none}
+#splashScreen.con-logo .splash-icon{
+  width:min(64vw,300px);max-width:none;height:auto;max-height:38vh;margin-bottom:22px;
+  mix-blend-mode:normal;opacity:1;border-radius:14px;
+  animation:splashLogoIn .45s ease-out both, splashLogoPulso 1.8s ease-in-out .45s infinite;
+}
+#splashScreen.con-logo.sobre-tienda{background-color:rgba(18,18,18,.46)}
+#splashScreen.con-logo.sobre-tienda .splash-icon{filter:drop-shadow(0 2px 16px rgba(255,255,255,.3))}
+#splashScreen.con-logo.sobre-tienda .splash-dots span{background:#fff;opacity:.9}
+@keyframes splashLogoIn{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
+@keyframes splashLogoPulso{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+/* Overlay oscuro — se activa solo cuando el splash usa una foto real
+   (ver actualizarSplashConConfig), para que el texto blanco siga
+   siendo legible sin importar qué tan clara sea la imagen del
+   cliente. Con solo color sólido de fondo no hace falta, porque
+   colorHover()/aplicarColor() ya usan colores lo bastante saturados. */
+#splashScreen.con-imagen::before{
+  content:"";position:absolute;inset:0;
+  background:rgba(0,0,0,.42);
+}
+#splashScreen.con-imagen > *{position:relative;z-index:1}
+.splash-burger{
+  animation:splashFloat 1.4s ease-in-out infinite alternate;
+  filter:drop-shadow(0 8px 24px rgba(0,0,0,.25));
+}
+@keyframes splashFloat{
+  from{transform:translateY(0) scale(1)}
+  to{transform:translateY(-8px) scale(1.04)}
+}
+.splash-nombre{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;font-weight:700;color:rgba(255,255,255,0.55);
+  letter-spacing:4px;text-transform:uppercase;margin-bottom:2px;
+}
+.splash-sub{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:9px;font-weight:600;color:rgba(255,255,255,0.35);
+  letter-spacing:5px;margin-bottom:10px;
+}
+.splash-dots{display:flex;gap:6px;align-items:center}
+.splash-dots span{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--splash-color,#14121f);opacity:.4;
+  transition:background .8s ease;
+  animation:splashD .8s ease-in-out infinite alternate;
+}
+.splash-dots span:nth-child(2){animation-delay:.2s}
+.splash-dots span:nth-child(3){animation-delay:.4s}
+@keyframes splashD{from{opacity:.3;transform:scale(1)}to{opacity:1;transform:scale(1.4)}}
+
+/* ══ SKELETON LOADERS ══ */
+@keyframes shimmer{
+  0%{background-position:-400px 0}
+  100%{background-position:400px 0}
+}
+.skel{
+  background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.18) 50%,rgba(255,255,255,0) 100%);
+  background-size:400px 100%;
+  animation:shimmer 1.4s infinite linear;
+  border-radius:10px;
+  background-color:rgba(0,0,0,0.07);
+}
+.skel-oferta{
+  min-width:150px;height:180px;border-radius:16px;
+  flex-shrink:0;
+}
+.skel-item{
+  display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(0,0,0,0.05);
+}
+.skel-item-img{width:80px;height:80px;border-radius:12px;flex-shrink:0}
+.skel-item-body{flex:1;display:flex;flex-direction:column;gap:8px;justify-content:center}
+.skel-line{height:13px;border-radius:6px}
+.skel-line.w80{width:80%}
+.skel-line.w50{width:50%}
+.skel-line.w30{width:30%}
+.skel-cat{width:100%;aspect-ratio:1;border-radius:16px}
+
+/* CONFIRMACION */
+/* ══════════════════════════════════════════════════════════════
+   CONFIRMACION
+   ══════════════════════════════════════════════════════════════ */
+@keyframes popIn{
+  0%   { transform:scale(0); opacity:0; }
+  70%  { transform:scale(1.2); }
+  100% { transform:scale(1); opacity:1; }
+}
+.conf-wrap{padding:34px 20px 30px;text-align:center}
+.conf-check{
+  width:86px;height:86px;margin:0 auto 16px;border-radius:999px;
+  background:var(--verde);color:#fff;font-size:44px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 24px rgba(30,123,60,.35);
+  animation:popIn .6s ease both;
+}
+.conf-check.pendiente{
+  background:#F57C00;
+  box-shadow:0 8px 24px rgba(245,124,0,.35);
+  animation:popIn .6s ease both, pulsoPendiente 1.6s ease-in-out infinite;
+}
+@keyframes pulsoPendiente{
+  0%,100%{ opacity:1 }
+  50%{ opacity:.6 }
+}
+.conf-titulo{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:36px;letter-spacing:1px;margin:0 0 4px;text-transform:uppercase;
+}
+.conf-sub{color:var(--muted);font-size:14px;font-weight:600;margin:0 0 14px}
+.conf-num{
+  display:inline-block;background:var(--crema);color:var(--texto);
+  border-radius:999px;padding:8px 20px;
+  font-weight:900;font-size:16px;letter-spacing:.5px;margin-bottom:20px;
+}
+.conf-resumen{
+  text-align:left;padding:16px 18px;margin-bottom:22px;
+}
+.conf-resumen .linea{display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;margin-bottom:6px}
+.conf-resumen .linea.total{font-size:16px;font-weight:900;border-top:1px solid var(--borde);padding-top:9px;margin-top:9px;margin-bottom:0}
+
+.timeline{text-align:left;margin:0 6px 24px;position:relative}
+.tl-step{display:flex;gap:13px;position:relative;padding-bottom:22px}
+.tl-step:last-child{padding-bottom:0}
+.tl-step::before{
+  content:"";position:absolute;left:17px;top:36px;bottom:0;width:2px;background:#E4E4E4;
+}
+.tl-step:last-child::before{display:none}
+.tl-ico{
+  width:36px;height:36px;flex-shrink:0;border-radius:999px;
+  background:#F0F0F0;color:#9A9A9A;font-size:16px;
+  display:flex;align-items:center;justify-content:center;z-index:1;
+}
+.tl-step.ok .tl-ico{background:var(--verde);color:#fff;box-shadow:0 3px 10px rgba(30,123,60,.35)}
+.tl-txt{font-size:14px;font-weight:800;padding-top:8px;color:#9A9A9A}
+.tl-step.ok .tl-txt{color:var(--texto)}
+.conf-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.gps-card{
+  border:2px dashed #CFCFCF;border-radius:16px;
+  padding:15px;font-size:13px;font-weight:700;color:var(--muted);
+  opacity:.5;pointer-events:none;
+}
+/* FASE 2: GPS tracker aquí */
+
+/* CUPONES */
+/* ══════════════════════════════════════════════════════════════
+   CUPONES
+   ══════════════════════════════════════════════════════════════ */
+.cup-wrap{padding:18px 16px}
+.cupon-card{padding:16px 18px;margin-bottom:16px}
+.cup-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.cup-cod{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:#F5F5F5;border-radius:999px;padding:6px 14px;
+  font-size:13px;font-weight:700;letter-spacing:.5px;
+}
+.cup-desc-grande{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:32px;color:var(--rojo);letter-spacing:.5px;line-height:1;
+}
+.cup-detalle{font-size:13.5px;color:var(--muted);font-weight:600;margin:0 0 6px}
+.cup-vence{font-size:12px;color:var(--muted);font-weight:700;margin:0 0 12px}
+.btn-copiar.copiado{background:var(--verde);border-color:var(--verde);color:#fff}
+
+/* LOCALES */
+/* ══════════════════════════════════════════════════════════════
+   LOCALES
+   ══════════════════════════════════════════════════════════════ */
+.loc-wrap{padding:18px 16px}
+.local-card{overflow:hidden;margin-bottom:18px}
+.local-img{height:120px;background:#E8E4E1;border-radius:16px 16px 0 0;overflow:hidden}
+.local-img img{width:100%;height:100%;object-fit:cover}
+.local-body{padding:14px 18px 16px}
+.local-nombre{font-weight:900;font-size:16.5px;margin:0 0 3px}
+.local-dir{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 8px;line-height:1.4}
+.local-meta{display:flex;align-items:center;gap:10px;font-size:12.5px;font-weight:800;margin-bottom:13px;flex-wrap:wrap}
+.estado-abierto{color:var(--verde)}
+.estado-cerrado{color:var(--rojo)}
+.local-horario{color:var(--muted);font-weight:700}
+
+/* ─── Footer ─── */
+.footer-cr{
+  padding:30px 20px 70px;margin-top:10px;
+  border-top:1px solid var(--borde);
+  text-align:center;background:var(--crema);
+}
+.cr-logo{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:22px;letter-spacing:2px;color:var(--rojo);margin:0 0 5px;
+}
+.cr-texto{font-size:12px;color:var(--muted);margin:0 0 2px;font-weight:600}
+.cr-anno{font-size:12px;color:var(--muted);margin:0;font-weight:600}
+
+/* ══════════════════════════════════════════════════════════════
+   MODALES genéricos
+   ══════════════════════════════════════════════════════════════ */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);
+  display:none;align-items:center;justify-content:center;
+  z-index:600;padding:20px;
+}
+.overlay.open{display:flex}
+.modal-card{
+  background:#fff;border-radius:20px;
+  box-shadow:0 10px 40px rgba(0,0,0,.18);
+  padding:26px 22px;width:100%;max-width:350px;text-align:center;
+  max-height:88vh;overflow-y:auto;
+}
+.modal-card h3{margin:0 0 8px;font-size:18px;font-weight:900}
+.modal-card p{margin:0 0 18px;font-size:13.5px;color:var(--muted);line-height:1.5}
+.stack{display:flex;flex-direction:column;gap:10px}
+.field{
+  width:100%;padding:11px 14px;
+  border:2px solid #E6E6E6;border-radius:12px;
+  font-size:14px;outline:none;transition:all .2s ease;
+}
+.field:focus{border-color:var(--rojo)}
+.err{color:var(--rojo);font-size:12.5px;font-weight:800;margin:10px 0 0;display:none}
+.err.show{display:block}
+.modal-actions{display:flex;gap:10px;justify-content:center;margin-top:16px}
+.img-opts{display:flex;gap:8px;margin-bottom:14px}
+.img-opts .opt{flex:1;opacity:.55}
+.img-opts .opt.sel{opacity:1}
+#imgPreviewWrap{
+  display:none;margin:12px 0 0;
+  border-radius:16px;overflow:hidden;background:#F5F5F5;
+}
+#imgPreviewWrap.show{display:block}
+#imgPreview{width:100%;aspect-ratio:4/3;object-fit:cover}
+
+#toast{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(var(--tab-h) + 22px);
+  background:#1A3A1A;color:#fff;
+  padding:10px 22px;border-radius:999px;
+  font-size:13.5px;font-weight:700;z-index:700;
+  opacity:0;pointer-events:none;transition:opacity .25s ease;
+  max-width:86vw;text-align:center;
+}
+#toast.show{opacity:1}
+
+/* DEVMODE */
+/* ══════════════════════════════════════════════════════════════
+   DEVMODE
+   ══════════════════════════════════════════════════════════════ */
+#devBar{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:400;
+  background:#1A3A1A;color:#fff;height:44px;
+  align-items:center;justify-content:space-between;gap:8px;
+  padding:0 12px;font-size:12.5px;font-weight:800;
+}
+#devBar .db-badge{
+  background:#2E7D32;border-radius:999px;padding:4px 11px;
+  font-size:11px;letter-spacing:.5px;
+}
+#devPageName{
+  position:absolute;left:50%;transform:translateX(-50%);
+  font-size:12px;opacity:.85;text-transform:capitalize;
+}
+#devBar .db-actions{display:flex;gap:7px}
+body.dev-on #devBar{display:flex}
+body.dev-on{padding-top:44px}
+body.dev-on .navbar{top:44px}
+body.dev-on .ck-resumen{z-index:124}
+body.preview-cliente #devBar{display:none}
+body.preview-cliente{padding-top:0}
+body.preview-cliente .navbar{top:0}
+#previewChip{
+  display:none;position:fixed;bottom:calc(var(--tab-h) + 16px);
+  left:max(16px, calc(50% - 240px + 16px));z-index:410;
+  background:#1A3A1A;color:#fff;border:none;border-radius:999px;
+  padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+}
+body.preview-cliente #previewChip{display:block}
+
+/* — Elementos editables — */
+body.dev-on:not(.preview-cliente) [data-ecol]{position:relative;border-radius:6px;cursor:pointer}
+@media (hover:hover){
+  body.dev-on:not(.preview-cliente) [data-ecol]:not(.editing):hover{
+    outline:2px dashed rgba(155,27,48,0.4);outline-offset:3px;
+  }
+  body.dev-on:not(.preview-cliente) [data-ecol]:not(.editing):hover::after{
+    content:"✏ Editar";
+    position:absolute;top:-24px;left:0;z-index:50;
+    background:var(--rojo);color:var(--rojo-texto);border-radius:999px;
+    padding:2px 10px;font-size:10.5px;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;
+    letter-spacing:.3px;white-space:nowrap;pointer-events:none;
+    text-transform:none;line-height:1.6;
+  }
+}
+[data-ecol].editing{
+  outline:2px solid var(--rojo) !important;outline-offset:2px;
+  background:#FFFDE7 !important;color:var(--texto) !important;
+  min-width:24px;
+}
+@keyframes flashOk{
+  0%{box-shadow:0 0 0 3px rgba(30,123,60,0)}
+  30%{box-shadow:0 0 0 3px rgba(30,123,60,.8);background:rgba(30,123,60,.12)}
+  100%{box-shadow:0 0 0 3px rgba(30,123,60,0)}
+}
+.save-ok{animation:flashOk .8s ease}
+
+/* PANEL ADMIN */
+/* ══════════════════════════════════════════════════════════════
+   PANEL ADMIN
+   ══════════════════════════════════════════════════════════════ */
+#adminPanel{
+  position:fixed;top:0;right:0;height:100%;
+  width:340px;max-width:92vw;
+  background:#fff;z-index:500;
+  box-shadow:-10px 0 30px rgba(0,0,0,.15);
+  transform:translateX(110%);transition:transform .25s ease;
+  display:flex;flex-direction:column;
+}
+#adminPanel.open{transform:translateX(0)}
+.panel-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:15px 16px;border-bottom:1px solid var(--borde);
+  font-weight:900;font-size:15px;flex-shrink:0;
+}
+.panel-close{background:none;border:none;font-size:20px;cursor:pointer;padding:2px 8px}
+.ptabs{
+  display:flex;gap:5px;overflow-x:auto;padding:10px 12px;
+  border-bottom:1px solid var(--borde);flex-shrink:0;scrollbar-width:none;
+}
+.ptabs::-webkit-scrollbar{display:none}
+.ptab{
+  flex-shrink:0;border:none;border-radius:999px;
+  padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;
+  background:#F5F5F5;color:var(--muted);transition:all .2s ease;
+}
+.ptab.active{background:var(--rojo);color:var(--rojo-texto)}
+.panel-body{overflow-y:auto;padding:16px;flex:1}
+.psec{display:none}
+.psec.active{display:block}
+.psec h4{
+  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--rojo);margin:20px 0 10px;font-weight:900;
+}
+.psec h4:first-child{margin-top:0}
+.plabel{font-size:11px;font-weight:800;color:#888;display:block;margin:10px 0 4px;text-align:left}
+.psec .field{margin-bottom:4px;font-size:13px;padding:9px 12px}
+.psec textarea.field{min-height:100px;resize:vertical;line-height:1.45}
+.pnota{font-size:11px;color:var(--muted);font-weight:600;margin:3px 0 8px;line-height:1.45;text-align:left}
+.prow{
+  display:flex;align-items:center;gap:8px;
+  background:#FAFAFA;border-radius:12px;
+  padding:8px 10px;margin-bottom:8px;
+  font-size:13px;font-weight:700;
+}
+.prow.inactivo{opacity:.45}
+.prow .mini{width:38px;height:38px;border-radius:9px;overflow:hidden;background:#E8E4E1;flex-shrink:0}
+.prow .mini img{width:100%;height:100%;object-fit:cover}
+.prow .ttl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left;line-height:1.3}
+.prow .ttl small{display:block;color:var(--rojo);font-size:11.5px}
+.pbtns{display:flex;gap:4px;flex-shrink:0}
+.ibtn{
+  border:none;background:#fff;border-radius:8px;
+  width:27px;height:27px;cursor:pointer;font-size:12.5px;line-height:1;
+  box-shadow:0 1px 4px rgba(0,0,0,.12);transition:all .2s ease;
+}
+.ibtn:active{transform:scale(.9)}
+.prod-editor{
+  background:#FFF;border:1.5px solid var(--borde);border-radius:14px;
+  padding:12px;margin:-4px 0 12px;text-align:left;
+}
+.panel-full{width:100%;margin-top:6px}
+.switch-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 2px;font-size:13px;font-weight:800;text-align:left;
+}
+.switch{position:relative;width:44px;height:25px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{
+  position:absolute;inset:0;border-radius:999px;background:#D8D8D8;
+  transition:all .2s ease;cursor:pointer;
+}
+.slider::before{
+  content:"";position:absolute;width:19px;height:19px;border-radius:999px;
+  left:3px;top:3px;background:#fff;transition:all .2s ease;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
+}
+.switch input:checked + .slider{background:var(--verde)}
+.switch input:checked + .slider::before{transform:translateX(19px)}
+.varpills{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 4px}
+.vpill{
+  border:none;background:var(--crema);color:var(--rojo);
+  border-radius:999px;padding:4px 10px;font-size:10.5px;font-weight:800;
+  cursor:pointer;font-family:ui-monospace,monospace;
+}
+.vpill:active{transform:scale(.95)}
+.msj-preview{
+  background:#E8F5E9;border-radius:12px;padding:10px 12px;
+  font-size:11.5px;line-height:1.5;white-space:pre-wrap;text-align:left;
+  color:#1B3C22;margin:6px 0 14px;font-weight:600;
+}
+.mp-guia{
+  background:var(--crema);border-radius:14px;padding:13px 14px;
+  font-size:12.5px;line-height:1.65;text-align:left;font-weight:600;
+  margin-bottom:12px;color:#4A4A4A;
+}
+.mp-estado{font-size:13px;font-weight:800;margin:10px 0;text-align:left}
+.token-row{display:flex;gap:6px;align-items:center}
+.token-row .field{flex:1;margin-bottom:0}
+.device-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:#FAFAFA;border-radius:12px;padding:10px 12px;margin-bottom:8px;
+  font-size:12px;font-weight:700;text-align:left;
+}
+.device-row small{display:block;color:var(--muted);font-weight:600}
+.btn-quitar{
+  border:none;background:none;color:var(--rojo);
+  font-size:12px;font-weight:800;cursor:pointer;padding:4px 6px;
+}
+.cup-admin-card{
+  background:#FAFAFA;border-radius:12px;padding:12px 14px;margin-bottom:10px;
+  border:1px solid var(--borde);
+}
+.cup-admin-card.inactivo{opacity:.55}
+.cup-admin-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cup-admin-codigo{font-weight:900;font-size:15px;letter-spacing:.3px}
+.cup-admin-valor{font-weight:800;font-size:14px;color:var(--rojo)}
+.cup-admin-sub{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
+.cup-admin-actions{display:flex;gap:8px;margin-top:10px}
+.pill-mini{
+  flex:1;padding:7px 10px;border-radius:999px;font-size:11.5px;font-weight:800;
+  background:#EFEFEF;color:var(--texto);border:none;cursor:pointer;
+}
+.pill-mini-del{background:rgba(155,27,48,.1);color:var(--rojo)}
+.promo-preview-wrap{
+  background:#F4F4F4;border-radius:16px;padding:14px;
+  display:flex;justify-content:center;overflow:hidden;
+}
+.promo-preview-wrap .promo-card{width:100%;min-height:96px}
+.promo-admin-card{
+  background:#FAFAFA;border-radius:14px;padding:12px;margin-bottom:12px;
+  border:1px solid var(--borde);
+}
+.promo-admin-mini{
+  width:100%;min-height:80px;padding:14px 16px;border-radius:14px;
+}
+.promo-admin-mini .promo-emoji{font-size:30px}
+.promo-admin-mini .promo-titulo{font-size:15px}
+.promo-admin-mini .promo-sub{font-size:12px}
+.promo-admin-estado{
+  font-size:11px;font-weight:700;color:var(--verde);margin:8px 2px 0;
+}
+.promo-admin-estado.inactivo{color:var(--muted)}
+.color-row{display:flex;align-items:center;gap:12px;padding:6px 2px}
+.color-row input[type=color]{
+  width:48px;height:34px;border:none;border-radius:10px;cursor:pointer;
+  padding:0;background:none;
+}
+.pending-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;background:#FFF8E1;border-bottom:1px solid #FFE082;
+  font-size:12px;font-weight:800;flex-shrink:0;
+}
+.pending-bar #pendingCount{flex:1;color:#8A6D00}
+.pending-bar .pill{margin:0;padding:5px 12px;font-size:11.5px}
+.panel-min{
+  background:#fff;border:1.5px solid var(--borde);cursor:pointer;
+  font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;
+  margin-right:4px;color:var(--texto);font-family:'Plus Jakarta Sans',sans-serif;
+  display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
+}
+
+.panel-chip{
+  display:none;position:fixed;bottom:calc(var(--tab-h) + 16px);
+  right:16px;z-index:499;
+  background:var(--rojo);color:var(--rojo-texto);border:none;
+  border-radius:999px;padding:11px 18px;font-size:13px;font-weight:800;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;
+}
+body.panel-min-on #adminPanel{transform:translateX(110%)}
+body.panel-min-on #panelChip{display:block}
+body.panel-min-on .float-btn{display:none !important}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+  html{scroll-behavior:auto}
+}
+/* ══ Pedidos (panel vendedor) ══ */
+.ped-card{background:var(--crema);border-radius:14px;padding:13px 14px;margin-bottom:10px;border-left:4px solid var(--rojo);cursor:pointer}
+.ped-card:active{opacity:.85}
+.ped-top{display:flex;justify-content:space-between;margin-bottom:3px}
+.ped-id{font-weight:900;font-size:12px;color:var(--rojo)}
+.ped-time{font-size:11px;color:var(--muted);font-weight:600}
+.ped-nombre{font-weight:800;font-size:14px}
+.ped-items{font-size:12px;color:var(--muted);margin:2px 0 8px;font-weight:600}
+.ped-bottom{display:flex;justify-content:space-between;align-items:center}
+.ped-total{font-weight:900;font-size:15px}
+.ped-badge{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.ped-badge.nuevo{background:#FFF3E0;color:#E65100}
+.ped-badge.preparando{background:#E3F2FD;color:#1565C0}
+.ped-badge.camino{background:#F3E5F5;color:#6A1B9A}
+.ped-badge.entregado{background:#E8F5E9;color:#2E7D32}
+.ped-badge.cancelado{background:#FFEBEE;color:#C62828}
+#pedidoDetalle{display:none;position:fixed;inset:0;z-index:9999;background:#fff;overflow-y:auto}
+#pedidoDetalle.open{display:block}
+.det-header{background:var(--rojo);color:var(--rojo-texto);padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:2}
+.det-back{font-size:24px;background:none;border:none;color:var(--rojo-texto);cursor:pointer;line-height:1;padding:2px 6px}
+.det-titulo{font-weight:900;font-size:17px}
+.det-body{padding:16px;padding-bottom:40px}
+.det-sec{background:var(--crema);border-radius:14px;padding:14px;margin-bottom:12px}
+.det-sec h5{font-size:11px;font-weight:900;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin:0 0 8px}
+.det-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.06);font-size:13px}
+.det-row:last-child{border-bottom:none}
+.det-lbl{color:var(--muted);font-weight:600}
+.det-val{font-weight:800;text-align:right;max-width:62%;word-break:break-word}
+.det-total{font-size:18px;font-weight:900;color:var(--rojo);text-align:right;padding-top:8px}
+.est-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.est-btn{padding:10px 6px;border-radius:10px;border:2px solid #E4DCD3;background:#fff;font-weight:800;font-size:12px;cursor:pointer;text-align:center}
+.est-btn.active{border-color:var(--rojo);background:var(--rojo);color:var(--rojo-texto)}
+.mapa-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#E8F0FE;border-radius:10px;padding:11px 14px;color:#1A73E8;font-weight:800;font-size:13px;margin-top:8px;text-decoration:none}
+
+/* ══ Mi Cuenta — secciones extra ══ */
+.ctab{white-space:nowrap;padding:8px 14px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-weight:800;font-size:12.5px;cursor:pointer;color:var(--texto)}
+.ctab.active{background:var(--rojo);border-color:var(--rojo);color:var(--rojo-texto)}
+.cuenta-sec{padding-bottom:20px}
+.hist-filtros{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
+.hist-filtros::-webkit-scrollbar{display:none}
+.hfpill{white-space:nowrap;padding:6px 14px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-weight:700;font-size:12px;cursor:pointer}
+.hfpill.active{background:var(--rojo);border-color:var(--rojo);color:var(--rojo-texto)}
+.hist-card{background:var(--crema);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.hist-head{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;cursor:pointer}
+.hist-body{display:none;padding:0 14px 14px}
+.hist-card.abierto .hist-body{display:block}
+.hist-card.abierto .hist-arrow{transform:rotate(180deg)}
+.hist-arrow{transition:transform .2s;font-size:13px;color:var(--muted)}
+.hist-linea{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid #eee}
+.hist-linea:last-child{border:none}
+.hist-linea.total{font-weight:900;font-size:14px;padding-top:8px;margin-top:4px;border-top:1px solid #ddd;border-bottom:none}
+.dir-card{background:var(--crema);border-radius:14px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+.dir-card.favorita{border:2px solid var(--dorado)}
+.dir-ico{font-size:26px;flex-shrink:0;margin-top:2px}
+.dir-cta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pago-hist-item{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #eee}
+.pago-hist-item:last-child{border:none}
+/* Modal dirección */
+#dirModal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.5);align-items:flex-end}
+#dirModal.open{display:flex}
+.dir-modal-box{background:#fff;border-radius:22px 22px 0 0;padding:22px 18px 34px;width:100%;max-height:90vh;overflow-y:auto}
+.lset-btn{padding:8px 16px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-weight:800;font-size:13px;cursor:pointer}
+.lset-btn.active{background:var(--rojo);border-color:var(--rojo);color:var(--rojo-texto)}
+/* ══ Forma de pago ══ */
+.pago-titulo{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin:18px 0 10px}
+.pago-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.pago-opt{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:13px;border:2px solid #eee;cursor:pointer;background:#fff;transition:.15s}
+.pago-opt.sel{border-color:var(--rojo);background:var(--crema)}
+.pago-ico{font-size:22px}
+.pago-txt{flex:1}
+.pago-label{font-weight:800;font-size:14px}
+.pago-sub{font-size:12px;color:var(--muted)}
+.pago-check{font-size:16px;color:var(--rojo);font-weight:900;opacity:0;transition:.15s}
+.pago-opt.sel .pago-check{opacity:1}
+.pago-note{background:var(--crema);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--texto);margin-bottom:14px;line-height:1.5}
+/* ══ Detalle producto ══ */
+#page-producto{ padding:0 }
+/* ══ Checkout con direcciones ══ */
+.dir-selector{margin-bottom:14px}
+.dir-selector-title{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.dir-option{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:2px solid #eee;margin-bottom:8px;cursor:pointer;background:#fff}
+.dir-option.sel{border-color:var(--rojo);background:var(--crema)}
+.dir-option-ico{font-size:22px}
+.dir-option-txt{flex:1}
+.dir-option-label{font-weight:800;font-size:13px}
+.dir-option-addr{font-size:12px;color:var(--muted)}
+.dir-option-nueva{color:var(--rojo);font-weight:800;font-size:13px}
+
+/* ═══ Autocomplete de direcciones (dropdown propio) ═══ */
+.gp-drop{
+  display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);
+  background:#fff;border:1.5px solid var(--borde);border-radius:14px;
+  box-shadow:0 8px 28px rgba(0,0,0,.13);overflow:hidden;z-index:99999;
+  font-family:'Plus Jakarta Sans',sans-serif;
+}
+.gp-drop.open{display:block}
+.gp-item{padding:11px 14px;cursor:pointer;line-height:1.35;border-top:1px solid #f2f2f2}
+.gp-item:first-child{border-top:none}
+.gp-item:active,.gp-item.sel{background:var(--crema)}
+.gp-main{font-size:13.5px;font-weight:800;color:var(--texto)}
+.gp-sec{font-size:11.5px;color:var(--muted);margin-top:1px}
+.gp-pow{font-size:9.5px;color:#bbb;text-align:right;padding:4px 10px;letter-spacing:.4px}
+.mini-mapa{
+  display:none;width:100%;height:150px;border-radius:12px;
+  border:1.5px solid var(--borde);margin:0 0 12px;overflow:hidden;
+}
+.mini-mapa.show{display:block}
+
+/* ═══ Agotado + Stock badge (cliente) ═══ */
+.prod-agotado .prod-img img{filter:grayscale(1);opacity:.5}
+.prod-agotado .prod-cta,.prod-cta-dis{opacity:.5;pointer-events:none;cursor:not-allowed}
+.prod-agotado-tag,.prod-stock-tag{
+  position:absolute;top:6px;left:6px;
+  font-size:9.5px;font-weight:900;padding:3px 8px;
+  border-radius:7px;letter-spacing:.5px;z-index:2;
+}
+.prod-agotado-tag{background:#9B1B30;color:#fff}
+.prod-stock-tag{background:#fff;color:#1a1a1a;border:1.5px solid #ddd}
+.prod-stock-tag.low{background:#FFF8E1;color:#B26A00;border-color:#FFD54F}
+
+
+.prod-agotado .prod-img img{filter:grayscale(1);opacity:.5}
+.prod-agotado .prod-cta{opacity:.4;pointer-events:none}
+.prod-agotado-tag{position:absolute;top:6px;left:6px;background:#9B1B30;color:#fff;font-size:9.5px;font-weight:900;padding:3px 8px;border-radius:7px;letter-spacing:.5px;z-index:2}
+
+/* ═══ Checkout gate (login / invitado) ═══ */
+#ckGate{
+  padding:28px 20px 24px;
+  display:none;flex-direction:column;align-items:center;gap:0;
+}
+#ckGate.show{display:flex}
+.ck-gate-ico{font-size:48px;margin-bottom:8px;line-height:1}
+.ck-gate-title{font-size:20px;font-weight:900;color:var(--texto);margin:0 0 4px;text-align:center}
+.ck-gate-sub{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 24px;text-align:center;line-height:1.5}
+.ck-gate-btn{
+  width:100%;padding:14px;border-radius:14px;border:none;
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:10px;transition:opacity .15s;
+}
+.ck-gate-btn:active{opacity:.8}
+.ck-gate-google{background:#fff;border:2px solid #E0E0E0;color:#1a1a1a}
+.ck-gate-guest{background:var(--crema);border:2px solid var(--borde);color:var(--muted);font-size:13px;padding:11px}
+#ckForm{display:none}
+#ckForm.show{display:block}
+
+#zonaBadge{
+  border-radius:10px;padding:9px 13px;font-size:12.5px;font-weight:700;
+  margin:4px 0 10px;align-items:center;gap:9px;line-height:1.45;display:none;
+}
+#zonaBadge.zv{background:#E8F5E9;color:#1B5E20;border:1.5px solid #A5D6A7;display:flex}
+#zonaBadge.zr{background:#FFF3F3;color:#9B1B30;border:1.5px solid #F9B8B8;display:flex}
+#zonaBadge.zg{background:#F5F5F5;color:var(--muted);border:1.5px solid #DDD;display:flex}
+
+/* ═══ Devmode — panel zonas ═══ */
+.zona-card{
+  background:var(--crema);border:1.5px solid var(--borde);border-radius:13px;
+  padding:13px;margin-bottom:10px;
+}
+.zona-card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.zona-card-head .field{margin:0;font-weight:800;font-size:13px;flex:1}
+.zona-del{background:none;border:none;font-size:17px;cursor:pointer;padding:4px;opacity:.6;flex-shrink:0}
+
+.zona-row2{display:flex;gap:8px;margin-top:8px}
+.zona-row2>div{flex:1}
+.zona-row2 .plabel{margin-top:0;font-size:11px}
+.zona-mini-map{
+  width:100%;height:130px;border-radius:10px;margin-top:10px;
+  border:1.5px solid var(--borde);overflow:hidden;display:none;
+}
+.zona-mini-map.show{display:block}
+
+/* ══ Finanzas ══ */
+.fin-card{background:var(--crema);border:1.5px solid var(--borde);border-radius:12px;padding:14px 12px;text-align:center}
+.fin-val{font-size:22px;font-weight:900;color:var(--rojo)}
+.fin-lab{font-size:11px;font-weight:700;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+.fin-per.active{background:var(--rojo)!important;color:var(--rojo-texto)!important;border-color:var(--rojo)!important}
+.fin-reg{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.fin-reg-tipo{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.fin-reg-tipo.i{background:#E8F5E9;color:#1B5E20}
+.fin-reg-tipo.e{background:#FFF3F3;color:#9B1B30}
+.fin-top-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+
+/* ══ Inventario ══ */
+.inv-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0}
+.inv-nombre{flex:1;font-size:13px;font-weight:700}
+.inv-stock{display:flex;align-items:center;gap:6px}
+.inv-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--borde);background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;line-height:1}
+.inv-num{width:38px;text-align:center;font-size:14px;font-weight:900}
+.inv-badge{font-size:10px;font-weight:800;border-radius:6px;padding:2px 7px}
+.inv-badge.ok{background:#E8F5E9;color:#1B5E20}
+.inv-badge.low{background:#FFF8E1;color:#E65100}
+.inv-badge.out{background:#FFF3F3;color:#9B1B30}
+.inv-alerta{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#FFF8E1;border:1.5px solid #FFE082;border-radius:10px;margin-bottom:8px;font-size:13px}
+#zonasEmptyNote{font-size:12.5px;color:var(--muted);padding:6px 0 10px;line-height:1.5}
+/* ══════════════════════════════════════════════════════════════
+   ⭐ PROGRAMA DE PUNTOS — banner (2H)
+   ══════════════════════════════════════════════════════════════ */
+.puntos-banner{
+  margin:0 16px 26px;position:relative;overflow:hidden;
+  border-radius:20px;padding:26px 20px 24px;text-align:center;
+  background:linear-gradient(135deg,#241a08 0%, #3a2a0c 45%, #5c4310 100%);
+  box-shadow:0 6px 26px rgba(60,44,10,.35);
+}
+.puntos-banner::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 90% at 50% -20%, rgba(212,160,23,.35), transparent 60%);
+}
+.puntos-star{
+  font-size:30px;line-height:1;margin-bottom:8px;position:relative;z-index:1;
+  filter:drop-shadow(0 3px 8px rgba(212,160,23,.55));
+}
+.puntos-titulo{
+  position:relative;z-index:1;margin:0 0 8px;
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:26px;letter-spacing:2.5px;color:var(--dorado);text-transform:uppercase;
+}
+.puntos-linea{position:relative;z-index:1;margin:0 0 3px;color:#F6EBD2;font-size:13.5px;font-weight:700;line-height:1.45}
+.puntos-linea.sutil{color:rgba(246,235,210,.62);font-size:12px;font-weight:600;margin-top:5px}
+
+/* ══════════════════════════════════════════════════════════════
+   📢 BANNERS PROMOCIONALES — carrusel (2I)
+   ══════════════════════════════════════════════════════════════ */
+.promo-scroll{
+  display:flex;gap:14px;overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  padding:4px 16px 14px;margin:0 -16px;
+  scrollbar-width:none;
+}
+.promo-scroll::-webkit-scrollbar{display:none}
+.promo-card{
+  scroll-snap-align:center;flex-shrink:0;
+  width:calc(100% - 30px);min-height:120px;
+  border-radius:20px;padding:20px 22px;
+  display:flex;align-items:center;gap:16px;
+  color:#fff;box-shadow:0 6px 22px rgba(0,0,0,.18);
+  position:relative;overflow:hidden;
+}
+.promo-card::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(130% 120% at 100% 0%, rgba(255,255,255,.22), transparent 55%);
+}
+.promo-emoji{font-size:44px;line-height:1;flex-shrink:0;position:relative;z-index:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.25))}
+.promo-txt{position:relative;z-index:1;min-width:0}
+.promo-titulo{
+  margin:0 0 4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:24px;letter-spacing:1px;line-height:1.05;text-transform:uppercase;
+}
+.promo-sub{margin:0;font-size:12.5px;font-weight:700;opacity:.94;line-height:1.4}
+
+/* ══════════════════════════════════════════════════════════════
+   🛵 BANNER PEDIDO EN CURSO (2D)
+   ══════════════════════════════════════════════════════════════ */
+#bannerPedidoActivo{margin:16px 16px 0}
+.ped-activo{
+  border-radius:16px;padding:14px 16px;cursor:pointer;
+  display:flex;align-items:center;gap:12px;color:#fff;
+  box-shadow:0 5px 20px rgba(0,0,0,.2);
+  animation:pedActivoIn .35s ease;
+}
+@keyframes pedActivoIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.ped-activo.e-nuevo{background:linear-gradient(120deg,#C62828,#E53935)}
+.ped-activo.e-preparacion{background:linear-gradient(120deg,#E65100,#F57C00)}
+.ped-activo.e-camino{background:linear-gradient(120deg,#1565C0,#1E88E5)}
+.ped-activo .pa-ico{font-size:26px;line-height:1;flex-shrink:0}
+.ped-activo .pa-txt{flex:1;min-width:0}
+.ped-activo .pa-titulo{margin:0 0 2px;font-weight:900;font-size:14.5px;line-height:1.2}
+.ped-activo .pa-sub{margin:0;font-size:12px;font-weight:700;opacity:.92}
+.ped-activo .pa-flecha{font-size:18px;font-weight:900;flex-shrink:0;opacity:.9}
+
+/* ══════════════════════════════════════════════════════════════
+   BADGES DE ESTADO — cliente (2D: rojo / amarillo / azul / verde)
+   ══════════════════════════════════════════════════════════════ */
+.cbadge{display:inline-block;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.cbadge.nuevo{background:#FFEBEE;color:#C62828}
+.cbadge.preparacion{background:#FFF8E1;color:#B26A00}
+.cbadge.camino{background:#E3F2FD;color:#1565C0}
+.cbadge.listo{background:#E8F5E9;color:#2E7D32}
+.cbadge.cancelado{background:#F5F5F5;color:#757575}
+
+/* Estados spec en badges del panel vendedor */
+.ped-badge.preparacion{background:#E3F2FD;color:#1565C0}
+.ped-badge.listo{background:#E8F5E9;color:#2E7D32}
+
+/* Card de "Mis pedidos" en la cuenta */
+.mp-card{background:var(--crema);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:transform .15s ease}
+.mp-card:active{transform:scale(.985)}
+
+/* ══════════════════════════════════════════════════════════════
+   🎟 CUPÓN EN CHECKOUT (2G)
+   ══════════════════════════════════════════════════════════════ */
+.cup-apply{margin:2px 0 12px}
+.cup-apply-row{display:flex;gap:8px}
+.cup-apply-row input{
+  flex:1;min-width:0;border:1.5px solid var(--borde);border-radius:12px;
+  padding:10px 12px;font-size:13.5px;font-weight:700;outline:none;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.cup-apply-row input:focus{border-color:var(--rojo)}
+.cup-apply-row .pill{flex-shrink:0;margin:0}
+.cup-aplicado{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:#E8F5E9;border:1.5px solid #C8E6C9;border-radius:12px;
+  padding:9px 12px;font-size:13px;font-weight:700;color:#2E7D32;
+}
+.cup-aplicado button{
+  background:none;border:none;cursor:pointer;font-size:15px;
+  color:#2E7D32;font-weight:900;padding:2px 6px;line-height:1;
+}
+.cup-msg{margin:6px 2px 0;font-size:12px;font-weight:700;display:none}
+.cup-msg.err{display:block;color:#C62828}
+.cup-msg.ok{display:block;color:var(--verde)}
+
+/* Email bloqueado (usuario con cuenta Google) */
+.ffield input[readonly].bloqueado{
+  background:#F4F4F4;color:#7A7A7A;pointer-events:none;
+}
+.ffield .lock-tag{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  font-size:13px;opacity:.55;pointer-events:none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SELECTOR DE PRODUCTO DESTACADO — devmode (2F)
+   ══════════════════════════════════════════════════════════════ */
+.psel-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 6px;border-bottom:1px solid var(--borde);text-align:left;
+}
+.psel-row:last-child{border-bottom:none}
+.psel-img{width:52px;height:52px;border-radius:12px;overflow:hidden;background:#EEE;flex-shrink:0}
+.psel-img img{width:100%;height:100%;object-fit:cover}
+.psel-info{flex:1;min-width:0}
+.psel-nombre{margin:0 0 2px;font-weight:900;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.psel-precio{margin:0;font-size:12.5px;color:var(--rojo);font-weight:800}
+.psel-row .pill{flex-shrink:0;margin:0}
+.psel-row.sel-actual{background:var(--crema);border-radius:12px}
+body.dev-on:not(.preview-cliente) [data-selprod]{outline:2px dashed rgba(155,27,48,.5);outline-offset:2px;cursor:pointer}
+
+/* ══════════════════════════════════════════════════════════════
+   TIMELINE DEL PEDIDO — modal cliente (2D)
+   ══════════════════════════════════════════════════════════════ */
+.cli-tl{display:flex;flex-direction:column;gap:0}
+.cli-tl-step{display:flex;gap:12px;position:relative;padding-bottom:18px}
+.cli-tl-step:last-child{padding-bottom:0}
+.cli-tl-dot{
+  width:26px;height:26px;border-radius:50%;flex-shrink:0;z-index:1;
+  background:#EEE;color:#AAA;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:900;
+}
+.cli-tl-step.ok .cli-tl-dot{background:var(--verde);color:#fff}
+.cli-tl-step::before{
+  content:"";position:absolute;left:12px;top:26px;bottom:0;width:2px;background:#EEE;
+}
+.cli-tl-step:last-child::before{display:none}
+.cli-tl-step.ok::before{background:var(--verde)}
+.cli-tl-info{padding-top:2px}
+.cli-tl-nombre{margin:0;font-weight:800;font-size:13.5px}
+.cli-tl-step.ok .cli-tl-nombre{color:var(--texto)}
+.cli-tl-hora{margin:1px 0 0;font-size:11.5px;color:var(--muted);font-weight:600}
+
+/* ══════════════════════════════════════════════════════════════
+   ADMIN — filas de promos y cupones
+   ══════════════════════════════════════════════════════════════ */
+.promo-admin-row{
+  border:1.5px solid var(--borde);border-radius:14px;
+  padding:12px;margin-bottom:12px;
+}
+.promo-admin-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.promo-admin-head .pah-emoji{font-size:20px}
+.promo-admin-head .pah-titulo{flex:1;min-width:0;font-weight:900;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.promo-admin-head .ibtn{flex-shrink:0}
+.promo-mini-prev{border-radius:12px;padding:12px 14px;color:#fff;display:flex;align-items:center;gap:10px;margin-top:8px}
+.promo-mini-prev .pe{font-size:24px;line-height:1}
+.promo-mini-prev .pt{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:.5px;text-transform:uppercase;margin:0}
+.promo-mini-prev .ps{font-size:11px;font-weight:700;opacity:.92;margin:0}
+.cup-admin-row{
+  display:flex;align-items:flex-start;gap:10px;
+  border:1.5px solid var(--borde);border-radius:14px;
+  padding:11px 12px;margin-bottom:10px;
+}
+.cup-admin-info{flex:1;min-width:0}
+.cup-admin-cod{margin:0 0 2px;font-weight:900;font-size:13.5px;color:var(--rojo);letter-spacing:.5px}
+.cup-admin-meta{margin:0;font-size:11.5px;color:var(--muted);font-weight:600;line-height:1.5}
+
+/* Subtítulos libres de las cards destacadas (2F) */
+.oferta-sub{margin:1px 0 3px;font-size:11px;color:var(--muted);font-weight:600;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.sub-vacia{display:none}
+body.dev-on:not(.preview-cliente) .sub-vacia{display:-webkit-box;opacity:.45;font-style:italic}
+body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.45;font-style:italic}
+
+/* ═══ SPLASH NUEVO ═══ */
+.splash-content{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;z-index:2;padding:0 24px;text-align:center;
+}
+.splash-icon{
+  width:auto;max-width:220px;height:110px;object-fit:contain;
+  margin-bottom:32px;
+  animation:splashIconFloat 2.4s ease-in-out infinite;
+  opacity:.95;
+  mix-blend-mode:multiply;
+}
+@keyframes splashIconFloat{
+  0%,100%{transform:translateY(0) rotate(-2deg);opacity:.85}
+  50%{transform:translateY(-10px) rotate(2deg);opacity:1}
+}
+.splash-titulo{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:34px;font-weight:800;letter-spacing:-1.2px;line-height:1;
+  color:var(--splash-color,#14121f);
+  transition:color .8s ease;
+  margin-bottom:12px;
+  animation:splashFadeIn .9s ease-out both;
+}
+@keyframes splashFadeIn{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.splash-subtitulo{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:16px;font-weight:700;letter-spacing:-.2px;
+  display:flex;gap:6px;justify-content:center;flex-wrap:wrap;
+  margin-bottom:26px;
+  color:var(--splash-color,#14121f);
+  transition:color .8s ease;
+}
+.splash-subtitulo span{
+  animation:splashWordIn .8s ease-out both;
+}
+.palabra-1{opacity:.55;animation-delay:.35s}
+.palabra-2{opacity:.85;animation-delay:.5s}
+.palabra-3{opacity:.55;animation-delay:.65s}
+@keyframes splashWordIn{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP — adaptación a pantallas grandes (>= 900px)
+   El CSS mobile queda intacto, esto solo se activa en escritorio.
+   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP — adaptación a pantallas grandes (>= 1024px)
+   El CSS mobile queda intacto, esto solo se activa en escritorio.
+   ══════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  /* Fondo gris neutro tipo "marco" */
+  body { background: #EBEBEB; }
+
+  /* Wrapper ancho */
+  .wrapper { max-width: 1280px; box-shadow: 0 0 80px rgba(0,0,0,.12); }
+
+  /* Navbar más ancha y alta */
+  .navbar { padding: 0 40px; height: 72px; }
+  .logo { font-size: 28px; letter-spacing: 2px; }
+
+  /* Hero grande */
+  .hero { margin: 32px 40px 0; height: 420px; border-radius: 24px; }
+  .hero-title { font-size: 64px; letter-spacing: 1px; }
+  .hero-sub { font-size: 18px; }
+  .hero-badge { font-size: 13px; padding: 8px 16px; }
+  .hero-content { left: 40px; right: 40px; bottom: 32px; }
+
+  /* Secciones */
+  .bloque { padding: 0 40px; margin-bottom: 48px; }
+  .sec-title { font-size: 42px; margin: 0 0 24px; letter-spacing: 1px; }
+
+  /* Puntos banner */
+  .puntos-banner { margin: 0 40px 48px; padding: 48px 40px 44px; border-radius: 24px; }
+  .puntos-titulo { font-size: 34px; }
+  .puntos-linea { font-size: 16px; }
+
+  /* Ofertas: 4 en grid */
+  .ofertas-scroll {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+    padding: 0; margin: 0; overflow: visible;
+  }
+  .oferta-card { flex: none; aspect-ratio: 4/5; border-radius: 20px; }
+
+  /* Categorías: 4 columnas */
+  .cat-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; }
+
+  /* Promocionales: ancho completo */
+  .promo-scroll {
+    display: grid; grid-template-columns: 1fr; gap: 20px;
+    padding: 0; margin: 0; overflow: visible;
+  }
+  .promo-card { width: 100%; max-width: none; min-height: 140px; border-radius: 24px; }
+
+  /* Lista de productos en 3 columnas */
+  .menu-list, #popularesList {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    padding: 0 40px;
+  }
+  .prod-item {
+    display: block; padding: 18px;
+    border: none; background: #fff;
+    border-radius: 20px; box-shadow: 0 4px 24px var(--sombra);
+  }
+  .prod-img { width: 100%; height: 200px; border-radius: 14px; }
+  .prod-info { margin-top: 16px; }
+  .prod-nombre { font-size: 17px; }
+  .prod-desc { font-size: 14.5px; -webkit-line-clamp: 3; }
+  .prod-precio { font-size: 18px; }
+  .prod-cta { margin-top: 14px; width: 100%; padding: 12px; }
+
+  /* Filtros */
+  .filtros { padding: 24px 40px 10px; }
+  .fpill { font-size: 15px; padding: 10px 22px; }
+
+  /* Cupones y locales en 2 columnas */
+  .cup-wrap, .loc-wrap { padding: 40px; }
+  #cuponesList, #localesList {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+  }
+  .cupon-card, .local-card { margin-bottom: 0; }
+
+  /* Tabbar */
+  .tabbar { max-width: 1280px; padding: 0 40px; }
+  .tab { font-size: 12.5px; gap: 6px; }
+  .tab .t-svg { width: 26px; height: 26px; }
+
+  /* Cart: drawer lateral derecho */
+  #cartSheet {
+    top: 0; bottom: 0; right: 0; left: auto;
+    width: 520px; max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 24px 0 0 24px;
+    transform: translateX(100%);
+  }
+  #cartSheet.open { transform: translateX(0); }
+
+  /* Botón flotante */
+  .float-btn { right: 40px; padding: 14px 26px; font-size: 15px; }
+
+  /* Checkout: formulario a la izquierda, resumen fijo a la derecha */
+  .ck-wrap { padding: 40px 40px 160px; max-width: 720px; }
+  .ck-resumen {
+    right: 40px; left: auto; transform: none;
+    bottom: 20px; max-width: 420px;
+    border-radius: 20px;
+  }
+
+  /* Confirmación */
+  .conf-wrap { padding: 60px 40px 40px; max-width: 720px; margin: 0 auto; }
+  .conf-titulo { font-size: 48px; }
+
+  /* Footer */
+  .footer-cr { padding: 48px 40px 100px; }
+  .cr-logo { font-size: 28px; }
+}
+
+/* ═══ Gestión de categorías (devmode) ═══ */
+.cat-admin-row{
+  display:flex;align-items:center;gap:8px;
+  background:#FAFAFA;border-radius:12px;padding:10px 12px;margin-bottom:6px;
+  border:1px solid var(--borde);
+}
+.cat-admin-row .cat-nombre{
+  flex:1;font-weight:800;font-size:13.5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.cat-admin-row .cat-count{
+  font-size:11px;font-weight:700;color:var(--muted);
+  background:#EFEFEF;border-radius:999px;padding:2px 8px;
+  flex-shrink:0;
+}
+.cat-admin-row .cat-btns{
+  display:flex;gap:4px;flex-shrink:0;
+}
+.cat-admin-row .cat-btns .ibtn{
+  width:26px;height:26px;font-size:12px;
+}
+.cat-edit-inline{
+  display:flex;gap:6px;align-items:center;margin-top:6px;
+}
+.cat-edit-inline input{
+  flex:1;padding:8px 10px;font-size:13px;
+  border:1.5px solid var(--borde);border-radius:10px;outline:none;
+}
+.cat-edit-inline input:focus{border-color:var(--rojo);}
+
+/* Feedback al tocar (móvil y desktop): se enciende mientras el dedo está apoyado */
+.btn-add-circ:active,
+.prod-cta:active,
+.prod-add:active,
+.pill-solid:active,
+.pill-outline:active,
+.pill:active,
+.mlink:active,
+.float-btn:active,
+.tab:active{
+  background:var(--rojo-h);
+  color:var(--rojo-texto);
+  transition:none;
+}
+.btn-add-circ:active,
+.prod-cta:active,
+.prod-add:active,
+.pill:active,
+.pill-solid:active,
+.pill-outline:active{
+  transform:scale(.97);
+}
+/* :hover solo en dispositivos con mouse (evita que quede pegado tras un tap en móvil) */
+/* Feedback visual al TOCAR (móvil + desktop) — se enciende mientras
+   el dedo está apoyado, se apaga al soltar. Usa :active, que SÍ
+   dispara en touch (a diferencia de :hover). touch-action:manipulation
+   saca el retraso de 300ms para que se sienta instantáneo. */
+.pill-solid:active,
+.pill-outline:active,
+.prod-cta:active,
+.btn-add-circ:active,
+.float-btn:active,
+.panel-min:active,
+.mlink:active{
+  background:var(--rojo-h);
+  color:var(--rojo-texto);
+  transition:none;
+}
+.pill-outline:active{
+  background:var(--rojo);
+  color:var(--rojo-texto);
+}
+.btn-add-circ:active,
+.prod-cta:active,
+.pill:active,
+.float-btn:active,
+.panel-min:active{
+  transform:scale(.96);
+}
+.tab:active,
+.ctab:active,
+.hfpill:active,
+.fpill:active{
+  background:#E8E8E8;
+  color:var(--rojo);
+}
+.pill-solid,
+.pill-outline,
+.prod-cta,
+.btn-add-circ,
+.float-btn,
+.panel-min,
+.mlink,
+.pill{
+  touch-action:manipulation;
+  -webkit-user-select:none;
+  user-select:none;
+}
+
+@media (hover:hover){
+  .pill-solid:hover{background:var(--rojo-h)}
+  .pill-outline:hover{background:var(--rojo);color:var(--rojo-texto)}
+  .mlink:hover{background:var(--crema);color:var(--rojo)}
+  .btn-add-circ:hover{background:var(--rojo-h)}
+  .panel-min:hover{background:var(--crema);border-color:var(--rojo);color:var(--rojo)}
+  .zona-del:hover{opacity:1}
+}
+</style>
+</head>
+<body data-page="inicio">
+
+<!-- ══════════════ DEVMODE: barra superior ══════════════ -->
+<div id="devBar">
+  <span class="db-badge">⚙ DEV</span>
+  <span class="db-actions">
+    <button id="btnPanel" class="pill pill-outline-white pill-sm">Panel ▸</button>
+    <button id="btnSalirDev" class="pill pill-outline-white pill-sm">Salir</button>
+  </span>
+</div>
+<button id="previewChip">👁 Vista previa — volver a edición</button>
+
+<div class="wrapper">
+
+  <!-- ══════════════ NAV ══════════════ -->
+  <nav class="navbar">
+    <button class="nav-icon" id="btnBack" aria-label="Volver">←</button>
+    <button class="nav-icon" id="btnBurger" aria-label="Abrir menú">☰</button>
+    <div class="logo" id="logoTop">
+      <img id="logoImg" src="" alt="" style="display:none">
+      <span id="logoTexto">TEST BURGERS</span>
+    </div>
+    <button class="nav-icon" id="btnCart" aria-label="Ver carrito"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1.2 12.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 7z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg><span id="cartBadge" class="oculto">0</span></button>
+  </nav>
+  <div id="bannerCerrada">🔴 Tienda cerrada por ahora — no estamos recibiendo pedidos</div>
+
+  <div id="menuDrop">
+    <button class="mlink" data-go="inicio">Inicio</button>
+    <button class="mlink" data-go="menu">Menú</button>
+    <button class="mlink" data-go="cupones">Cupones</button>
+    <button class="mlink" data-go="locales">Locales</button>
+  </div>
+
+  <!-- ══════════════ SUBPÁGINA INICIO ══════════════ -->
+  <div class="page active" id="page-inicio">
+
+    <!-- Banner de pedido en curso (se muestra solo si hay un pedido activo) -->
+    <div id="bannerPedidoActivo" style="display:none"></div>
+
+    <div class="hero" data-ecol="config" data-edoc="general" data-efield="heroImagen" data-etype="img">
+      <img id="heroImg" src="" alt="Destacado de la semana">
+      <div class="hero-content">
+        <span class="hero-badge" id="heroBadge" data-ecol="config" data-edoc="general" data-efield="heroBadge" data-etype="text">🔥 Más pedido hoy</span>
+        <h1 class="hero-title" id="heroTitulo" data-ecol="config" data-edoc="general" data-efield="heroTitulo" data-etype="text">La Monster Doble</h1>
+        <p class="hero-sub" id="heroSub" data-ecol="config" data-edoc="general" data-efield="heroSub" data-etype="text">Doble carne · queso fundido · tocino crocante</p>
+        <button class="pill pill-white pill-sm" id="btnVerMenu">Ver menú completo</button>
+      </div>
+    </div>
+
+    <div class="bloque">
+      <h2 class="sec-title">Ofertas de hoy</h2>
+      <div class="ofertas-scroll" id="ofertasScroll"></div>
+    </div>
+
+    <div class="bloque">
+      <h2 class="sec-title">Más pedidos</h2>
+      <div id="popularesList"></div>
+    </div>
+
+    <!-- ⭐ Programa de puntos — banner informativo (todos acumulan automáticamente) -->
+    <div class="puntos-banner">
+      <div class="puntos-star">⭐</div>
+      <p class="puntos-titulo" id="puntosTitulo" data-ecol="config" data-edoc="general" data-efield="puntosTitulo" data-etype="text">PROGRAMA DE PUNTOS</p>
+      <p class="puntos-linea" id="puntosLinea1" data-ecol="config" data-edoc="general" data-efield="puntosLinea1" data-etype="text">1 punto por cada $100 gastado</p>
+      <p class="puntos-linea" id="puntosLinea2" data-ecol="config" data-edoc="general" data-efield="puntosLinea2" data-etype="text">Canjéalos por descuentos exclusivos</p>
+      <p class="puntos-linea sutil" id="puntosLinea3" data-ecol="config" data-edoc="general" data-efield="puntosLinea3" data-etype="text">Automático con cada compra</p>
+    </div>
+
+    <div class="bloque">
+      <h2 class="sec-title">¿Qué se te antoja?</h2>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+
+    <!-- 📢 Banners promocionales (carrusel horizontal, editable desde devmode → Promos) -->
+    <div class="bloque" id="bloquePromos" style="display:none">
+      <div class="promo-scroll" id="promoScroll"></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════ SUBPÁGINA MENU ══════════════ -->
+  <div class="page" id="page-menu">
+    <div class="filtros" id="filtrosBar"></div>
+    <div class="menu-list" id="menuList"></div>
+  </div>
+
+  <!-- ══════════════ SUBPÁGINA CHECKOUT ══════════════ -->
+  <!-- PÁGINA DETALLE PRODUCTO -->
+  <div class="page" id="page-producto">
+    <div style="position:relative">
+      <div id="prodDetImg" style="width:100%;height:280px;background:#eee;overflow:hidden">
+        <img id="prodDetImgEl" src="" alt="" style="width:100%;height:100%;object-fit:cover">
+      </div>
+      <button onclick="history.back()" style="position:absolute;top:14px;left:14px;background:rgba(0,0,0,.45);border:none;border-radius:50%;width:38px;height:38px;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center">←</button>
+    </div>
+    <div style="padding:20px 20px 120px">
+      <h2 id="prodDetNombre" style="font-size:24px;font-weight:900;margin:0 0 8px"></h2>
+      <p id="prodDetDesc" style="color:var(--muted);font-size:14px;margin:0 0 16px;line-height:1.5"></p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <span id="prodDetPrecio" style="font-size:28px;font-weight:900;color:var(--rojo)"></span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button id="prodDetMenos" style="width:36px;height:36px;border-radius:50%;border:2px solid var(--rojo);background:#fff;color:var(--rojo);font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+          <span id="prodDetCant" style="font-size:20px;font-weight:900;min-width:24px;text-align:center">1</span>
+          <button id="prodDetMas" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--rojo);color:var(--rojo-texto);font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+        </div>
+      </div>
+      <div id="prodDetVariantes"></div>
+      <button id="prodDetAgregar" class="pill pill-solid" style="width:100%;font-size:16px;padding:16px">Agregar al pedido — <span id="prodDetTotal"></span></button>
+    </div>
+  </div>
+
+  <div class="page" id="page-checkout">
+    <div class="ck-wrap">
+      <h2 class="sec-title">Tu pedido</h2>
+
+      <!-- GATE: login o invitado (visible si no hay sesión) -->
+      <div id="ckGate">
+        <div class="ck-gate-ico">🛒</div>
+        <div class="ck-gate-title">¿Cómo quieres pedir?</div>
+        <div class="ck-gate-sub">Con tu cuenta tus datos ya están guardados.<br>Como invitado los ingresarás manualmente.</div>
+        <button class="ck-gate-btn ck-gate-google" id="btnGateGoogle">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google">
+          Continuar con Google
+        </button>
+        <button class="ck-gate-btn ck-gate-guest" id="btnGateGuest">
+          Pedir como invitado →
+        </button>
+      </div>
+
+      <!-- FORM: visible si hay sesión O eligió invitado -->
+      <div id="ckForm">
+      <div class="tipo-selector">
+        <button class="tipo-btn active" id="btnTipoDelivery" data-tipo="delivery">🛵 Delivery</button>
+        <button class="tipo-btn" id="btnTipoRetiro" data-tipo="retiro">🏪 Retiro en local</button>
+      </div>
+
+      <div class="ffield">
+        <input type="text" id="fNombre" placeholder=" " autocomplete="name">
+        <label for="fNombre">Nombre completo</label>
+      </div>
+      <div class="ffield">
+        <input type="tel" id="fTelefono" placeholder=" " autocomplete="tel" inputmode="tel">
+        <label for="fTelefono">Teléfono +56 9…</label>
+      </div>
+      <div class="ffield" id="campoEmail">
+        <input type="email" id="fEmail" placeholder=" " autocomplete="email" inputmode="email">
+        <label for="fEmail">Correo electrónico</label>
+      </div>
+      <!-- Selector de direcciones guardadas (visible solo si hay sesión) -->
+      <div id="dirSelectorWrap" style="display:none;margin-bottom:4px"></div>
+
+      <div class="ffield" id="campoDireccion">
+        <input type="text" id="fDireccion" placeholder=" "
+               autocomplete="off"
+               data-lpignore="true"
+               data-form-type="other"
+               data-1p-ignore="true"
+               x-autocompletetype="off"
+               spellcheck="false"
+               enterkeyhint="search">
+        <label for="fDireccion">Calle y número</label>
+      </div>
+      <div class="ffield" id="campoComuna">
+        <select id="fComuna"></select>
+        <label for="fComuna">Comuna</label>
+      </div>
+      <div id="zonaBadge"></div>
+      <div id="ckMapa" class="mini-mapa"></div>
+      <div class="ffield" id="campoLocal" style="display:none">
+        <select id="selLocal"></select>
+        <label for="selLocal">Local de retiro</label>
+      </div>
+      <div class="ffield">
+        <input type="text" id="fReferencias" placeholder=" ">
+        <label for="fReferencias">Referencias (opcional)</label>
+      </div>
+      <div class="ffield">
+        <textarea id="fNotas" placeholder=" "></textarea>
+        <label for="fNotas">Notas para la cocina (opcional)</label>
+      </div>
+      </div><!-- /ckForm -->
+    </div>
+
+    <div class="ck-resumen" id="ckResumen">
+      <!-- Handle tocable para expandir/colapsar -->
+      <div class="ck-resumen-handle" id="ckHandle">
+        <span class="ck-resumen-handle-label">Total a pagar</span>
+        <span class="ck-resumen-handle-total" id="ckTotal">$0</span>
+        <span class="ck-resumen-handle-arrow">⌃</span>
+      </div>
+      <!-- Cuerpo colapsable -->
+      <div class="ck-resumen-body" id="ckResumenBody">
+      <div class="ck-items" id="ckItems"></div>
+
+      <!-- Cupón de descuento -->
+      <div class="cup-apply" id="cupApply">
+        <div class="cup-apply-row" id="cupInputRow">
+          <input type="text" id="fCupon" placeholder="Código de cupón" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="pill pill-outline pill-sm" id="btnAplicarCupon" type="button">Aplicar</button>
+        </div>
+        <div class="cup-aplicado" id="cupAplicadoRow" style="display:none">
+          <span>🎟 <strong id="cupAplicadoCode"></strong> aplicado</span>
+          <button id="btnQuitarCupon" type="button" aria-label="Quitar cupón">✕</button>
+        </div>
+        <p class="cup-msg" id="cupMsg"></p>
+      </div>
+
+      <div class="tot-row"><span>Subtotal</span><span id="ckSubtotal">$0</span></div>
+      <div class="tot-row" id="ckLineaDesc" style="display:none;color:var(--verde)"><span>Descuento <span id="ckDescCode" style="font-size:11px"></span></span><span id="ckDescuento">−$0</span></div>
+      <div class="tot-row" id="ckLineaDelivery"><span>Delivery</span><span id="ckDelivery">$0</span></div>
+      <div class="free-del" id="ckFree">Delivery gratis 🎉</div>
+
+      <!-- FORMA DE PAGO -->
+      <div class="pago-titulo">Forma de pago</div>
+      <div class="pago-opts">
+        <div class="pago-opt sel" data-pago="mercadopago">
+          <span class="pago-ico">💳</span>
+          <div class="pago-txt">
+            <div class="pago-label">MercadoPago</div>
+            <div class="pago-sub">Tarjeta, débito o saldo MP</div>
+          </div>
+          <span class="pago-check">✓</span>
+        </div>
+        <div class="pago-opt" data-pago="efectivo">
+          <span class="pago-ico">💵</span>
+          <div class="pago-txt">
+            <div class="pago-label">Efectivo</div>
+            <div class="pago-sub">Paga al recibir tu pedido</div>
+          </div>
+          <span class="pago-check">✓</span>
+        </div>
+      </div>
+      <div id="pagoEfectivoNote" class="pago-note" style="display:none">
+        💡 Ten el dinero listo al momento de la entrega.
+        <div style="margin-top:6px">¿Con cuánto pagas? <input type="number" id="fEfectivo" placeholder="Ej: 10000" style="width:120px;padding:6px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;margin-left:4px"></div>
+      </div>
+      <div id="pagoMPNote" class="pago-note">
+        🔒 Serás redirigido a MercadoPago para completar tu pago de forma segura.
+      </div>
+
+      <button class="pill pill-solid pill-lg" id="btnConfirmar" style="margin-top:14px;margin-bottom:6px">Ir a MercadoPago →</button>
+      </div><!-- /ck-resumen-body -->
+    </div><!-- /ck-resumen -->
+  </div><!-- /page-checkout -->
+
+  <!-- ══════════════ SUBPÁGINA CONFIRMACION ══════════════ -->
+  <div class="page" id="page-confirmacion">
+    <div class="conf-wrap">
+      <div class="conf-check" id="confCheck">✓</div>
+      <h2 class="conf-titulo" id="confTitulo" data-ecol="config" data-edoc="general" data-efield="confTitulo" data-etype="text">¡Pago confirmado!</h2>
+      <p class="conf-sub" id="confSub" data-ecol="config" data-edoc="general" data-efield="confSub" data-etype="text">Tu pedido está siendo procesado</p>
+      <div class="conf-num" id="confNum">#TB00000</div>
+
+      <div class="card conf-resumen" id="confResumen"></div>
+
+      <div class="timeline" id="confTimeline">
+        <div class="tl-step"><span class="tl-ico">✓</span><span class="tl-txt" id="tl1" data-ecol="config" data-edoc="general" data-efield="timeline1" data-etype="text">Pedido recibido</span></div>
+        <div class="tl-step"><span class="tl-ico">🕐</span><span class="tl-txt" id="tl2" data-ecol="config" data-edoc="general" data-efield="timeline2" data-etype="text">En preparación</span></div>
+        <div class="tl-step"><span class="tl-ico">🛵</span><span class="tl-txt" id="tl3" data-ecol="config" data-edoc="general" data-efield="timeline3" data-etype="text">En camino</span></div>
+        <div class="tl-step"><span class="tl-ico">🏠</span><span class="tl-txt" id="tl4" data-ecol="config" data-edoc="general" data-efield="timeline4" data-etype="text">Entregado</span></div>
+      </div>
+
+      <div class="conf-btns">
+        <button class="pill pill-outline" id="btnWhats">💬 Seguir por WhatsApp</button>
+        <button class="pill pill-solid" id="btnVolverInicio">🏠 Volver al inicio</button>
+      </div>
+
+      <div class="gps-card" id="gpsCard">🗺 Seguimiento GPS en tiempo real — Próximamente (Fase 2)</div>
+      <!-- FASE 2: GPS tracker aquí -->
+    </div>
+  </div>
+
+  <!-- ══════════════ SUBPÁGINA CUPONES ══════════════ -->
+  <div class="page" id="page-cupones">
+    <div class="cup-wrap">
+      <h2 class="sec-title">Cupones</h2>
+      <div id="cuponesList"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SUBPÁGINA LOCALES ══════════════ -->
+  <div class="page" id="page-locales">
+    <div class="loc-wrap">
+      <h2 class="sec-title">Nuestros locales</h2>
+      <div id="localesList"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SUBPÁGINA MI CUENTA ══════════════ -->
+  <div class="page" id="page-cuenta">
+    <div class="cup-wrap">
+      <h2 class="sec-title">Mi cuenta</h2>
+
+      <!-- Club card — puntos -->
+      <div class="card" style="padding:22px 20px;margin-bottom:18px;text-align:center">
+        <div style="width:62px;height:62px;border-radius:999px;background:var(--dorado);
+             color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;
+             margin:0 auto 14px;box-shadow:0 4px 16px rgba(212,160,23,.4)">👑</div>
+        <h3 style="margin:0 0 4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+             font-size:26px;letter-spacing:.5px;text-transform:uppercase" id="clubTitulo">Club</h3>
+        <p style="margin:0 0 18px;font-size:13.5px;color:var(--muted);font-weight:600;line-height:1.4">
+          Acumula puntos con cada pedido y canjéalos por descuentos exclusivos.</p>
+        <div style="background:var(--crema);border-radius:14px;padding:16px;margin-bottom:18px">
+          <p style="margin:0 0 2px;font-size:13px;font-weight:700;color:var(--muted)">Tus puntos</p>
+          <p style="margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+               font-size:48px;color:var(--rojo);line-height:1" id="cuentaPuntos">—</p>
+          <p style="margin:4px 0 0;font-size:12px;color:var(--muted);font-weight:600" id="cuentaPuntosLabel">Inicia sesión para ver tu saldo</p>
+        </div>
+        <div id="cuentaLoggedOut">
+          <button class="pill pill-solid" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px" id="btnGoogleLogin">
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Continuar con Google
+          </button>
+        </div>
+        <div id="cuentaLoggedIn" style="display:none;text-align:left">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+            <img id="cuentaFoto" src="" alt="" width="42" height="42" style="border-radius:50%;object-fit:cover;display:none">
+            <div>
+              <p style="margin:0;font-weight:800;font-size:15px" id="cuentaNombre"></p>
+              <p style="margin:0;font-size:12px;color:var(--muted)" id="cuentaEmail"></p>
+            </div>
+          </div>
+          <button class="pill pill-outline pill-sm" style="width:100%" id="btnCerrarSesionCliente">Cerrar sesión</button>
+        </div>
+      </div>
+
+      <!-- Beneficios -->
+      <div class="card" style="padding:18px 20px;margin-bottom:18px">
+        <h3 style="margin:0 0 16px;font-size:15px;font-weight:900">Beneficios del club</h3>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:22px">🎁</span>
+            <div>
+              <p style="margin:0 0 2px;font-weight:800;font-size:14px">Puntos por cada pedido</p>
+              <p style="margin:0;font-size:12.5px;color:var(--muted);font-weight:600">1 punto por cada $100 gastado</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:22px">🎟</span>
+            <div>
+              <p style="margin:0 0 2px;font-weight:800;font-size:14px">Cupones exclusivos</p>
+              <p style="margin:0;font-size:12.5px;color:var(--muted);font-weight:600">Descuentos que no llegan al público</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:22px">🎂</span>
+            <div>
+              <p style="margin:0 0 2px;font-weight:800;font-size:14px">Sorpresa de cumpleaños</p>
+              <p style="margin:0;font-size:12.5px;color:var(--muted);font-weight:600">Un regalo especial en tu día</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mis pedidos (cliente con sesión) -->
+      <div class="card" id="cardPedidosCliente" style="padding:18px 20px;margin-bottom:18px;display:none">
+        <h3 style="margin:0 0 14px;font-size:15px;font-weight:900">🛍 Mis pedidos</h3>
+        <div id="misPedidosLista"></div>
+      </div>
+
+      <!-- Sub-tabs (visible solo con sesión) -->
+      <div id="cuentaSubTabs" style="display:none;margin-bottom:4px">
+        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none">
+          <button class="ctab active" data-ct="historial">🛍 Historial</button>
+          <button class="ctab" data-ct="direcciones">📍 Direcciones</button>
+          <button class="ctab" data-ct="pagos">💳 Pagos</button>
+        </div>
+      </div>
+
+      <!-- HISTORIAL -->
+      <div class="cuenta-sec active" id="ct-historial" style="display:none">
+        <div class="hist-filtros">
+          <button class="hfpill active" data-hf="todos">Todos</button>
+          <button class="hfpill" data-hf="proceso">En proceso</button>
+          <button class="hfpill" data-hf="entregados">Entregados</button>
+          <button class="hfpill" data-hf="cancelados">Cancelados</button>
+        </div>
+        <div id="histLista"></div>
+        <p id="histVacio" style="display:none;text-align:center;color:var(--muted);font-size:13.5px;font-weight:600;padding:20px 0">No hay pedidos en esta categoría.</p>
+      </div>
+
+      <!-- DIRECCIONES -->
+      <div class="cuenta-sec" id="ct-direcciones" style="display:none">
+        <button class="pill pill-outline" style="width:100%;margin-bottom:14px" id="btnNuevaDir">＋ Agregar nueva dirección</button>
+        <div id="dirLista"></div>
+        <p id="dirVacio" style="display:none;text-align:center;color:var(--muted);font-size:13.5px;font-weight:600;padding:20px 0">
+          Aún no tienes direcciones guardadas.<br>¡Agrega tu primera!
+        </p>
+      </div>
+
+      <!-- PAGOS -->
+      <div class="cuenta-sec" id="ct-pagos" style="display:none">
+        <div class="card" style="padding:14px 15px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+          <span style="font-size:24px">🔒</span>
+          <div>
+            <p style="margin:0 0 2px;font-weight:900;font-size:13.5px">Pagos 100% seguros</p>
+            <p style="margin:0;font-size:12px;color:var(--muted);font-weight:600">Procesados por MercadoPago. No almacenamos datos de tarjetas.</p>
+          </div>
+        </div>
+        <h4 style="margin:0 0 10px;font-size:14px;font-weight:900">Transacciones recientes</h4>
+        <div class="card" style="padding:4px 16px">
+          <div id="pagosHistorial"></div>
+          <p id="pagosVacio" style="display:none;text-align:center;color:var(--muted);font-size:13px;font-weight:600;padding:20px 0">No hay transacciones registradas.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <footer class="footer-cr">
+    <p class="cr-logo" data-bind="nombre" data-ecol="config" data-edoc="general" data-efield="nombre" data-etype="text">TEST BURGERS</p>
+    <p class="cr-texto" id="crTexto" data-ecol="config" data-edoc="general" data-efield="footerTexto" data-etype="text">Todos los derechos reservados.</p>
+    <p class="cr-anno">© <span id="crAnno" data-ecol="config" data-edoc="general" data-efield="footerAno" data-etype="text">2026</span></p>
+    <p style="font-size:11px;color:var(--muted);margin:8px 0 0;font-weight:600;opacity:.7;letter-spacing:.3px">
+      Desarrollado por <a href="https://derlabs.cl" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;font-weight:800">DerLabs</a> &nbsp;·&nbsp;
+      <a href="https://www.instagram.com/_espinozadiego" target="_blank" rel="noopener"
+         style="color:var(--rojo);text-decoration:none;font-weight:800">@_espinozadiego</a>
+    </p>
+  </footer>
+
+</div><!-- /wrapper -->
+
+<!-- ══════════════ ELEMENTOS FIJOS ══════════════ -->
+<button class="float-btn" id="btnFloat">Pide aquí</button>
+
+<nav class="tabbar" id="tabbar">
+  <button class="tab active" data-page="inicio">
+    <svg class="t-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.8V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.8"/></svg>
+    Inicio</button>
+  <button class="tab" data-page="menu">
+    <svg class="t-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2v8"/><path d="M4.5 2v5a2.5 2.5 0 0 0 5 0V2"/><path d="M7 12v10"/><path d="M17 2c-1.8 1-3 3.2-3 6 0 2.3 1.2 4 3 4v10"/></svg>
+    Menú</button>
+  <button class="tab" data-page="cupones">
+    <svg class="t-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4V8z"/><path d="M9 9.5 15 15"/><circle cx="9.3" cy="9.8" r=".9"/><circle cx="14.7" cy="14.6" r=".9"/></svg>
+    Cupones</button>
+  <button class="tab" data-page="locales">
+    <svg class="t-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
+    Locales</button>
+  <button class="tab" data-page="cuenta">
+    <svg class="t-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>
+    Mi cuenta</button>
+</nav>
+
+<!-- ══════════════ CARRITO — bottom sheet ══════════════ -->
+<div id="cartOverlay"></div>
+<div id="cartSheet" role="dialog" aria-label="Tu pedido">
+  <div class="sheet-handle"></div>
+  <div class="cart-head">
+    <h3>Tu pedido 🧾</h3>
+    <span class="cart-count" id="cartCount">0 ítems</span>
+    <button class="cart-close" id="cartClose" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-foot">
+    <div class="tot-row"><span>Subtotal</span><span id="cartSubtotal">$0</span></div>
+    <div class="tot-row" id="cartLineaDelivery"><span>Delivery</span><span id="cartDelivery">$0</span></div>
+    <div class="free-del" id="cartFree">Delivery gratis 🎉</div>
+    <div class="tot-row grande"><span>Total</span><span id="cartTotal">$0</span></div>
+    <button class="pill pill-solid pill-lg" id="btnCartContinuar">Continuar →</button>
+  </div>
+</div>
+
+<!-- Modal cookies -->
+<div class="overlay" id="cookiesModal">
+  <div class="modal-card">
+    <h3>🍪 Usamos cookies</h3>
+    <p>Sirven para recordar tu carrito y tus preferencias. Tú decides.</p>
+    <div class="stack">
+      <button class="pill pill-solid" data-ck="todas">Aceptar todas</button>
+      <button class="pill pill-outline" data-ck="esenciales">Solo esenciales</button>
+      <button class="pill pill-outline-muted" data-ck="rechazar">Rechazar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal login devmode (Firebase Authentication) -->
+<div class="overlay" id="loginModal">
+  <div class="modal-card">
+    <h3>⚙ Acceso desarrollador</h3>
+    <p>Inicia sesión con tu cuenta de administrador.</p>
+    <div class="stack">
+      <input class="field" id="loginEmail" type="email" placeholder="Email" autocomplete="username">
+      <input class="field" id="loginPass" type="text" placeholder="Contraseña"
+             autocomplete="off" data-lpignore="true" data-form-type="other"
+             style="-webkit-text-security:disc;text-security:disc">
+      <button class="pill pill-solid" id="loginBtn">Entrar</button>
+    </div>
+    <p class="err" id="loginErr">Credenciales incorrectas</p>
+    <p id="loginDemoNote" style="display:none;font-size:11.5px;color:var(--muted);margin:12px 0 0;font-weight:600">
+      Modo demo sin Firebase: cualquier email y contraseña sirven.
+    </p>
+  </div>
+</div>
+
+<!-- Modal de aceptación de contrato — se muestra UNA VEZ, tras un login
+     válido, antes de dejar entrar al devmode, si esa cuenta todavía no
+     aceptó la versión vigente de CONTRATO_VERSION (ver más abajo en el
+     script). Al cambiar el texto, subir CONTRATO_VERSION en app.js para
+     que cada dueño lo acepte de nuevo. Conviene que un abogado revise
+     el texto antes de cambios de fondo. -->
+<div class="overlay" id="contratoModal">
+  <div class="modal-card" style="max-width:480px">
+    <h3>📋 Términos del servicio</h3>
+    <p style="margin:6px 0 0;font-size:12.5px;color:var(--muted)">Léelos y acéptalos para administrar tu tienda.</p>
+    <div id="contratoTexto" style="max-height:46vh;overflow-y:auto;text-align:left;font-size:13.5px;line-height:1.6;color:var(--texto);border:1px solid var(--borde);border-radius:12px;padding:14px;margin:14px 0;background:var(--crema)">
+      <p><b>Términos y condiciones del servicio DerLabs</b><br>Versión 2 · vigente desde octubre de 2026</p>
+      <p><b>1. Quiénes somos y qué es este servicio.</b> DerLabs ("DerLabs", "nosotros") entrega una plataforma en línea para crear y administrar una tienda de comercio electrónico: catálogo, pedidos, panel de administración, herramientas de cobro y, cuando corresponde, un subdominio o la conexión de un dominio propio. Quien acepta estos términos ("el Comercio", "tú") es el titular de la tienda y contrata el servicio para su negocio.</p>
+      <p><b>2. Aceptación.</b> Al marcar la casilla y continuar declaras que leíste estos términos, que los aceptas y que tienes facultades para obligar al negocio que representas. Guardamos la fecha, la cuenta y la versión aceptada. Si no estás de acuerdo, no uses el servicio.</p>
+      <p><b>3. Tu cuenta.</b> Eres responsable de mantener en reserva tu correo y contraseña de administración y de todo lo que se haga con ellos. Avísanos de inmediato si crees que alguien más accedió a tu cuenta. Podemos pedirte verificar tu identidad antes de hacer cambios sensibles.</p>
+      <p><b>4. Plan y pago del servicio.</b> El servicio se presta contra el pago del plan contratado, en el valor y la periodicidad informados al contratar. Los precios pueden cambiar con aviso previo de al menos 30 días. Si un pago no se recibe en su fecha, podemos suspender la tienda hasta que se regularice; los pagos ya realizados no se devuelven por períodos usados.</p>
+      <p><b>5. Tu tienda es tu negocio.</b> Tú vendes; DerLabs solo entrega la herramienta. Eres el único responsable de:</p>
+      <p>a) los productos y servicios que ofreces, sus precios, stock, calidad, despacho, cambios y devoluciones;<br>
+      b) el contenido que publicas (textos, fotos, marcas, promociones), que debe ser verdadero y tuyo o estar autorizado;<br>
+      c) cumplir la ley que aplique a tu actividad: protección al consumidor, obligaciones tributarias y emisión de boletas o facturas, permisos sanitarios o municipales y cualquier otra autorización;<br>
+      d) atender a tus clientes y responder sus reclamos.</p>
+      <p><b>6. Cobros a tus clientes.</b> Los pagos de tus clientes se procesan por medio de los proveedores de pago que tú conectas a tu tienda (por ejemplo, Mercado Pago) y llegan directamente a tu cuenta con ese proveedor. DerLabs no recibe, retiene ni administra ese dinero y no es parte de esas transacciones. Las comisiones, contracargos, retenciones y condiciones de cada proveedor de pago son un asunto entre tú y ese proveedor.</p>
+      <p><b>7. Datos personales.</b> Los datos de tus clientes (nombre, teléfono, dirección, pedidos) son tuyos como responsable de ellos; DerLabs los trata por encargo tuyo y solo para operar el servicio. Debes informar a tus clientes cómo usas sus datos y usarlos únicamente para gestionar sus pedidos y la relación comercial con ellos, conforme a la legislación chilena sobre protección de datos personales. Aplicamos medidas razonables de seguridad y no vendemos esos datos.</p>
+      <p><b>8. Usos no permitidos.</b> No puedes usar la plataforma para vender productos o servicios ilegales o que requieran una autorización que no tienes, publicar contenido engañoso, ofensivo o que infrinja derechos de terceros, enviar comunicaciones no solicitadas, intentar acceder a tiendas o datos ajenos, ni interferir con el funcionamiento del servicio.</p>
+      <p><b>9. Dominio.</b> El subdominio que te entregamos pertenece a DerLabs y se asigna a tu tienda mientras el servicio esté vigente. Si conectas un dominio propio, ese dominio es tuyo: su registro, renovación y configuración ante el registrador son de tu cargo.</p>
+      <p><b>10. Disponibilidad y cambios.</b> Trabajamos para que el servicio esté disponible de forma continua, pero puede haber interrupciones por mantención, actualizaciones o fallas de terceros (alojamiento, redes, proveedores de pago, mensajería o mapas). Podemos mejorar, modificar o retirar funciones; si un cambio te afecta de manera importante, te avisaremos con anticipación razonable.</p>
+      <p><b>11. Propiedad intelectual.</b> La plataforma, su diseño, su código y la marca DerLabs son de DerLabs; te damos un derecho de uso no exclusivo e intransferible mientras dure el servicio. El contenido que subes es tuyo; nos autorizas a alojarlo y mostrarlo únicamente para operar tu tienda.</p>
+      <p><b>12. Suspensión y término.</b> Puedes dar de baja el servicio cuando quieras, avisándonos. Podemos suspender o terminar el servicio si no pagas, si incumples estos términos o la ley, o si tu tienda pone en riesgo a otros usuarios o a la plataforma. Al terminar, la tienda deja de estar disponible; puedes pedirnos una copia de tus productos y pedidos dentro de los 30 días siguientes, y después de ese plazo podemos eliminarlos.</p>
+      <p><b>13. Responsabilidad.</b> El servicio se entrega tal como está disponible. En la medida que la ley lo permita, DerLabs no responde por lucro cesante, ventas no realizadas, pérdida de datos causada por terceros ni por actos u omisiones del Comercio o de sus clientes, y su responsabilidad total queda limitada a lo que hayas pagado por el servicio en los 3 meses anteriores al hecho. Tú mantendrás indemne a DerLabs frente a reclamos de tus clientes o de terceros originados en tu actividad o tu contenido.</p>
+      <p><b>14. Cambios a estos términos.</b> Podemos actualizar estos términos. Cuando lo hagamos, te pediremos aceptarlos nuevamente al entrar a tu panel; si no los aceptas, puedes dar de baja el servicio.</p>
+      <p><b>15. Ley aplicable.</b> Estos términos se rigen por las leyes de la República de Chile. Cualquier diferencia se someterá a los tribunales ordinarios de justicia competentes.</p>
+      <p><b>16. Contacto.</b> Para consultas sobre el servicio o estos términos, escríbenos por los canales publicados en derlabs.cl.</p>
+    </div>
+    <label style="display:flex;align-items:flex-start;gap:8px;text-align:left;font-size:13px;font-weight:700;cursor:pointer">
+      <input type="checkbox" id="contratoCheck" style="margin-top:3px">
+      <span>Leí y acepto los términos del servicio descritos arriba.</span>
+    </label>
+    <button class="pill pill-solid" id="contratoBtn" style="width:100%;margin-top:14px" disabled>Aceptar y continuar</button>
+    <p class="err" id="contratoErr"></p>
+  </div>
+</div>
+
+<!-- Modal reautenticación de propietario (acciones sensibles: cupones, precios, caja) -->
+<div class="overlay" id="pinModal">
+  <div class="modal-card">
+    <h3>🔒 Verificación de propietario</h3>
+    <p id="pinMotivo">Esta acción requiere la cuenta de propietario.</p>
+    <div class="stack">
+      <input class="field" id="pinEmail" type="email" placeholder="Email de propietario" autocomplete="username">
+      <input class="field" id="pinPass" type="text" placeholder="Contraseña"
+             autocomplete="off" data-lpignore="true" data-form-type="other"
+             style="-webkit-text-security:disc;text-security:disc">
+      <button class="pill pill-solid" id="pinBtn">Verificar</button>
+      <button class="pill pill-outline" id="pinCancelBtn">Cancelar</button>
+    </div>
+    <p class="err" id="pinErr">Credenciales incorrectas o esta cuenta no tiene permiso de propietario</p>
+  </div>
+</div>
+
+<!-- Modal edición de imagen (DEVMODE) -->
+<div class="overlay" id="imgModal">
+  <div class="modal-card">
+    <h3>Editar imagen</h3>
+    <div class="img-opts">
+      <button class="pill pill-outline pill-sm opt sel" data-opt="file">📁 Subir archivo</button>
+      <button class="pill pill-outline pill-sm opt" data-opt="url">🔗 URL</button>
+    </div>
+    <div id="imgFileZone">
+      <input class="field" type="file" id="imgFile" accept="image/*">
+    </div>
+    <div id="imgUrlZone" hidden>
+      <input class="field" type="text" id="imgUrl" placeholder="https://…">
+    </div>
+    <div id="imgPreviewWrap"><img id="imgPreview" alt="Vista previa"></div>
+    <div class="modal-actions">
+      <button class="pill pill-outline-muted pill-sm" id="imgCancel">Cancelar</button>
+      <button class="pill pill-solid pill-sm" id="imgConfirm">Confirmar</button>
+    </div>
+    <p id="imgDemoNote" style="font-size:11px;color:var(--muted);margin:10px 0 0;display:none;font-weight:600">
+      💡 En modo demo la imagen se guarda solo en esta sesión.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════ PANEL ADMIN ══════════════ -->
+<aside id="adminPanel">
+  <div class="panel-head">
+    <span>⚙ Panel</span>
+    <span style="flex:1"></span>
+    <button class="panel-min" id="panelMin" aria-label="Ver cambios" title="Ver los cambios en la tienda">👁 Ver cambios</button>
+    <button class="panel-close" id="panelClose" aria-label="Cerrar panel">✕</button>
+  </div>
+  <div id="pendingBar" class="pending-bar" style="display:none">
+    <span id="pendingCount">0 cambios sin guardar</span>
+    <button class="pill pill-outline pill-sm" id="btnDiscard">Descartar</button>
+    <button class="pill pill-solid pill-sm" id="btnSave">Guardar</button>
+  </div>
+
+  <div class="ptabs">
+    <button class="ptab" data-pt="pedidos">🛍 Pedidos</button>
+    <button class="ptab active" data-pt="tienda">Tienda</button>
+    <button class="ptab" data-pt="productos">Productos</button>
+    <button class="ptab" data-pt="promos">📢 Promos</button>
+    <button class="ptab" data-pt="cupones">🎟 Cupones</button>
+    <button class="ptab" data-pt="zonas">📍 Zonas</button>
+    <button class="ptab" data-pt="finanzas">💰 Finanzas</button>
+    <button class="ptab" data-pt="inventario">📦 Inventario</button>
+    <button class="ptab" data-pt="envio">Checkout &amp; WhatsApp</button>
+    <button class="ptab" data-pt="pagos">Pagos</button>
+    <button class="ptab" data-pt="emails">📧 Emails</button>
+    <button class="ptab" data-pt="notif">Notificaciones</button>
+    <button class="ptab" data-pt="config">Config</button>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- TAB TIENDA -->
+    <div class="psec" id="pt-pedidos">
+      <h4 style="display:flex;justify-content:space-between;align-items:center;margin-top:0">Pedidos recientes <span id="pedCont" style="font-size:11px;font-weight:600;color:var(--muted)"></span></h4>
+      <div id="pedLista"><p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Cargando…</p></div>
+    </div>
+
+    <div class="psec active" id="pt-tienda">
+      <h4>Datos del negocio</h4>
+      <label class="plabel" for="pNombre">Nombre del negocio</label>
+      <input class="field" id="pNombre" type="text">
+      <label class="plabel" for="pTagline">Tagline</label>
+      <input class="field" id="pTagline" type="text">
+      <button class="pill pill-outline pill-sm panel-full" id="btnLogo" style="margin-top:8px">🖼 Cambiar logo</button>
+      <p class="pnota">Recomendado: PNG transparente, ~240×88 px. Si no subís logo, se muestra el nombre como texto.</p>
+      <label class="plabel" for="pRubro">Rubro</label>
+      <select class="field" id="pRubro"></select>
+      <p class="pnota" id="pRubroNota">Cambiar el rubro actualiza el color de marca a la paleta sugerida para ese rubro. Si ya personalizaste el color, se conserva tu elección — no se pisa sola.</p>
+      <h4>Estado</h4>
+      <div class="switch-row">
+        <span>Tienda abierta</span>
+        <label class="switch"><input type="checkbox" id="pAbierto"><span class="slider"></span></label>
+      </div>
+      <p class="pnota">Si la cierras, la web muestra un aviso y no permite agregar productos ni confirmar pedidos.</p>
+    </div>
+
+    <!-- TAB PRODUCTOS -->
+    <div class="psec" id="pt-productos">
+      <!-- Gestión de categorías -->
+      <div id="panelCatsGestion" style="margin-bottom:20px">
+        <h4 style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+          <span>📂 Categorías</span>
+        </h4>
+        <div id="catListaAdmin"></div>
+        <button class="pill pill-outline pill-sm panel-full" id="btnNuevaCatAdmin" style="margin-top:8px">＋ Nueva categoría</button>
+      </div>
+
+      <!-- Productos -->
+      <button class="pill pill-outline pill-sm panel-full" id="btnNuevoProd">＋ Nuevo producto</button>
+      <div id="panelProds" style="margin-top:12px"></div>
+    </div>
+
+    <!-- TAB PROMOS (banners promocionales del inicio) -->
+    <div class="psec" id="pt-promos">
+      <h4 style="margin-top:0">📢 Banners promocionales</h4>
+      <p class="pnota">Carrusel de promociones en la página de inicio, entre las categorías y "Más pedidos". Los banners vencidos se ocultan automáticamente — no hace falta borrarlos a mano.</p>
+
+      <label class="plabel" for="bnTitulo">Título</label>
+      <input class="field" id="bnTitulo" type="text" placeholder="2x1 en combos">
+      <label class="plabel" for="bnSubtitulo">Subtítulo</label>
+      <input class="field" id="bnSubtitulo" type="text" placeholder="Solo hoy, válido en delivery">
+      <label class="plabel" for="bnEmoji">Emoji</label>
+      <input class="field" id="bnEmoji" type="text" placeholder="🎉" maxlength="4">
+      <label class="plabel" for="bnColor">Color de fondo</label>
+      <div class="color-row">
+        <input type="color" id="bnColor" value="#9B1B30">
+        <input class="field" id="bnColorHex" type="text" placeholder="9B1B30" maxlength="7" style="flex:1">
+      </div>
+      <label class="plabel" for="bnVence">Vence (opcional)</label>
+      <input class="field" id="bnVence" type="date">
+
+      <p class="plabel" style="margin-top:14px">Vista previa</p>
+      <div id="bnPreviewWrap" class="promo-preview-wrap">
+        <div class="promo-card" id="bnPreviewCard" style="background:#9B1B30">
+          <span class="promo-emoji" id="bnPreviewEmoji">🎉</span>
+          <div class="promo-txt">
+            <p class="promo-titulo" id="bnPreviewTit">Título del banner</p>
+            <p class="promo-sub" id="bnPreviewSub">Subtítulo del banner</p>
+          </div>
+        </div>
+      </div>
+      <p class="pnota">Así se ve exactamente en la tienda — mismo tamaño, mismo lugar: el carrusel entre categorías y "Más pedidos" de la página de inicio.</p>
+
+      <button class="pill pill-solid pill-sm panel-full" id="btnNuevoBanner" style="margin-top:14px">＋ Agregar banner</button>
+      <h4>Banners existentes</h4>
+      <div id="promoAdminList" style="margin-top:12px"></div>
+    </div>
+
+    <!-- TAB CUPONES -->
+    <div class="psec" id="pt-cupones">
+      <h4 style="margin-top:0">🎟 Crear cupón</h4>
+      <label class="plabel" for="cpCodigo">Código</label>
+      <input class="field" id="cpCodigo" type="text" placeholder="NUEVO30" autocapitalize="characters" spellcheck="false">
+      <label class="plabel" for="cpTipo">Tipo de descuento</label>
+      <select class="field" id="cpTipo">
+        <option value="porcentaje">Porcentaje %</option>
+        <option value="monto">Monto fijo $</option>
+      </select>
+      <label class="plabel" for="cpValor">Valor del descuento</label>
+      <input class="field" id="cpValor" type="number" inputmode="numeric" placeholder="30">
+      <label class="plabel" for="cpLimiteTotal">Límite total de usos (vacío = ilimitado)</label>
+      <input class="field" id="cpLimiteTotal" type="number" inputmode="numeric" placeholder="Ilimitado">
+      <label class="plabel" for="cpLimiteUsuario">Límite por usuario</label>
+      <input class="field" id="cpLimiteUsuario" type="number" inputmode="numeric" value="1">
+      <label class="plabel" for="cpVence">Fecha de expiración (opcional)</label>
+      <input class="field" id="cpVence" type="date">
+      <label class="plabel" for="cpDescripcion">Descripción (visible al cliente)</label>
+      <input class="field" id="cpDescripcion" type="text" placeholder="30% en tu primera compra">
+      <div class="switch-row">
+        <span>Solo para usuarios registrados</span>
+        <label class="switch"><input type="checkbox" id="cpSoloReg"><span class="slider"></span></label>
+      </div>
+      <div class="switch-row">
+        <span>Condición: primera compra</span>
+        <label class="switch"><input type="checkbox" id="cpPrimera"><span class="slider"></span></label>
+      </div>
+      <p class="pnota">"Primera compra" exige cuenta y que el historial del cliente esté vacío. Activa también "solo registrados" automáticamente.</p>
+      <button class="pill pill-solid pill-sm panel-full" id="btnCrearCupon">＋ Crear cupón</button>
+      <h4>Cupones existentes</h4>
+      <div id="cupAdminList"></div>
+    </div>
+
+    <!-- TAB FINANZAS -->
+    <div class="psec" id="pt-finanzas">
+      <h4 style="margin-top:0">💰 Ganancias del período</h4>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="pill pill-outline pill-sm fin-per active" data-per="hoy">Hoy</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="semana">7 días</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="mes">Este mes</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="90">90 días</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="cal">📅 Día</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="total">Todo</button>
+      </div>
+      <div id="finCalWrap" style="display:none;margin-bottom:12px">
+        <input type="date" id="finCalFecha" class="field" style="font-size:14px">
+      </div>
+      <div id="finResumen" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div class="fin-card"><div class="fin-val" id="finVentas">$0</div><div class="fin-lab">Ventas</div></div>
+        <div class="fin-card"><div class="fin-val" id="finPedidos">0</div><div class="fin-lab">Pedidos</div></div>
+        <div class="fin-card"><div class="fin-val" id="finTicket">$0</div><div class="fin-lab">Ticket prom.</div></div>
+        <div class="fin-card"><div class="fin-val" id="finDelivery">$0</div><div class="fin-lab">Delivery cobrado</div></div>
+      </div>
+      <h4>Ventas por día</h4>
+      <canvas id="finChart" style="width:100%;max-height:200px;margin-bottom:16px"></canvas>
+      <h4>Top productos</h4>
+      <div id="finTopProds"></div>
+      <h4>Registro diario manual</h4>
+      <p class="pnota">Agrega ingresos o egresos manuales (gastos, propinas, etc.)</p>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <select class="field" id="finTipoReg" style="flex:1">
+          <option value="ingreso">Ingreso</option>
+          <option value="egreso">Egreso</option>
+        </select>
+        <input class="field" id="finMonto" type="number" inputmode="numeric" placeholder="Monto $" style="flex:1">
+      </div>
+      <input class="field" id="finDesc" placeholder="Descripción (ej: gasto gas)" style="margin-bottom:8px">
+      <button class="pill pill-solid pill-sm panel-full" id="btnFinGuardar">＋ Registrar</button>
+      <div id="finRegistros" style="margin-top:14px"></div>
+    </div>
+
+    <!-- TAB INVENTARIO -->
+    <div class="psec" id="pt-inventario">
+      <h4 style="margin-top:0">📦 Inventario de productos</h4>
+      <p class="pnota">Controla el stock de cada producto. Al llegar a 0 se marca sin stock automáticamente.</p>
+      <div id="invLista" style="margin-bottom:12px"></div>
+      <h4>Alertas de stock</h4>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <label class="plabel" style="margin:0;white-space:nowrap">Avisar cuando queden</label>
+        <input class="field" id="invAlertMin" type="number" inputmode="numeric" placeholder="5" style="width:70px">
+        <label class="plabel" style="margin:0">unidades</label>
+      </div>
+      <button class="pill pill-outline pill-sm panel-full" id="btnInvGuardar">Guardar alertas</button>
+      <div id="invAlertas" style="margin-top:12px"></div>
+    </div>
+
+    <!-- TAB CHECKOUT & WHATSAPP -->
+    <!-- TAB ZONAS DE DESPACHO -->
+    <div class="psec" id="pt-zonas">
+      <h4 style="margin-top:0">📍 Zonas de despacho</h4>
+      <p class="pnota" style="margin-bottom:14px">
+        Define sectores con precio propio. Al escribir su dirección, el cliente ve el costo automáticamente gracias a Google Maps. Si no configuras zonas se usa el costo único del tab Checkout.
+      </p>
+      <div id="zonasList"></div>
+      <p id="zonasEmptyNote">Sin zonas todavía. Agrega la primera con el botón de abajo.</p>
+      <button class="pill pill-solid pill-sm panel-full" id="btnNuevaZona">＋ Nueva zona</button>
+    </div>
+
+    <div class="psec" id="pt-envio">
+      <h4>Configuración delivery</h4>
+      <label class="plabel" for="pWhats">WhatsApp del negocio</label>
+      <input class="field" id="pWhats" type="text" placeholder="569XXXXXXXX">
+      <p class="pnota">Formato: 569XXXXXXXX — sin + ni espacios.</p>
+      <button class="pill pill-outline pill-sm panel-full" id="btnProbarWa">Probar conexión</button>
+      <label class="plabel" for="pEmailNotif">Email de notificaciones</label>
+      <input class="field" id="pEmailNotif" type="email" placeholder="pedidos@tutienda.cl">
+      <p class="pnota">Recibirás un correo con cada pedido nuevo (requiere configurar el tab 📧 Emails).</p>
+      <button class="pill pill-outline pill-sm panel-full" id="btnGuardarEmail">Guardar email</button>
+      <label class="plabel" for="pDelCosto">Costo delivery $</label>
+      <input class="field" id="pDelCosto" type="number" inputmode="numeric">
+      <label class="plabel" for="pDelMin">Monto mínimo delivery gratis $</label>
+      <input class="field" id="pDelMin" type="number" inputmode="numeric">
+      <label class="plabel" for="pTiempo">Tiempo estimado</label>
+      <input class="field" id="pTiempo" type="text" placeholder="30-45 min">
+      <div class="switch-row">
+        <span>Delivery activado</span>
+        <label class="switch"><input type="checkbox" id="pDeliveryOn"><span class="slider"></span></label>
+      </div>
+      <div class="switch-row">
+        <span>Retiro en local activado</span>
+        <label class="switch"><input type="checkbox" id="pRetiroOn"><span class="slider"></span></label>
+      </div>
+
+      <h4>Mensajes automáticos</h4>
+      <p class="pnota">Toca una variable para insertarla donde esté el cursor. La vista previa usa datos de ejemplo.</p>
+
+      <label class="plabel" for="msjConf">Confirmación de pedido</label>
+      <textarea class="field msj" id="msjConf" data-mkey="confirmacion"></textarea>
+      <div class="varpills" data-for="msjConf"></div>
+      <div class="msj-preview" id="prevConf"></div>
+
+      <label class="plabel" for="msjPrep">"En preparación"</label>
+      <textarea class="field msj" id="msjPrep" data-mkey="preparacion"></textarea>
+      <div class="varpills" data-for="msjPrep"></div>
+      <div class="msj-preview" id="prevPrep"></div>
+
+      <label class="plabel" for="msjCamino">"En camino"</label>
+      <textarea class="field msj" id="msjCamino" data-mkey="camino"></textarea>
+      <div class="varpills" data-for="msjCamino"></div>
+      <div class="msj-preview" id="prevCamino"></div>
+
+      <label class="plabel" for="msjListo">"Listo para retirar"</label>
+      <textarea class="field msj" id="msjListo" data-mkey="listo"></textarea>
+      <div class="varpills" data-for="msjListo"></div>
+      <div class="msj-preview" id="prevListo"></div>
+
+      <button class="pill pill-outline-muted pill-sm panel-full" id="btnRestaurarMsjs">Restaurar mensajes por defecto</button>
+
+      <h4>Pantalla post-compra</h4>
+      <label class="plabel" for="pConfTitulo">Título confirmación</label>
+      <input class="field" id="pConfTitulo" type="text">
+      <label class="plabel" for="pConfSub">Subtítulo</label>
+      <input class="field" id="pConfSub" type="text">
+      <label class="plabel" for="pTl1">Paso 1 timeline</label>
+      <input class="field" id="pTl1" type="text">
+      <label class="plabel" for="pTl2">Paso 2 timeline</label>
+      <input class="field" id="pTl2" type="text">
+      <label class="plabel" for="pTl3">Paso 3 timeline</label>
+      <input class="field" id="pTl3" type="text">
+      <label class="plabel" for="pTl4">Paso 4 timeline</label>
+      <input class="field" id="pTl4" type="text">
+      <div class="switch-row">
+        <span>Mostrar card GPS Próximamente</span>
+        <label class="switch"><input type="checkbox" id="pMostrarGPS"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <!-- TAB PAGOS -->
+    <div class="psec" id="pt-pagos">
+      <h4>💳 Configurar MercadoPago</h4>
+      <div class="mp-guia">
+        Paso 1: Ve a mercadopago.cl<br>
+        Paso 2: Inicia sesión con tu cuenta<br>
+        Paso 3: Ve a "Tu negocio" → "Credenciales"<br>
+        Paso 4: Copia tu Access Token de producción
+      </div>
+      <label class="plabel" for="mpToken">Access Token</label>
+      <div class="token-row">
+        <input class="field" id="mpToken" type="text"
+               autocomplete="off" data-lpignore="true" data-form-type="other"
+               style="-webkit-text-security:disc;text-security:disc">
+        <button class="ibtn" id="btnEyeToken" title="Mostrar / ocultar">👁</button>
+      </div>
+      <button class="pill pill-solid pill-sm panel-full" id="btnGuardarMP">Guardar y probar conexión</button>
+      <div class="mp-estado" id="mpEstado">⚠️ No configurado</div>
+      <h4>⚙️ Backend (Netlify Functions)</h4>
+      <label class="plabel" for="pFunctionsUrl">FUNCTIONS_URL <span style="font-weight:400;opacity:.7">(opcional)</span></label>
+      <input class="field" id="pFunctionsUrl" type="url" placeholder="/.netlify/functions" spellcheck="false">
+      <p class="pnota">Las funciones ya están incluidas en este mismo sitio, en <code>/.netlify/functions</code> — no necesitas configurar nada acá salvo que uses otro hosting.</p>
+      <button class="pill pill-outline pill-sm panel-full" id="btnVerificarFn">Verificar conexión</button>
+      <div class="mp-estado" id="fnEstado"></div>
+      <p class="pnota">El token se usa solo desde las Netlify Functions del backend — nunca se expone a los clientes. El código de las funciones está en <code>netlify/functions/</code>.</p>
+
+      <h4>⚠️ Intentos de pago sin confirmar</h4>
+      <p class="pnota">
+        Cada vez que alguien inicia un pago con MercadoPago, se guarda un
+        registro acá antes de que se cree el pedido. Si todo funciona
+        bien, este registro se marca "confirmado" apenas el pedido se
+        crea, y no necesitas hacer nada. Si algo falla del lado del
+        webhook (poco común, pero puede pasar), el registro queda en
+        "iniciado" o "error" aunque el cliente sí haya pagado — revisa
+        acá si un cliente dice haber pagado pero no ves su pedido.
+      </p>
+      <button class="pill pill-outline pill-sm panel-full" id="btnRevisarIntentos">🔍 Revisar intentos de las últimas 24h</button>
+      <div id="intentosPagoList" style="margin-top:12px"></div>
+    </div>
+
+    <!-- TAB EMAILS (Resend) -->
+    <div class="psec" id="pt-emails">
+      <h4 style="margin-top:0">📧 Emails transaccionales</h4>
+      <div class="mp-guia">
+        Paso 1: Crea una cuenta gratis en resend.com<br>
+        Paso 2: Verifica tu dominio (o usa onboarding@resend.dev para pruebas)<br>
+        Paso 3: Copia tu API key y pégala abajo
+      </div>
+      <label class="plabel" for="pResendKey">Resend API Key</label>
+      <div class="token-row">
+        <input class="field" id="pResendKey" type="text"
+               autocomplete="off" data-lpignore="true" data-form-type="other"
+               style="-webkit-text-security:disc;text-security:disc">
+        <button class="ibtn" id="btnEyeResend" title="Mostrar / ocultar">👁</button>
+      </div>
+      <label class="plabel" for="pEmailEmisor">Email emisor</label>
+      <input class="field" id="pEmailEmisor" type="email" placeholder="pedidos@tutienda.cl">
+      <label class="plabel" for="pEmailVendedor">Email del vendedor (recibe cada pedido)</label>
+      <input class="field" id="pEmailVendedor" type="email" placeholder="tucorreo@gmail.com">
+      <button class="pill pill-solid pill-sm panel-full" id="btnGuardarEmails">Guardar configuración</button>
+      <button class="pill pill-outline pill-sm panel-full" id="btnEmailPrueba">✉️ Enviar email de prueba</button>
+      <div class="mp-estado" id="emailEstado"></div>
+      <p class="pnota">Mientras falte la API key, los emails no se envían (falla silenciosa). Los pedidos se crean igual en Firestore.</p>
+    </div>
+
+    <!-- TAB NOTIFICACIONES -->
+    <div class="psec" id="pt-notif">
+      <h4>Alertas de pedidos</h4>
+      <button class="pill pill-solid pill-sm panel-full" id="btnActivarNotif">🔔 Activar notificaciones en este celular</button>
+      <div class="mp-estado" id="notifEstado"></div>
+      <h4>Dispositivos activos</h4>
+      <div id="devicesList"></div>
+      <p class="pnota">Máximo 5 dispositivos simultáneos. Cada uno recibirá una alerta cuando entre un pedido pagado.</p>
+    </div>
+
+    <!-- TAB CONFIG -->
+    <div class="psec" id="pt-config">
+      <h4>Apariencia</h4>
+      <div class="color-row">
+        <input type="color" id="pColor" value="#9B1B30">
+        <span style="font-size:13px;font-weight:800">Color primario</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;margin-bottom:2px">
+        <span style="font-size:12px;font-weight:800;color:var(--muted)">#</span>
+        <input type="text" id="pColorHex" maxlength="6" placeholder="9B1B30"
+               style="flex:1;font-family:monospace;font-size:14px;font-weight:800;
+                      letter-spacing:1px;text-transform:uppercase;padding:8px 10px;
+                      border:1.5px solid var(--borde);border-radius:10px;outline:none;
+                      background:#fff;color:var(--texto)">
+        <button id="btnAplicarColor" class="pill pill-solid pill-sm" style="flex-shrink:0;margin:0">Aplicar</button>
+      </div>
+      <p class="pnota" style="margin-top:4px">Ingresa el código hex directamente (ej: 9B1B30) o usa el selector.</p>
+      <h4>Herramientas</h4>
+      <button class="pill pill-outline pill-sm panel-full" id="btnPreview">👁 Vista previa cliente</button>
+      <p class="pnota">Oculta la barra dev y los bordes de edición para ver la web como la ve un cliente.</p>
+    </div>
+
+  </div>
+</aside>
+
+<button id="panelChip" class="panel-chip" aria-label="Volver al panel">⚙ Volver al panel</button>
+
+<!-- ══════════ DETALLE DE PEDIDO (vendedor) ══════════ -->
+<div id="pedidoDetalle" role="dialog" aria-label="Detalle del pedido">
+  <div class="det-header">
+    <button class="det-back" id="btnCerrarDet" aria-label="Volver">←</button>
+    <div style="flex:1">
+      <div class="det-titulo" id="detId">Pedido</div>
+      <div style="font-size:11.5px;opacity:.85" id="detFecha"></div>
+    </div>
+    <span id="detBadge" class="ped-badge nuevo"></span>
+  </div>
+  <div class="det-body">
+    <div class="det-sec">
+      <h5>Cliente</h5>
+      <div class="det-row"><span class="det-lbl">Nombre</span><span class="det-val" id="detNombre"></span></div>
+      <div class="det-row"><span class="det-lbl">Teléfono</span><span class="det-val" id="detTel"></span></div>
+      <div class="det-row"><span class="det-lbl">Entrega</span><span class="det-val" id="detTipo"></span></div>
+      <div id="detDirWrap" style="display:none">
+        <div class="det-row"><span class="det-lbl">Dirección</span><span class="det-val" id="detDir"></span></div>
+        <a id="detMapa" class="mapa-btn" href="#" target="_blank" rel="noopener">🗺️ Ver en Google Maps</a>
+      </div>
+    </div>
+    <div class="det-sec">
+      <h5>Productos</h5>
+      <div id="detItems"></div>
+      <div class="det-total" id="detTotal"></div>
+    </div>
+    <div class="det-sec">
+      <h5>Estado del pedido</h5>
+      <div class="est-grid">
+        <button class="est-btn" data-est="nuevo">📋 Recibido</button>
+        <button class="est-btn" data-est="preparacion">👨‍🍳 Preparando</button>
+        <button class="est-btn" data-est="camino">🛵 En camino</button>
+        <button class="est-btn" data-est="listo">✅ Entregado</button>
+      </div>
+      <button class="est-btn" data-est="cancelado" style="width:100%;margin-top:8px;color:#C62828;border-color:#C62828">❌ Cancelar pedido</button>
+    </div>
+    <div class="det-sec">
+      <h5>Contactar</h5>
+      <button class="pill pill-solid pill-sm" style="width:100%" id="btnWspDet">💬 WhatsApp al cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nueva/Editar Dirección -->
+<div id="dirModal">
+  <div class="dir-modal-box">
+    <h3 id="dirModalTitulo" style="margin:0 0 18px;font-size:18px;font-weight:900">Nueva dirección</h3>
+    <input type="hidden" id="dirEditId">
+    <p style="margin:0 0 8px;font-size:13px;font-weight:800">Etiqueta</p>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="lset-btn active" data-lb="Casa">🏠 Casa</button>
+      <button class="lset-btn" data-lb="Trabajo">💼 Trabajo</button>
+      <button class="lset-btn" data-lb="Otro">📌 Otro</button>
+    </div>
+    <!-- Trampa: absorbe el autocompletado del browser antes de llegar a dirInput -->
+    <input type="text" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;left:-9999px" tabindex="-1" aria-hidden="true" autocomplete="street-address">
+    <div class="ffield" style="margin-bottom:12px">
+      <input type="text" id="dirInput" placeholder=" "
+             autocomplete="off"
+             data-lpignore="true"
+             data-form-type="other"
+             data-1p-ignore="true"
+             x-autocompletetype="off"
+             spellcheck="false"
+             enterkeyhint="search">
+      <label for="dirInput">Calle y número</label>
+    </div>
+    <div class="ffield" style="margin-bottom:12px">
+      <select id="dirComuna"></select>
+      <label for="dirComuna">Comuna</label>
+    </div>
+    <div id="dirMapa" class="mini-mapa"></div>
+    <div class="ffield" style="margin-bottom:12px">
+      <input type="tel" id="dirTelInput" placeholder=" "
+             autocomplete="tel"
+             data-lpignore="true"
+             data-form-type="other"
+             spellcheck="false"
+             inputmode="tel">
+      <label for="dirTelInput">Teléfono de contacto</label>
+    </div>
+    <div class="ffield" style="margin-bottom:14px">
+      <input type="text" id="dirRefInput" placeholder=" "
+             autocomplete="off"
+             data-lpignore="true"
+             data-form-type="other"
+             spellcheck="false">
+      <label for="dirRefInput">Referencias (opcional)</label>
+    </div>
+    <div id="dirFavRow" style="display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid #eee;border-bottom:1px solid #eee;margin-bottom:18px;cursor:pointer">
+      <input type="checkbox" id="dirFavCheck" style="width:18px;height:18px;accent-color:var(--rojo)">
+      <label for="dirFavCheck" style="font-weight:700;font-size:14px;cursor:pointer">Marcar como favorita</label>
+    </div>
+    <button class="pill pill-solid" style="width:100%;margin-bottom:10px" id="dirModalGuardar">Guardar dirección</button>
+    <button class="pill pill-outline" style="width:100%" id="dirModalCancel">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal selector de producto destacado (DEVMODE) -->
+<div class="overlay" id="prodSelModal">
+  <div class="modal-card" style="max-height:78vh;display:flex;flex-direction:column">
+    <h3 style="margin-bottom:4px">Elegir producto destacado</h3>
+    <p style="margin:0 0 12px;font-size:12.5px;color:var(--muted);font-weight:600">La foto, el nombre y el precio se toman del producto.</p>
+    <div id="prodSelLista" style="overflow-y:auto;flex:1;margin:0 -6px;padding:0 6px"></div>
+    <button class="pill pill-outline-muted pill-sm" id="prodSelCancel" style="margin-top:12px">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal detalle de pedido (CLIENTE) -->
+<div class="overlay" id="cliPedModal">
+  <div class="modal-card" style="text-align:left;max-height:82vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <h3 style="margin:0" id="cliPedId">#TB00000</h3>
+      <button class="cart-close" id="cliPedClose" aria-label="Cerrar" style="position:static">✕</button>
+    </div>
+    <p style="margin:0 0 10px;font-size:12px;color:var(--muted);font-weight:600" id="cliPedFecha"></p>
+    <div style="margin-bottom:12px" id="cliPedBadge"></div>
+    <div class="card" style="box-shadow:none;border:1px solid var(--borde);padding:12px 14px;margin-bottom:14px" id="cliPedResumen"></div>
+    <h4 style="margin:0 0 10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:900">Seguimiento</h4>
+    <div id="cliPedTimeline"></div>
+  </div>
+</div>
+
+<div id="splashScreen">
+  <div class="splash-content">
+    <img src="/img-splash.png" alt="" class="splash-icon">
+    <div class="splash-titulo">Cargando</div>
+    <div class="splash-subtitulo">
+      <span class="palabra-1">tus</span>
+      <span class="palabra-2">productos</span>
+      <span class="palabra-3">favoritos</span>
+    </div>
+    <div class="splash-dots"><span></span><span></span><span></span></div>
+  </div>
+</div>
+<script>
+/* Logo del splash: si viene con fondo blanco, se le quita (solo el fondo
+   que toca los bordes; lo blanco de adentro del logo se conserva). */
+(function(){
+  try {
+    var sp = document.getElementById("splashScreen"), im = sp && sp.querySelector(".splash-icon");
+    if (!sp || !im || sp.className.indexOf("con-logo") < 0) return;
+    function proc(){
+      try {
+        var w = im.naturalWidth, h = im.naturalHeight; if (!w || !h) return;
+        var e = Math.min(1, 640 / Math.max(w, h)), cw = Math.max(1, Math.round(w * e)), ch = Math.max(1, Math.round(h * e));
+        var c = document.createElement("canvas"); c.width = cw; c.height = ch;
+        var x = c.getContext("2d"); x.drawImage(im, 0, 0, cw, ch);
+        var d = x.getImageData(0, 0, cw, ch), p = d.data;
+        var esq = [0, cw - 1, (ch - 1) * cw, ch * cw - 1];
+        for (var k = 0; k < 4; k++){ var o = esq[k] * 4; if (p[o + 3] < 250 || p[o] < 236 || p[o + 1] < 236 || p[o + 2] < 236) return; }
+        var fondo = function(i){ var o = i * 4; return p[o + 3] > 200 && p[o] > 228 && p[o + 1] > 228 && p[o + 2] > 228; };
+        var vis = new Uint8Array(cw * ch), pila = [], i, y, xx;
+        for (xx = 0; xx < cw; xx++){ pila.push(xx, (ch - 1) * cw + xx); }
+        for (y = 0; y < ch; y++){ pila.push(y * cw, y * cw + cw - 1); }
+        while (pila.length){
+          i = pila.pop(); if (vis[i] || !fondo(i)) continue;
+          vis[i] = 1; p[i * 4 + 3] = 0;
+          var px = i % cw, py = (i - px) / cw;
+          if (px > 0) pila.push(i - 1); if (px < cw - 1) pila.push(i + 1);
+          if (py > 0) pila.push(i - cw); if (py < ch - 1) pila.push(i + cw);
+        }
+        /* suavizar el borde: los píxeles claros pegados al fondo quedan semitransparentes */
+        for (i = 0; i < cw * ch; i++){
+          if (vis[i]) continue;
+          var bx = i % cw, by = (i - bx) / cw;
+          if ((bx > 0 && vis[i - 1]) || (bx < cw - 1 && vis[i + 1]) || (by > 0 && vis[i - cw]) || (by < ch - 1 && vis[i + cw])){
+            var q = i * 4, claro = Math.min(p[q], p[q + 1], p[q + 2]);
+            if (claro > 150) p[q + 3] = Math.round(p[q + 3] * (255 - claro) / 105);
+          }
+        }
+        x.putImageData(d, 0, 0);
+        im.onload = null; im.src = c.toDataURL("image/png");
+      } catch(err){}
+    }
+    if (im.complete && im.naturalWidth) proc(); else im.onload = proc;
+  } catch(err){}
+})();
+</script>
+
+<div id="toast" role="status"></div>
+
+<!-- Firebase v9 compat desde CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<!-- Motor de tienda (extraido a app.js) -->
+<script src="/app.js"></script>
+</body>
+</html>
