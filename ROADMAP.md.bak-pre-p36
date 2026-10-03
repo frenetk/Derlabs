@@ -603,66 +603,40 @@ funcionamiento sin conexión.
   Rindegastos, pero el dueño decidió no seguir. P32 lo retira si estaba
   instalado.
 
-## 20. Alta de tiendas (P34–P36) — ✅ hecho
+## 20. Alta de tiendas (P34) — ✅ hecho
 
-Lo que DerLabs le pide a un negocio **que ya contrató**, pensado para dejarle
-la tienda lista (eso es lo que cubre la cuota de integración). No es
-`formulario.html` (ese es el contacto antes de contratar y no se tocó).
+Lo que DerLabs le pide a un negocio **que ya contrató**. No es `formulario.html`
+(ese es el contacto antes de contratar y no se tocó).
 
 - **Flujo:** en `derlabs.cl/altas` (clave de administrador, la misma de
-  `/leads.html`) se toca "Nueva alta", se escribe el nombre del negocio y se
-  elige su **rubro**; sale un enlace propio, `derlabs.cl/alta/<código de 8
-  caracteres>`, con botón para mandarlo por WhatsApp. La página del negocio
-  habla de "carta o menú" solo si el rubro es comida; para el resto, de
-  "catálogo o lista de precios". El rubro no se le pregunta al negocio.
-- **Lo que llena el negocio (5 pasos):**
-  1. Negocio y contacto: nombre, WhatsApp, correo, dirección, **comuna y
-     ciudad** (obligatorias).
-  2. Horario: al menos un día abierto.
-  3. Productos: cada foto elegida crea un producto que **exige nombre, precio
-     y categoría** (descripción opcional). También se pueden agregar productos
-     sin foto. La carta o catálogo en PDF es opcional, como respaldo. Logo.
-  4. Entrega y pagos: con delivery, **cada comuna a la que despacha con su
-     costo** (obligatorio), despacho gratis desde (opcional), tiempo estimado;
-     retiro; medios de pago; dominio.
-  5. Revisar y enviar. El servidor no deja enviar si falta algo de lo
-     obligatorio (`faltantes()` en `altas.js`).
-  Todo se guarda solo y puede seguir después con el mismo enlace.
-- **"Pasar todo a la tienda"** (en `/altas`, eligiendo la tienda):
-  - configuración: WhatsApp, correo de avisos, horario, delivery/retiro,
-    tiempo de entrega, logo e ícono;
-  - **comunas de despacho** → `config.zonas` (una zona por comuna, con su
-    costo y el mínimo para despacho gratis);
-  - **productos** → `tiendas/<id>/productos/alta_<id>` con nombre, precio,
-    categoría, descripción y la foto achicada a 800 px (la página los manda
-    de a 4); las categorías van a `config.categorias`;
-  - local con la dirección, si tiene retiro.
-  Con "Tienda nueva: reemplazar lo que tenga" (marcado por defecto) se borran
-  antes los productos, categorías y locales de muestra. Pasar dos veces no
-  duplica: actualiza los mismos productos.
-  **No se tocan** los cupones de muestra (BIENVENIDO10, ENVIOGRATIS) ni los
-  textos de portada: revisarlos en el panel antes de entregar la tienda.
-- **Recuperar o borrar un enlace:** el enlace queda siempre en su tarjeta.
-  Un enlace que el negocio aún no abre se puede borrar; "Cerrar alta" borra
-  los archivos y conserva los datos; un alta cerrada se puede quitar de la
-  lista.
-- **Archivos del proyecto:** `alta.html` (negocio), `altas.html` (DerLabs),
-  `logo-util.js` (tratamiento del logo para `altas.html`; misma lógica que
-  `app.js` y `generar-tienda.html`: si se cambia una, cambiar las tres),
+  `/leads.html`) se toca "Nueva alta", se escribe el nombre del negocio y sale
+  un enlace propio, `derlabs.cl/alta/<código de 8 caracteres>`, con botón para
+  mandarlo por WhatsApp. El negocio llena cinco pasos (negocio y contacto,
+  horario, carta/fotos/logo, entrega y pagos, revisar y enviar). Todo se guarda
+  solo a medida que avanza y puede volver al mismo enlace desde cualquier
+  teléfono. Al enviar llega un aviso a los teléfonos activados en `/leads.html`.
+- **Lo que hace DerLabs después:** en `/altas` ve los datos, descarga la carta
+  y el logo, baja todas las fotos en un `.zip`, y con "Pasar datos a la tienda"
+  deja en la tienda elegida el WhatsApp, correo de avisos, dirección (local),
+  horario, delivery/retiro, costo y tiempo de despacho, logo e ícono. Los
+  productos se cargan a mano con la carta. "Cerrar alta" borra los archivos
+  (los datos quedan) y el enlace deja de funcionar.
+- **Archivos:** `alta.html` (negocio), `altas.html` (DerLabs), `logo-util.js`
+  (tratamiento del logo para `altas.html`; misma lógica que `app.js` y
+  `generar-tienda.html`: si se cambia una, cambiar las tres),
   `cloudflare/functions/altas.js` (`/api/alta`) y las rutas `/alta/…` y
   `/altas` en `worker.js`.
-- **Dónde se guarda:** datos (incluida la lista de productos) en Firestore
-  `altas/<código>` y un documento por archivo en
-  `altas/<código>/archivos/<id>` (colecciones sin reglas: solo las toca el
-  servidor). Los archivos van al KV `LANDING` (el mismo del editor del
+- **Dónde se guarda:** datos en Firestore `altas/<código>` y un documento por
+  archivo en `altas/<código>/archivos/<id>` (colecciones sin reglas: solo las
+  toca el servidor). Los archivos van al KV `LANDING` (el mismo del editor del
   landing, sin configurar nada) con clave `alta:<código>:<id>`.
-- **Límites:** 200 productos; fotos achicadas a 1600 px en el teléfono antes
-  de subir; carta o catálogo en PDF hasta 20 MB o fotos (12 archivos); 1 logo
-  hasta 8 MB (se sube tal cual). El servidor mira los primeros bytes del
-  archivo: solo acepta PDF, JPG, PNG y WebP reales.
+- **Límites:** carta en PDF hasta 20 MB o fotos (12 archivos), 80 fotos de
+  productos (se achican a 1600 px en el teléfono antes de subir), 1 logo hasta
+  8 MB (se sube tal cual para no perder calidad). El servidor mira los primeros
+  bytes del archivo: solo acepta PDF, JPG, PNG y WebP reales.
 - **Cuidado con el espacio:** el KV gratuito tiene 1 GB. Cada alta ocupa lo que
-  pesen sus fotos hasta que se cierra; conviene cerrar las altas ya cargadas.
-  Cuando las imágenes pasen a R2, estos archivos deberían ir ahí.
+  pesen su carta y fotos hasta que se cierra; conviene cerrar las altas ya
+  cargadas. Cuando las imágenes pasen a R2, estos archivos deberían ir ahí.
 - **Detalle de Firestore que costó:** `set(..., { merge: true })` mezcla los
   mapas por dentro. Por eso el alta se reescribe entera al guardar, y al pasar
   el horario a la tienda van siempre los 7 días (los cerrados como lista

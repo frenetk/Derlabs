@@ -69,17 +69,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .gate-c{width:100%;max-width:360px;background:#fff;border:1px solid var(--linea);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:12px}
 .gate-c h1{font-size:20px}
 .err{font-size:13px;font-weight:600;color:var(--rojo);min-height:18px}
-.acc{display:flex;flex-wrap:wrap;gap:0 20px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{min-height:44px;padding:0 16px;border-radius:999px;background:#fff;border:1.5px solid var(--borde);font-weight:700;font-size:14px}
-.chip[aria-pressed="true"]{background:var(--tinta);border-color:var(--tinta);color:#fff}
-.cat{font-size:13px;font-weight:700;padding:10px 0 2px}
-.pr{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--linea)}
-.pr .arch-t small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pr-p{flex:none;font-size:14px}
-.marca{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--linea);border-radius:12px;font-size:13px;color:var(--gris);cursor:pointer}
-.marca input{flex:none;width:22px;height:22px;margin:1px 0 0;accent-color:var(--tinta)}
-.marca b{display:block;color:var(--tinta);font-size:14px}
 .sec{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--gris);padding:10px 4px 0}
 </style>
 </head>
@@ -104,7 +93,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 <script>
 (function(){
 "use strict";
-var SECRETO = "", ALTAS = [], TIENDAS = null, abierta = "", nueva = false, nuevaTipo = "", aplicar = "", resultado = {};
+var SECRETO = "", ALTAS = [], TIENDAS = null, abierta = "", nueva = false, aplicar = "", resultado = {};
 function $(s){ return document.querySelector(s); }
 function esc(s){ return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function peso(b){ return b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
@@ -155,41 +144,24 @@ function horarioTexto(h){
 }
 function horarioTxt(h){ return horarioTexto(h); }
 function fila(r, v, html){ return v ? '<div class="fila"><span>' + r + '</span><div>' + (html || esc(v)) + '</div></div>' : ''; }
-var TIPOS = { comida: "Comida", retail: "Tienda o retail", ropa: "Ropa", otro: "Otro" };
-function plata(n){ return "$" + Number(n).toLocaleString("es-CL"); }
-function prodCompleto(p){ return !!(p.nombre && p.precio != null && p.precio > 0 && p.categoria); }
 function vistaDatos(a){
   var d = a.datos || {}, wa = String(d.whatsapp || "").replace(/\D/g, "");
   var pago = function(v){ return v === "tengo" ? "ya tiene cuenta" : v === "ayuda" ? "necesita ayuda" : v === "no" ? "no lo usará" : ""; };
-  var zonas = (d.zonas || []).filter(function(z){ return z.comuna && z.costo != null; });
-  var delivery = d.delivery ? (zonas.length ? zonas.map(function(z){ return z.comuna + " " + (z.costo ? plata(z.costo) : "gratis"); }).join(" · ") : "Sí, sin comunas indicadas") + (d.gratisDesde ? " · gratis desde " + plata(d.gratisDesde) : "") : "";
+  var entrega = [d.delivery ? "Delivery" + (d.costoDespacho != null ? " · despacho $" + Number(d.costoDespacho).toLocaleString("es-CL") : "") : "", d.retiro ? "Retiro en local" : ""].filter(Boolean).join(" · ");
   var pagos = [d.pagoEfectivo ? "Efectivo" : "", d.pagoMP ? "Mercado Pago: " + pago(d.pagoMP) : "", d.pagoWebpay ? "Webpay: " + pago(d.pagoWebpay) : ""].filter(Boolean).join(" · ");
-  var h = '<div>' + fila("Negocio", d.negocio) + fila("Rubro", TIPOS[a.tipo || d.tipo]) + fila("Contacto", d.responsable)
+  var tipos = { comida: "Comida", retail: "Tienda o retail", ropa: "Ropa", otro: "Otro" };
+  var h = '<div>' + fila("Negocio", d.negocio) + fila("Tipo", tipos[d.tipo]) + fila("Contacto", d.responsable)
     + fila("WhatsApp", d.whatsapp, wa ? '<a href="https://wa.me/' + (wa.length === 8 ? "569" + wa : wa.length === 9 ? "56" + wa : wa) + '" target="_blank" rel="noopener">' + esc(d.whatsapp) + '</a>' : "")
-    + fila("Correo", d.correo) + fila("Dirección", [d.direccion, d.comuna, d.ciudad].filter(Boolean).join(", ")) + fila("Instagram", d.instagram) + fila("Horario", horarioTxt(d.horario))
-    + fila("Delivery", delivery) + fila("Retiro", d.retiro ? "Sí, en el local" : "") + fila("Tiempo", d.tiempo) + fila("Pagos", pagos)
+    + fila("Correo", d.correo) + fila("Dirección", d.direccion) + fila("Instagram", d.instagram) + fila("Horario", horarioTxt(d.horario))
+    + fila("Entrega", entrega) + fila("Zonas", d.zonas) + fila("Tiempo", d.tiempo) + fila("Pagos", pagos)
     + fila("Dominio", d.dominio === "tengo" ? (d.dominioCual || "Tiene uno") : d.dominio === "no" ? "No tiene" : "") + fila("Notas", d.notas) + '</div>';
-  /* productos, agrupados por categoría */
-  var prods = d.productos || [], cats = [];
-  prods.forEach(function(p){ var c = p.categoria || "Sin categoría"; if (cats.indexOf(c) < 0) cats.push(c); });
-  var inc = prods.filter(function(p){ return !prodCompleto(p); }).length;
-  h += '<div class="grupo"><div class="rot">PRODUCTOS' + (prods.length ? " · " + prods.length : "") + '</div>';
-  if (!prods.length) h += '<p class="ayuda" style="font-size:13.5px">Todavía no agrega productos.</p>';
-  if (inc) h += '<p class="ayuda" style="font-size:13px;color:#5F4200;font-weight:600">' + inc + (inc === 1 ? " producto está incompleto" : " productos están incompletos") + ' (sin nombre, precio o categoría) y no se pasará a la tienda.</p>';
-  cats.forEach(function(c){
-    h += '<div class="cat">' + esc(c) + '</div>' + prods.filter(function(p){ return (p.categoria || "Sin categoría") === c; }).map(function(p){
-      return '<div class="pr"><div class="arch-i">' + (p.foto ? '<img src="' + urlArch(a, { id: p.foto }) + '" alt="" loading="lazy">' : '') + '</div><div class="arch-t"><b>' + esc(p.nombre || "Sin nombre") + '</b>'
-        + (p.descripcion ? '<small>' + esc(p.descripcion) + '</small>' : '') + '</div><b class="pr-p">' + (p.precio != null ? plata(p.precio) : "—") + '</b></div>';
-    }).join("");
-  });
-  h += '</div>';
   var arch = a.archivos || [], de = function(t){ return arch.filter(function(f){ return f.tipo === t; }); };
   var fotos = de("foto"), items = "";
   de("carta").forEach(function(f){
-    items += '<div class="arch"><div class="arch-i">' + (f.mime === "application/pdf" ? "PDF" : '<img src="' + urlArch(a, f) + '" alt="" loading="lazy">') + '</div><div class="arch-t"><b>' + esc(f.nombre) + '</b><small>' + (TIPOS[a.tipo || d.tipo] === "Comida" ? "Carta" : "Catálogo") + ' · ' + peso(f.bytes) + '</small></div>'
+    items += '<div class="arch"><div class="arch-i">' + (f.mime === "application/pdf" ? "PDF" : '<img src="' + urlArch(a, f) + '" alt="" loading="lazy">') + '</div><div class="arch-t"><b>' + esc(f.nombre) + '</b><small>Carta · ' + peso(f.bytes) + '</small></div>'
       + '<a class="btn btn-2" href="' + urlArch(a, f, true) + '">Descargar</a></div>';
   });
-  if (fotos.length) items += '<div class="arch"><div class="arch-i"><img src="' + urlArch(a, fotos[0]) + '" alt="" loading="lazy"></div><div class="arch-t"><b>' + fotos.length + (fotos.length === 1 ? " foto de producto" : " fotos de productos") + '</b><small>En un .zip, cada una con el nombre de su producto</small></div>'
+  if (fotos.length) items += '<div class="arch"><div class="arch-i"><img src="' + urlArch(a, fotos[0]) + '" alt="" loading="lazy"></div><div class="arch-t"><b>' + fotos.length + (fotos.length === 1 ? " foto de producto" : " fotos de productos") + '</b><small>Se descargan en un solo archivo .zip</small></div>'
     + '<button class="btn btn-2" data-zip="' + a.codigo + '">Descargar</button></div>';
   de("logo").forEach(function(f){
     items += '<div class="arch"><div class="arch-i"><img src="' + urlArch(a, f) + '" alt="" style="object-fit:contain"></div><div class="arch-t"><b>Logo</b><small>' + esc(f.nombre) + ' · ' + peso(f.bytes) + '</small></div>'
@@ -200,16 +172,13 @@ function vistaDatos(a){
   if (res) h += '<div class="res' + (res.error ? " mal" : "") + '" role="status">' + (res.error ? esc(res.error)
     : '<b>Datos pasados a ' + esc(res.tienda) + '</b>' + esc(res.hecho.join(", ")) + (res.omitido.length ? '<br><b style="margin-top:6px">No se pasó</b>' + esc(res.omitido.join("; ")) : '')) + '</div>';
   if (aplicar === a.codigo){
-    var listos = prods.filter(prodCompleto).length;
     h += '<div class="grupo"><label class="rot" for="selTienda" style="letter-spacing:0;font-size:13px;color:var(--tinta)">¿A qué tienda?</label>'
       + (TIENDAS === null ? '<p class="ayuda">Cargando tiendas…</p>' : !TIENDAS.length ? '<p class="ayuda">No hay tiendas creadas todavía. Crea la tienda primero en el generador.</p>'
         : '<select class="inp" id="selTienda">' + TIENDAS.map(function(t){ return '<option value="' + esc(t.storeId) + '"' + (t.storeId === a.storeId ? " selected" : "") + '>' + esc(t.nombre) + ' · ' + esc((t.dominios || [])[0] || t.storeId) + '</option>'; }).join("") + '</select>'
-          + '<label class="marca"><input type="checkbox" id="chkReemplazar" checked><span><b>Tienda nueva: reemplazar lo que tenga</b>Borra los productos, categorías y locales que hoy tiene la tienda (los de muestra) y deja solo los de esta alta. Desmárcalo si la tienda ya tiene productos reales.</span></label>'
-          + '<p class="ayuda" id="avance" role="status">Se pasarán los datos' + (listos ? " y " + listos + (listos === 1 ? " producto" : " productos") : "") + '.</p>'
-          + '<div class="dos"><button class="btn btn-2" data-cancelar="1">Cancelar</button><button class="btn btn-1" data-confirmar="' + a.codigo + '">Pasar a la tienda</button></div>') + '</div>';
+          + '<div class="dos"><button class="btn btn-2" data-cancelar="1">Cancelar</button><button class="btn btn-1" data-confirmar="' + a.codigo + '">Pasar datos</button></div>') + '</div>';
   } else {
-    h += '<div class="grupo"><button class="btn btn-1" data-aplicar="' + a.codigo + '" style="min-height:50px;font-size:15px">Pasar todo a la tienda</button>'
-      + '<p class="ayuda">Deja en la tienda los productos con su foto, precio y categoría, las comunas de despacho con su costo, el horario, WhatsApp, correo, dirección, logo e ícono.</p>'
+    h += '<div class="grupo"><button class="btn btn-1" data-aplicar="' + a.codigo + '" style="min-height:50px;font-size:15px">Pasar datos a la tienda</button>'
+      + '<p class="ayuda">Deja en la tienda el WhatsApp, correo, dirección, horario, entrega, logo e ícono. Los productos los cargas tú con la carta.</p>'
       + '<button class="enl" data-cerrar="' + a.codigo + '">Cerrar alta y borrar archivos</button></div>';
   }
   return h;
@@ -217,13 +186,11 @@ function vistaDatos(a){
 function tarjeta(a){
   var e = ESTADOS[a.estado] || ESTADOS.pendiente, ab = abierta === a.codigo, n = (a.archivos || []).length;
   var h = '<div class="card' + (ab ? " abierta" : "") + '" id="a-' + a.codigo + '"><div class="card-c"><div><b>' + esc(a.negocio || "Sin nombre") + '</b><small>' + esc(detalleEstado(a)) + '</small></div><span class="pill ' + e[1] + '">' + e[0] + '</span></div>';
-  if (a.estado === "cerrada") return h + (ab ? vistaCerrada(a) : '') + '<div class="acc"><button class="enl" data-ver="' + a.codigo + '">' + (ab ? "Ocultar datos" : "Ver datos") + '</button><button class="enl" data-eliminar="' + a.codigo + '">Quitar de la lista</button></div></div>';
+  if (a.estado === "cerrada") return h + (ab ? vistaCerrada(a) : '<button class="enl" data-ver="' + a.codigo + '" style="align-self:flex-start">Ver datos</button>') + '</div>';
   h += '<div class="link">' + esc(enlace(a).replace(/^https?:\/\//, "")) + '</div>'
     + '<div class="dos"><button class="btn btn-2" data-copiar="' + a.codigo + '">Copiar enlace</button>'
     + '<a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent("Hola, ya podemos armar tu tienda de " + (a.negocio || "") + ". Sube aquí tu carta, fotos, logo y los datos de tu negocio: " + enlace(a)) + '">Enviar por WhatsApp</a></div>';
   if (a.estado !== "pendiente") h += ab ? '<button class="enl" data-ver="' + a.codigo + '" style="align-self:flex-start">Ocultar datos</button>' + vistaDatos(a) : '<button class="btn btn-2" data-ver="' + a.codigo + '">Ver datos' + (n ? " y " + n + (n === 1 ? " archivo" : " archivos") : "") + '</button>';
-  /* enlace que el negocio todavía no abre: se puede borrar si se creó por error */
-  if (a.estado === "pendiente") h += '<button class="enl" data-eliminar="' + a.codigo + '" style="align-self:flex-start">Borrar este enlace</button>';
   return h + '</div>';
 }
 function vistaCerrada(a){
@@ -236,8 +203,6 @@ function pintar(){
   vivas.sort(function(x, z){ return (orden[x.estado] - orden[z.estado]) || String(z.creadaEn).localeCompare(String(x.creadaEn)); });
   var h = "";
   if (nueva) h += '<form class="card" id="fNueva"><label for="nNegocio" style="font-weight:700">Nombre del negocio</label><input class="inp" id="nNegocio" maxlength="100" autocomplete="off">'
-    + '<div style="font-weight:700">Rubro</div><div class="chips" id="nTipos">' + Object.keys(TIPOS).map(function(k){ return '<button type="button" class="chip" data-tipo="' + k + '" aria-pressed="' + (nuevaTipo === k) + '">' + TIPOS[k] + '</button>'; }).join("") + '</div>'
-    + '<p class="ayuda">La página del negocio habla de carta o de catálogo según el rubro.</p>'
     + '<div class="err" id="nErr" role="alert"></div><div class="dos"><button type="button" class="btn btn-2" id="nCancelar">Cancelar</button><button class="btn btn-1" id="nCrear" type="submit">Crear enlace</button></div></form>';
   h += vivas.map(tarjeta).join("");
   if (!vivas.length && !nueva) h += '<div class="vacio"><b style="display:block;color:var(--tinta);font-size:16px;margin-bottom:6px">No hay altas en curso</b>Cuando cierres una venta, toca “Nueva alta” y envíale el enlace al negocio.</div>';
@@ -247,15 +212,12 @@ function pintar(){
   if (f){
     $("#nNegocio").focus();
     $("#nCancelar").onclick = function(){ nueva = false; pintar(); };
-    $("#nTipos").onclick = function(ev){ var t = ev.target.closest("[data-tipo]"); if (!t) return; ev.stopPropagation(); nuevaTipo = t.getAttribute("data-tipo");
-      $("#nTipos").querySelectorAll("[data-tipo]").forEach(function(x){ x.setAttribute("aria-pressed", String(x === t)); }); $("#nErr").textContent = ""; };
     f.onsubmit = function(ev){
       ev.preventDefault();
       var v = $("#nNegocio").value.trim(), b = $("#nCrear");
       if (!v){ $("#nErr").textContent = "Escribe el nombre del negocio."; return; }
-      if (!nuevaTipo){ $("#nErr").textContent = "Elige el rubro."; return; }
       b.disabled = true; b.textContent = "Creando…";
-      api("/api/alta", { accion: "crear", negocio: v, tipo: nuevaTipo }).then(function(j){ ALTAS.unshift(j.alta); nueva = false; nuevaTipo = ""; pintar(); })
+      api("/api/alta", { accion: "crear", negocio: v }).then(function(j){ ALTAS.unshift(j.alta); nueva = false; pintar(); })
         .catch(function(e){ b.disabled = false; b.textContent = "Crear enlace"; $("#nErr").textContent = e.message; });
     };
   }
@@ -277,7 +239,7 @@ $("#lista").addEventListener("click", function(ev){
     if (TIENDAS === null) api("/api/planTienda", { accion: "listar" }).then(function(j){ TIENDAS = j.tiendas || []; }).catch(function(){ TIENDAS = []; }).then(pintar);
   }
   else if (t.getAttribute("data-cancelar")){ aplicar = ""; pintar(); }
-  else if ((v = t.getAttribute("data-confirmar"))) pasarDatos(de(v), $("#selTienda").value, t, $("#chkReemplazar").checked);
+  else if ((v = t.getAttribute("data-confirmar"))) pasarDatos(de(v), $("#selTienda").value, t);
   else if ((v = t.getAttribute("data-cerrar"))){
     var a = de(v);
     if (!window.confirm("¿Cerrar el alta de " + (a.negocio || "este negocio") + "?\n\nSe borran sus archivos (carta, fotos y logo) y el enlace deja de funcionar. Los datos se conservan. Descarga antes lo que necesites.")) return;
@@ -285,66 +247,22 @@ $("#lista").addEventListener("click", function(ev){
     api("/api/alta", { accion: "cerrar", codigo: v }).then(function(){ a.estado = "cerrada"; a.cerradaEn = new Date().toISOString(); a.archivos = []; abierta = ""; pintar(); })
       .catch(function(e){ t.disabled = false; t.textContent = "Cerrar alta y borrar archivos"; window.alert(e.message); });
   }
-  else if ((v = t.getAttribute("data-eliminar"))){
-    var b = de(v), pend = b.estado === "pendiente";
-    if (!window.confirm(pend ? "¿Borrar el enlace de " + (b.negocio || "este negocio") + "?\n\nDeja de funcionar de inmediato. Si lo necesitas de nuevo, creas otro con “Nueva alta”."
-      : "¿Quitar de la lista el alta de " + (b.negocio || "este negocio") + "?\n\nSe borran también sus datos. No se puede deshacer.")) return;
-    var txt0 = t.textContent; t.disabled = true; t.textContent = "Borrando…";
-    api("/api/alta", { accion: "eliminar", codigo: v }).then(function(){ ALTAS = ALTAS.filter(function(x){ return x.codigo !== v; }); if (abierta === v) abierta = ""; pintar(); })
-      .catch(function(e){ t.disabled = false; t.textContent = txt0; window.alert(e.message); });
-  }
   else if ((v = t.getAttribute("data-zip"))) descargarZip(de(v), t);
 });
 
 /* ── pasar datos a la tienda ── */
 function aDataURL(blob){ return new Promise(function(ok, mal){ var fr = new FileReader(); fr.onload = function(){ ok(fr.result); }; fr.onerror = function(){ mal(new Error("No se pudo leer el logo")); }; fr.readAsDataURL(blob); }); }
-/* La foto de un producto, al tamaño que usa la tienda (800 px, JPG): la tienda carga todas las fotos juntas */
-function fotoTienda(url){
-  return fetch(url).then(function(r){ if (!r.ok) throw new Error("foto"); return r.blob(); }).then(function(bl){
-    return new Promise(function(ok){
-      var u = URL.createObjectURL(bl), img = new Image();
-      img.onload = function(){
-        var e = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement("canvas");
-        c.width = Math.max(1, Math.round(img.naturalWidth * e)); c.height = Math.max(1, Math.round(img.naturalHeight * e));
-        var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingQuality = "high"; x.drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(u); ok(c.toDataURL("image/jpeg", 0.82));
-      };
-      img.onerror = function(){ URL.revokeObjectURL(u); ok(""); };
-      img.src = u;
-    });
-  }).catch(function(){ return ""; });
-}
-function pasarDatos(a, storeId, boton, reemplazar){
+function pasarDatos(a, storeId, boton){
   boton.disabled = true; boton.textContent = "Pasando…";
-  var decir = function(t){ var e = $("#avance"); if (e) e.textContent = t; };
   var logo = (a.archivos || []).filter(function(f){ return f.tipo === "logo"; })[0];
-  var prods = ((a.datos || {}).productos || []).filter(prodCompleto), creados = 0, sinFoto = 0, res = null;
-  decir("Preparando el logo…");
   var prep = !logo ? Promise.resolve({}) : fetch(urlArch(a, logo)).then(function(r){ if (!r.ok) throw new Error("No se pudo leer el logo"); return r.blob(); })
     .then(aDataURL).then(procesarLogo).then(function(l){ return iconoDeLogo(l).then(function(i){ return { logoBase64: l, faviconBase64: i }; }); });
-  prep.then(function(img){ decir("Pasando la configuración…"); return api("/api/alta", Object.assign({ accion: "aplicar", codigo: a.codigo, storeId: storeId, reemplazar: reemplazar }, img)); })
+  prep.then(function(img){ return api("/api/alta", Object.assign({ accion: "aplicar", codigo: a.codigo, storeId: storeId }, img)); })
     .then(function(j){
-      res = j;
-      /* productos de a 4: cada lote lleva sus fotos ya achicadas */
-      var lote = function(i){
-        if (i >= prods.length) return Promise.resolve();
-        var grupo = prods.slice(i, i + 4);
-        decir("Cargando productos: " + Math.min(i + 4, prods.length) + " de " + prods.length + "…");
-        return Promise.all(grupo.map(function(p){ return p.foto ? fotoTienda(urlArch(a, { id: p.foto })) : Promise.resolve(""); })).then(function(imgs){
-          imgs.forEach(function(x, k){ if (grupo[k].foto && !x) sinFoto++; });
-          return api("/api/alta", { accion: "productos", codigo: a.codigo, storeId: storeId, desde: (j.ordenBase || 0) + i,
-            productos: grupo.map(function(p, k){ return { id: p.id, imagen: imgs[k] }; }) });
-        }).then(function(r){ creados += r.creados || 0; return lote(i + 4); });
-      };
-      return lote(0);
-    }).then(function(){
       var t = (TIENDAS || []).filter(function(x){ return x.storeId === storeId; })[0];
       a.storeId = storeId; a.aplicadaEn = new Date().toISOString();
-      var hecho = (res.hecho || []).slice(), omitido = (res.omitido || []).slice();
-      if (creados) hecho.push(creados + (creados === 1 ? " producto" : " productos"));
-      if (sinFoto) omitido.push("la foto de " + sinFoto + (sinFoto === 1 ? " producto (no se pudo leer)" : " productos (no se pudieron leer)"));
-      resultado[a.codigo] = { tienda: t ? t.nombre : storeId, hecho: hecho, omitido: omitido };
-    }).catch(function(e){ resultado[a.codigo] = { error: (creados ? "Se alcanzaron a cargar " + creados + " productos. " : "") + (e.message || "No se pudieron pasar los datos") + " Puedes volver a intentarlo: no se duplica nada." }; })
+      resultado[a.codigo] = { tienda: t ? t.nombre : storeId, hecho: j.hecho || [], omitido: j.omitido || [] };
+    }).catch(function(e){ resultado[a.codigo] = { error: e.message || "No se pudieron pasar los datos" }; })
     .then(function(){ aplicar = ""; pintar(); });
 }
 
@@ -377,11 +295,8 @@ function descargarZip(a, boton){
     if (i >= fotos.length) return Promise.resolve();
     boton.textContent = (i + 1) + " de " + fotos.length;
     return fetch(urlArch(a, fotos[i])).then(function(r){ if (!r.ok) throw new Error("No se pudo leer " + fotos[i].nombre); return r.arrayBuffer(); }).then(function(buf){
-      var pr = ((a.datos || {}).productos || []).filter(function(p){ return p.foto === fotos[i].id; })[0];
-      var ext = (fotos[i].nombre.match(/\.[A-Za-z0-9]+$/) || [".jpg"])[0];
-      var base = pr && pr.nombre ? ((pr.categoria ? pr.categoria + " - " : "") + pr.nombre).replace(/[\\/:*?"<>|]+/g, " ").trim() + ext : fotos[i].nombre;
-      var nom = base, k = 1;
-      while (usados[nom.toLowerCase()]){ k++; nom = base.replace(/(\.[A-Za-z0-9]+)?$/, " (" + k + ")$1"); }
+      var nom = fotos[i].nombre, k = 1;
+      while (usados[nom.toLowerCase()]){ k++; nom = fotos[i].nombre.replace(/(\.[A-Za-z0-9]+)?$/, " (" + k + ")$1"); }
       usados[nom.toLowerCase()] = 1; listos.push({ nombre: nom, bytes: new Uint8Array(buf) });
       return sigue(i + 1);
     });

@@ -12,11 +12,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!--
   ALTA DE TIENDA — lo llena un negocio que YA contrató DerLabs.
-  DerLabs crea el alta en /altas.html (nombre y rubro) y le manda este enlace:
-  derlabs.cl/alta/<código>. Aquí el negocio deja todo lo necesario para que su tienda
-  quede lista: productos con nombre, precio y foto, horario, comunas de despacho con su
-  costo, contacto y logo. Todo se guarda en /api/alta (cloudflare/functions/altas.js)
-  a medida que avanza. No confundir con formulario.html, que es el contacto ANTES de contratar.
+  DerLabs crea el alta en /altas.html y le manda este enlace: derlabs.cl/alta/<código>.
+  Aquí el negocio deja sus datos y sube su carta, fotos y logo. Todo se guarda en
+  /api/alta (cloudflare/functions/altas.js) a medida que avanza.
+  No confundir con formulario.html, que es el contacto ANTES de contratar.
 -->
 <style>
 :root{--tinta:#14121F;--gris:#55516A;--linea:#E7E4EF;--borde:#CFCADF;--suave:#F6F5FB;--morado:#4A3BC0;--verde:#12703A;--verde-suave:#E3F6EA;--rojo:#B3261E;--rojo-suave:#FCE8E6}
@@ -42,16 +41,15 @@ h1,h2,p{margin:0}
 .tit{font-size:24px;line-height:1.2;font-weight:700;letter-spacing:-.4px}
 .sub{font-size:14.5px;color:var(--gris);margin-top:6px}
 .campos{display:flex;flex-direction:column;gap:16px;margin-top:20px}
-.campo{display:flex;flex-direction:column;gap:6px;min-width:0}
+.campo{display:flex;flex-direction:column;gap:6px}
 .campo label,.rot{font-size:13px;font-weight:700}
 .campo label span{font-weight:500;color:var(--gris)}
-.dosc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .inp{min-height:48px;width:100%;padding:0 14px;border-radius:10px;border:1.5px solid var(--borde);background:#fff}
 textarea.inp{padding:12px 14px;min-height:96px;resize:vertical}
 .inp:focus{outline:2px solid var(--morado);outline-offset:1px;border-color:var(--morado)}
 .ayuda{font-size:12.5px;color:var(--gris)}
-.campo.mal .inp,.inp.mal{border-color:var(--rojo)}
-.err{display:none;font-size:13px;font-weight:600;color:var(--rojo)}
+.campo.mal .inp{border-color:var(--rojo)}
+.err{display:none;font-size:12.5px;font-weight:600;color:var(--rojo)}
 .campo.mal .err,.err.ver{display:block}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{min-height:44px;padding:0 16px;border-radius:999px;background:#fff;border:1.5px solid var(--borde);font-weight:700;font-size:14px}
@@ -87,30 +85,16 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--morado);outline-off
 .tramo .inp{flex:1;min-width:0;max-width:150px;font-weight:700;text-align:center;padding:0 6px}
 .tramo span{color:var(--gris)}
 .x{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
-.tramo .x,.zona .x{background:var(--suave)}
+.tramo .x{background:var(--suave)}
 .dia-acc{display:flex;flex-wrap:wrap;gap:0 18px;margin-top:4px}
 .nota{margin-top:16px;padding:14px 16px;border-radius:12px;background:var(--suave);font-size:13.5px;color:var(--gris)}
-/* productos */
-.bloque{margin-top:26px}
+/* archivos */
+.bloque{margin-top:24px}
 .bloque-c{display:flex;align-items:flex-end;gap:12px;margin-bottom:10px}
 .bloque-c div{flex:1}
 .bloque-c b{font-size:16px;display:block}
 .bloque-c span{font-size:13.5px;color:var(--gris)}
-.bloque-c em{font-style:normal;font-size:13px;font-weight:700;color:var(--gris);white-space:nowrap}
-.prod{border:1px solid var(--linea);border-radius:14px;padding:12px;margin-bottom:10px;display:flex;flex-direction:column;gap:10px}
-.prod.mal{border-color:var(--rojo)}
-.prod-a{display:flex;gap:12px;align-items:flex-start}
-.prod-f{position:relative;flex:none;width:76px;height:76px;border-radius:10px;background:#E9E6F3;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:700;color:var(--gris);text-align:center;line-height:1.2}
-.prod-f img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.prod-f .tapa{position:absolute;inset:0;background:rgba(255,255,255,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:6px;font-size:10.5px}
-.prod-f .tapa.mal{color:var(--rojo)}
-.prod-n{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
-.prod label{font-size:12px;font-weight:700}
-.prod label span{font-weight:500;color:var(--gris)}
-.prod .inp{min-height:46px;padding:0 12px}
-.precio{position:relative}
-.precio::before{content:"$";position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:700;color:var(--gris)}
-.precio .inp{padding-left:26px}
+.bloque-c em{font-style:normal;font-size:13px;font-weight:700;color:var(--gris)}
 .arch{display:flex;align-items:center;gap:12px;padding:10px 6px 10px 12px;border:1px solid var(--linea);border-radius:12px;margin-bottom:8px}
 .arch-i{flex:none;width:40px;height:40px;border-radius:10px;background:var(--suave);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--morado);overflow:hidden}
 .arch-i img{width:100%;height:100%;object-fit:cover}
@@ -121,19 +105,25 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--morado);outline-off
 .arch-t small.mal{color:var(--rojo)}
 .barra{height:5px;border-radius:999px;background:#D9D5E6;overflow:hidden;margin-top:6px}
 .barra i{display:block;height:100%;width:0;background:var(--morado);border-radius:999px;transition:width .2s}
-.tapa .barra{width:80%;margin:0}
+.fotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.foto{position:relative;aspect-ratio:1/1;border-radius:10px;background:#E9E6F3;overflow:hidden}
+.foto img{width:100%;height:100%;object-fit:cover;display:block}
+.foto .x{position:absolute;top:0;right:0;color:#fff}
+.foto .x::before{content:"";position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(20,18,31,.78)}
+.foto .x svg{position:relative;width:14px;height:14px}
+.foto-sub{position:absolute;inset:0;background:rgba(255,255,255,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px;font-size:11.5px;font-weight:700;color:var(--gris);text-align:center}
+.foto-sub .barra{width:70%;margin:0}
+.foto-sub.mal{color:var(--rojo);background:rgba(255,255,255,.94);justify-content:flex-end;font-size:11px;line-height:1.25;padding:36px 6px 4px}
+.foto-agr{aspect-ratio:1/1;border-radius:10px;border:1.5px dashed #9B95B5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:13px;width:100%}
 .logo-v{flex:none;width:64px;height:64px;border-radius:14px;background:#E9E6F3;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .logo-v img{width:100%;height:100%;object-fit:contain}
-/* opciones y zonas */
+/* opciones */
 .op{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--linea)}
 .op div{flex:1}
 .op b{display:block}
 .op span{font-size:13.5px;color:var(--gris)}
 .grupo{margin-top:24px}
 .grupo>h2{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--gris);margin-bottom:6px}
-.zona{display:flex;align-items:flex-end;gap:8px;margin-bottom:10px}
-.zona .campo:first-child{flex:1.5}
-.zona .campo{flex:1}
 /* revisar */
 .rev{border:1px solid var(--linea);border-radius:14px;padding:4px 16px;margin-top:14px}
 .rev-c{display:flex;align-items:center;gap:10px;padding:8px 0 4px}
@@ -159,7 +149,6 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--morado);outline-off
 </div>
 <input type="file" id="fCarta" accept="application/pdf,image/*" multiple hidden>
 <input type="file" id="fFotos" accept="image/*" multiple hidden>
-<input type="file" id="fFotoUna" accept="image/*" hidden>
 <input type="file" id="fLogo" accept="image/*" hidden>
 
 <script>
@@ -171,36 +160,18 @@ var A = null;          /* el alta, como la devuelve el servidor */
 var D = {};            /* lo que el negocio va llenando */
 var ARCH = [];         /* archivos ya subidos */
 var COLA = [];         /* archivos esperando o subiendo */
-var VISTAS = {};       /* id de producto → imagen recién elegida (aún sin subir o recién subida) */
-var paso = 0, nTmp = 0, subiendo = false, fotoPara = "";
+var paso = 0, nTmp = 0, subiendo = false;
 var DIAS = [[1, "Lunes"], [2, "Martes"], [3, "Miércoles"], [4, "Jueves"], [5, "Viernes"], [6, "Sábado"], [0, "Domingo"]];
 var TIPOS_NEG = [["comida", "Comida"], ["retail", "Tienda o retail"], ["ropa", "Ropa"], ["otro", "Otro"]];
 var OP_PAGO = [["tengo", "Ya tengo cuenta"], ["ayuda", "Necesito ayuda"], ["no", "No lo usaré"]];
-/* Las palabras cambian según el rubro que DerLabs indicó al crear el alta */
-function T(){
-  var c = D.tipo === "comida";
-  return {
-    carta: c ? "Tu carta o menú" : "Tu catálogo o lista de precios",
-    cartaSub: "En PDF o en fotos, con los precios a la vista.",
-    cartaBtn: c ? "Subir carta (PDF o fotos)" : "Subir catálogo (PDF o fotos)",
-    cartaCorta: c ? "tu carta" : "tu catálogo",
-    ejProd: c ? "Ej.: Hamburguesa doble" : D.tipo === "ropa" ? "Ej.: Polera básica negra" : "Ej.: Audífonos inalámbricos",
-    ejCat: c ? "Ej.: Hamburguesas" : D.tipo === "ropa" ? "Ej.: Poleras" : "Ej.: Audio",
-    ejDesc: c ? "Ingredientes o lo que trae" : "Talla, medidas, material, color"
-  };
-}
 
 function $(s){ return document.querySelector(s); }
 function esc(s){ return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function peso(b){ return b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
-function plata(n){ return "$" + Number(n).toLocaleString("es-CL"); }
-function digitos(v){ return String(v == null ? "" : v).replace(/\D/g, ""); }
-function urlArch(id){ return "/api/alta?accion=archivo&codigo=" + COD + "&id=" + id; }
-function idProd(){ var s = "", c = "abcdefghijkmnpqrstuvwxyz23456789"; for (var i = 0; i < 8; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
-function prod(id){ return D.productos.filter(function(p){ return p.id === id; })[0]; }
+function urlArch(a){ return "/api/alta?accion=archivo&codigo=" + COD + "&id=" + a.id; }
 var ICO = {
   x: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
-  cam: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg>',
+  mas: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   ok: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#12703A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>'
 };
 
@@ -211,19 +182,10 @@ function api(cuerpo){
       if (!r.ok || !j.ok){ var e = new Error(j.error || "No se pudo conectar"); e.cerrada = !!j.cerrada; e.servidor = r.status >= 400 && r.status < 500; throw e; }
       return j; }); });
 }
-/* Lo que viaja al servidor: montos como números, sin datos internos de la página */
-function paraEnviar(){
-  var n = function(v){ var d = digitos(v); return d === "" ? null : Number(d); };
-  return Object.assign({}, D, {
-    gratisDesde: n(D.gratisDesde),
-    zonas: D.zonas.map(function(z){ return { comuna: z.comuna, costo: n(z.costo) }; }),
-    productos: D.productos.map(function(p){ return { id: p.id, nombre: p.nombre, precio: n(p.precio), categoria: p.categoria, descripcion: p.descripcion, foto: p.foto || "" }; })
-  });
-}
 
 /* ── guardado automático ── */
 var tGuardar = null, guardando = false, pendiente = false, txtEstado = "", clsEstado = "";
-function marcar(t, cls){ txtEstado = t; clsEstado = cls || ""; pintarEstado(); }
+function marcar(t, cls){ txtEstado = t; clsEstado = cls || ""; var e = $("#estado"); if (e && !enCola()){ e.textContent = t; e.className = "prog-e " + clsEstado; } }
 function enCola(){ return COLA.filter(function(x){ return x.estado !== "error"; }).length; }
 function pintarEstado(){
   var e = $("#estado"); if (!e) return;
@@ -231,7 +193,7 @@ function pintarEstado(){
   if (n){ e.textContent = "Subiendo " + n + (n === 1 ? " archivo…" : " archivos…"); e.className = "prog-e"; }
   else { e.textContent = txtEstado; e.className = "prog-e " + clsEstado; }
 }
-function respaldo(){ try { localStorage.setItem("dl_alta_" + COD, JSON.stringify({ t: Date.now(), datos: paraEnviar() })); } catch(e){} }
+function respaldo(){ try { localStorage.setItem("dl_alta_" + COD, JSON.stringify({ t: Date.now(), datos: D })); } catch(e){} }
 function cambio(){ respaldo(); pendiente = true; marcar("Guardando…"); clearTimeout(tGuardar); tGuardar = setTimeout(guardar, 900); }
 function guardar(){
   clearTimeout(tGuardar); tGuardar = null;
@@ -246,40 +208,35 @@ function guardar(){
   });
 }
 
+/* Lo que viaja al servidor: el despacho como número (o nada) */
+function paraEnviar(){
+  var c = String(D.costoDespacho == null ? "" : D.costoDespacho).replace(/\D/g, "");
+  return Object.assign({}, D, { costoDespacho: c === "" ? null : Number(c) });
+}
+
 /* ── arranque ── */
 function pantalla(titulo, texto, reintentar){
   $("#app").innerHTML = '<div class="centro"><h1 class="tit">' + esc(titulo) + '</h1><p>' + esc(texto) + '</p>'
     + (reintentar ? '<button class="btn btn-1" id="bRe" style="margin-top:8px">Reintentar</button>' : '<a class="enl" style="display:flex;align-items:center" href="https://wa.me/' + WSP_DERLABS + '" target="_blank" rel="noopener">Escribir a DerLabs por WhatsApp</a>') + '</div>';
   var b = $("#bRe"); if (b) b.onclick = iniciar;
 }
-function desdeServidor(s, nuevo){
-  s = s || {};
-  var txtN = function(v){ return v == null ? "" : String(v); };
-  return { negocio: s.negocio || A.negocio || "", tipo: A.tipo || s.tipo || "", whatsapp: s.whatsapp || "", correo: s.correo || "", direccion: s.direccion || "",
-    comuna: s.comuna || "", ciudad: s.ciudad || "", instagram: s.instagram || "", responsable: s.responsable || "", horario: s.horario || { activo: true, dias: {} },
-    productos: (Array.isArray(s.productos) ? s.productos : []).map(function(p){ return { id: p.id || idProd(), nombre: p.nombre || "", precio: txtN(p.precio), categoria: p.categoria || "", descripcion: p.descripcion || "", foto: p.foto || "" }; }),
-    delivery: nuevo ? true : s.delivery === true, retiro: nuevo ? true : s.retiro === true,
-    zonas: (Array.isArray(s.zonas) ? s.zonas : []).map(function(z){ return { comuna: z.comuna || "", costo: txtN(z.costo) }; }),
-    gratisDesde: txtN(s.gratisDesde), tiempo: s.tiempo || "", pagoEfectivo: nuevo ? true : s.pagoEfectivo === true, pagoMP: s.pagoMP || "", pagoWebpay: s.pagoWebpay || "",
-    dominio: s.dominio || "", dominioCual: s.dominioCual || "", notas: s.notas || "", paso: s.paso || 0 };
-}
 function iniciar(){
   if (!COD){ pantalla("Enlace incompleto", "Abre el enlace tal como te lo envió DerLabs."); return; }
   $("#app").innerHTML = '<div class="centro"><div class="gira" role="status" aria-label="Cargando"></div></div>';
-  fetch("/api/alta?codigo=" + COD).then(function(r){ return r.json().catch(function(){ return {}; }); }).then(function(j){
-    if (!j.ok){ pantalla(j.cerrada ? "Alta cerrada" : "Enlace no válido", j.error || "Pídele a DerLabs que te envíe el enlace de nuevo."); return; }
-    A = j.alta; ARCH = A.archivos || [];
-    D = desdeServidor(A.datos, !A.guardadoEn);
+  fetch("/api/alta?codigo=" + COD).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { r: r, j: j }; }); }).then(function(x){
+    if (!x.j.ok){ pantalla(x.j.cerrada ? "Alta cerrada" : "Enlace no válido", x.j.error || "Pídele a DerLabs que te envíe el enlace de nuevo."); return; }
+    A = x.j.alta; ARCH = A.archivos || [];
+    var nuevo = !A.guardadoEn, s = A.datos || {};
+    D = { negocio: s.negocio || A.negocio || "", tipo: s.tipo || "", whatsapp: s.whatsapp || "", correo: s.correo || "", direccion: s.direccion || "",
+      instagram: s.instagram || "", responsable: s.responsable || "", horario: s.horario || { activo: true, dias: {} },
+      delivery: nuevo ? true : s.delivery === true, retiro: nuevo ? true : s.retiro === true, costoDespacho: s.costoDespacho == null ? "" : s.costoDespacho,
+      zonas: s.zonas || "", tiempo: s.tiempo || "", pagoEfectivo: nuevo ? true : s.pagoEfectivo === true, pagoMP: s.pagoMP || "", pagoWebpay: s.pagoWebpay || "",
+      dominio: s.dominio || "", dominioCual: s.dominioCual || "", notas: s.notas || "", paso: s.paso || 0 };
     /* lo escrito sin conexión en este teléfono gana si es más nuevo que lo guardado */
     try { var loc = JSON.parse(localStorage.getItem("dl_alta_" + COD) || "null");
-      if (loc && loc.datos && loc.t > (Date.parse(A.guardadoEn || 0) || 0) + 1500){ var p0 = D.paso; D = desdeServidor(loc.datos, false); D.paso = Math.max(p0, D.paso || 0); pendiente = true; }
+      if (loc && loc.datos && loc.t > (Date.parse(A.guardadoEn || 0) || 0) + 1500){ var p0 = D.paso; D = Object.assign(D, loc.datos); D.paso = Math.max(p0, D.paso || 0); pendiente = true; }
     } catch(e){}
     if (!D.horario || !D.horario.dias) D.horario = { activo: true, dias: {} };
-    /* fotos subidas que quedaron sin producto (se cortó la conexión justo después de subirlas): se les crea uno */
-    var usadas = {}, ids = {};
-    ARCH.forEach(function(a){ ids[a.id] = 1; });
-    D.productos.forEach(function(p){ if (p.foto && !ids[p.foto]) p.foto = ""; if (p.foto) usadas[p.foto] = 1; });
-    ARCH.filter(function(a){ return a.tipo === "foto" && !usadas[a.id]; }).forEach(function(a){ D.productos.push({ id: idProd(), nombre: "", precio: "", categoria: "", descripcion: "", foto: a.id }); pendiente = true; });
     marcar(A.guardadoEn ? "Guardado" : "", "ok");
     paso = A.estado === "completa" ? 6 : 0;
     pintar(); if (pendiente) guardar();
@@ -310,38 +267,36 @@ function pintar(){
   var h = "";
   if (paso === 0) h = vInicio();
   else if (paso === 6) h = vListo();
-  else h = cabPaso() + '<div class="cuerpo">' + [null, vNegocio, vHorario, vProductos, vEntrega, vRevisar][paso]() + '</div>' + navPaso();
+  else h = cabPaso() + '<div class="cuerpo">' + [null, vNegocio, vHorario, vArchivos, vEntrega, vRevisar][paso]() + '</div>' + navPaso();
   $("#app").innerHTML = h;
   enlazar(); pintarEstado();
-  if (paso === 3){ pintarProductos(); pintarArchivos(); }
+  if (paso === 3) pintarArchivos();
   window.scrollTo(0, 0);
 }
-function repintar(){ var y = window.scrollY; pintar(); window.scrollTo(0, y); }
 function ir(n){ paso = n; pintar(); if (n >= 1 && n <= 5 && n > (D.paso || 0)){ D.paso = n; cambio(); } }
 
 function vInicio(){
-  var sigue = (D.paso || 0) > 0, t = T();
-  function it(svg, tt, s){ return '<div class="lista-i"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A3BC0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + svg + '</svg><div><b>' + tt + '</b><span>' + s + '</span></div></div>'; }
+  var sigue = (D.paso || 0) > 0;
+  function it(svg, t, s){ return '<div class="lista-i"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A3BC0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + svg + '</svg><div><b>' + t + '</b><span>' + s + '</span></div></div>'; }
   return '<div class="cuerpo"><div class="eti">' + esc((A.negocio || "").toUpperCase()) + '</div>'
     + '<h1 class="tit" style="font-size:28px">Bienvenido a DerLabs. Armemos tu tienda.</h1>'
-    + '<p class="sub" style="font-size:16px">Con lo que subas aquí dejamos tu tienda lista para vender: productos, precios, horario y despachos.</p>'
+    + '<p class="sub" style="font-size:16px">Sube tu carta y los datos de tu negocio. Con eso dejamos tu tienda lista para vender.</p>'
     + '<div class="lista"><h2>TEN A MANO</h2>'
-    + it('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/>', "Tus productos", "Una foto de cada uno, con su nombre y su precio.")
-    + it('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>', t.carta, D.tipo === "comida" ? "Si la tienes, en PDF o en fotos." : "Si lo tienes, en PDF o en fotos.")
+    + it('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>', "Tu carta o menú", "En PDF o en fotos, con los precios.")
+    + it('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/>', "Fotos de tus productos", "Las que tengas. Se pueden agregar más después.")
     + it('<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>', "Tu logo", "En la mejor calidad que tengas.")
-    + it('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/>', "Dónde estás y dónde despachas", "Tu dirección, tu horario y cada comuna a la que llegas, con su costo.")
-    + '</div></div><div class="inicio-pie"><p class="ayuda" style="font-size:13.5px">Lo que avances se guarda solo. Puedes parar y seguir después con este mismo enlace.</p>'
+    + it('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', "Datos de tu negocio", "WhatsApp, correo, dirección y horario de atención.")
+    + '</div></div><div class="inicio-pie"><p class="ayuda" style="font-size:13.5px">Toma unos 10 minutos. Lo que avances se guarda solo y puedes seguir después con este mismo enlace.</p>'
     + '<button class="btn btn-1" id="bEmp">' + (sigue ? "Continuar" : "Empezar") + '</button></div>';
 }
 
 function vNegocio(){
   return '<h1 class="tit">Tu negocio y cómo contactarte</h1><p class="sub">Estos datos aparecen en tu tienda. Los puedes cambiar después.</p><div class="campos">'
     + campo("negocio", "Nombre del negocio", "text", { err: "Escribe el nombre de tu negocio", auto: "organization" })
-    + (A.tipo ? '' : '<div class="campo" id="c-tipo"><div class="rot">Tipo de negocio</div>' + chips("tipo", TIPOS_NEG) + '<div class="err">Elige el tipo de negocio</div></div>')
+    + '<div class="campo"><div class="rot" id="r-tipo">Tipo de negocio</div>' + chips("tipo", TIPOS_NEG) + '</div>'
     + campo("whatsapp", "WhatsApp del negocio", "tel", { ph: "+56 9", ayuda: "Aquí te escriben tus clientes.", err: "Revisa el número de WhatsApp", auto: "tel" })
     + campo("correo", "Correo", "email", { ph: "tunegocio@correo.cl", ayuda: "Te avisamos cada pedido y con él entras a administrar tu tienda.", err: "Revisa el correo", auto: "email" })
-    + campo("direccion", "Dirección del negocio", "text", { ph: "Calle y número", err: "Escribe la calle y el número", auto: "street-address" })
-    + '<div class="dosc">' + campo("comuna", "Comuna", "text", { err: "Falta la comuna", auto: "address-level2" }) + campo("ciudad", "Ciudad", "text", { err: "Falta la ciudad", auto: "address-level1" }) + '</div>'
+    + campo("direccion", "Dirección del local", "text", { ph: "Calle, número y comuna", opcional: true, auto: "street-address" })
     + campo("instagram", "Instagram", "text", { ph: "@tunegocio", opcional: true })
     + campo("responsable", "Tu nombre", "text", { ph: "Con quién hablamos", opcional: true, auto: "name" })
     + '</div>';
@@ -365,52 +320,19 @@ function vHorario(){
     }
     h += '</div>';
   });
-  return h + '</div><div class="err" id="errHorario" role="alert" style="margin-top:10px">Marca al menos un día abierto y completa sus horas.</div>'
+  return h + '</div><div class="err" id="errHorario" role="alert">Completa las horas de los días abiertos, o márcalos como cerrados.</div>'
     + '<div class="nota">Si cierras después de la medianoche, pon la hora tal cual: por ejemplo, de 19:00 a 01:00.</div>';
 }
 
-/* ── productos, carta y logo ── */
-function vProductos(){
-  var t = T();
-  return '<h1 class="tit">Tus productos</h1><p class="sub">Cada producto con su nombre, su precio y su categoría: así quedan cargados en tu tienda tal como los escribas.</p>'
-    + '<div class="bloque" style="margin-top:18px"><div class="bloque-c"><div><b>Productos</b><span>Elige las fotos y completa los datos de cada una.</span></div><em id="nProd"></em></div>'
-    + '<datalist id="cats"></datalist><div id="zProd"></div>'
-    + '<button type="button" class="btn-agr" id="bFotos" style="min-height:52px">Agregar fotos de productos</button>'
-    + '<button type="button" class="enl" id="bSinFoto" style="width:100%">Agregar un producto sin foto</button>'
-    + '<div class="err" id="errProd" role="alert"></div></div>'
-    + '<div class="bloque"><div class="bloque-c"><div><b>' + t.carta + ' <span style="display:inline;font-weight:500">(opcional)</span></b><span>' + t.cartaSub + ' Nos sirve para revisar que no falte nada.</span></div></div><div id="zCarta"></div>'
-    + '<button type="button" class="btn-agr" id="bCarta">' + t.cartaBtn + '</button></div>'
-    + '<div class="bloque"><div class="bloque-c"><div><b>Tu logo</b><span>Se usa en tu tienda, en la pantalla de carga y como ícono.</span></div></div><div id="zLogo"></div></div>';
+function vArchivos(){
+  return '<h1 class="tit">Carta, fotos y logo</h1><p class="sub">Con esto cargamos tus productos y precios por ti.</p>'
+    + '<div class="bloque"><div class="bloque-c"><div><b>Tu carta o menú</b><span>PDF o fotos, con los precios a la vista.</span></div></div><div id="zCarta"></div>'
+    + '<button type="button" class="btn-agr" id="bCarta">Agregar archivo</button></div>'
+    + '<div class="bloque"><div class="bloque-c"><div><b>Fotos de tus productos</b><span>Puedes elegir varias de una vez.</span></div><em id="nFotos"></em></div>'
+    + '<div class="fotos" id="zFotos"></div><p class="ayuda" style="margin-top:8px">Si el nombre del archivo dice el producto, mejor: nos ayuda a ubicar cada foto.</p></div>'
+    + '<div class="bloque"><div class="bloque-c"><div><b>Tu logo</b><span>Se usa en tu tienda, en la pantalla de carga y como ícono.</span></div></div><div id="zLogo"></div></div>'
+    + '<div class="nota">¿No tienes todo ahora? Sube lo que tengas y sigue. Con este mismo enlace puedes volver a agregar archivos.</div>';
 }
-function miniatura(p){
-  var it = COLA.filter(function(x){ return x.prodId === p.id; })[0];
-  var src = VISTAS[p.id] || (p.foto ? urlArch(p.foto) : "");
-  var h = src ? '<img src="' + src + '" alt="" loading="lazy">' : ICO.cam + '<span>Agregar foto</span>';
-  if (it) h += it.estado === "error" ? '<span class="tapa mal">' + esc(it.error) + '</span>'
-    : '<span class="tapa">' + (it.estado === "espera" ? "En espera" : '<span class="barra"><i id="prog-' + it.tmp + '" style="width:' + Math.round(it.prog * 100) + '%"></i></span>Subiendo') + '</span>';
-  return h;
-}
-function tarjeta(p, i){
-  var t = T();
-  return '<div class="prod" id="p-' + p.id + '"><div class="prod-a">'
-    + '<button type="button" class="prod-f" id="th-' + p.id + '" data-foto="' + p.id + '" aria-label="' + (p.foto ? "Cambiar la foto" : "Agregar foto") + ' del producto ' + (i + 1) + '">' + miniatura(p) + '</button>'
-    + '<div class="prod-n"><label for="pn-' + p.id + '">Nombre del producto</label><input class="inp" id="pn-' + p.id + '" data-p="' + p.id + '" data-f="nombre" value="' + esc(p.nombre) + '" placeholder="' + t.ejProd + '" maxlength="80" autocomplete="off"></div>'
-    + '<button type="button" class="x" data-quitar-prod="' + p.id + '" aria-label="Quitar el producto ' + (i + 1) + '">' + ICO.x + '</button></div>'
-    + '<div class="dosc"><div class="campo"><label for="pp-' + p.id + '">Precio</label><div class="precio"><input class="inp" id="pp-' + p.id + '" data-p="' + p.id + '" data-f="precio" value="' + esc(p.precio) + '" inputmode="numeric" maxlength="11" autocomplete="off"></div></div>'
-    + '<div class="campo"><label for="pc-' + p.id + '">Categoría</label><input class="inp" id="pc-' + p.id + '" data-p="' + p.id + '" data-f="categoria" value="' + esc(p.categoria) + '" placeholder="' + t.ejCat + '" list="cats" maxlength="40" autocomplete="off"></div></div>'
-    + '<div class="campo"><label for="pd-' + p.id + '">Descripción <span>(opcional)</span></label><input class="inp" id="pd-' + p.id + '" data-p="' + p.id + '" data-f="descripcion" value="' + esc(p.descripcion) + '" placeholder="' + t.ejDesc + '" maxlength="200" autocomplete="off"></div></div>';
-}
-function categorias(){ var c = []; D.productos.forEach(function(p){ var v = String(p.categoria || "").trim(); if (v && c.indexOf(v) < 0) c.push(v); }); return c; }
-function pintarCats(){ var dl = $("#cats"); if (dl) dl.innerHTML = categorias().map(function(c){ return '<option value="' + esc(c) + '">'; }).join(""); }
-function contarProd(){ var e = $("#nProd"); if (e){ var n = D.productos.length; e.textContent = n ? n + (n === 1 ? " producto" : " productos") : ""; } }
-function pintarProductos(){
-  var z = $("#zProd"); if (!z) return;
-  z.innerHTML = D.productos.map(tarjeta).join("");
-  contarProd(); pintarCats(); pintarEstado();
-}
-function pintarMini(id){ var e = document.getElementById("th-" + id), p = prod(id); if (e && p) e.innerHTML = miniatura(p); pintarEstado(); }
-function incompleto(p){ return !String(p.nombre).trim() || !(Number(digitos(p.precio)) > 0) || !String(p.categoria).trim(); }
-
 function filaCola(it){
   return '<div class="arch"><div class="arch-i">' + (it.vista ? '<img src="' + it.vista + '" alt="">' : "PDF") + '</div><div class="arch-t"><b>' + esc(it.nombre) + '</b>'
     + (it.estado === "error" ? '<small class="mal">' + esc(it.error) + '</small>' : '<small class="gris">' + (it.estado === "espera" ? "En espera" : "Subiendo…") + '</small><div class="barra"><i id="prog-' + it.tmp + '" style="width:' + Math.round(it.prog * 100) + '%"></i></div>')
@@ -423,36 +345,36 @@ function pintarArchivos(){
   var de = function(t){ return ARCH.filter(function(a){ return a.tipo === t; }); }, cola = function(t){ return COLA.filter(function(a){ return a.tipo === t; }); };
   zc.innerHTML = de("carta").map(function(a){
     var img = a.mime !== "application/pdf";
-    return '<div class="arch"><div class="arch-i">' + (img ? '<img src="' + (a.vista || urlArch(a.id)) + '" alt="" loading="lazy">' : "PDF") + '</div><div class="arch-t"><b>' + esc(a.nombre) + '</b><small>Subido · ' + peso(a.bytes) + '</small></div>'
+    return '<div class="arch"><div class="arch-i">' + (img ? '<img src="' + (a.vista || urlArch(a)) + '" alt="" loading="lazy">' : "PDF") + '</div><div class="arch-t"><b>' + esc(a.nombre) + '</b><small>Subido · ' + peso(a.bytes) + '</small></div>'
       + '<button type="button" class="x" data-quitar="' + a.id + '" aria-label="Quitar ' + esc(a.nombre) + '">' + ICO.x + '</button></div>';
   }).join("") + cola("carta").map(filaCola).join("");
-  $("#bCarta").textContent = de("carta").length + cola("carta").length ? "Agregar otro archivo" : T().cartaBtn;
+  $("#bCarta").textContent = de("carta").length + cola("carta").length ? "Agregar otro archivo" : "Subir carta (PDF o fotos)";
+  var nf = de("foto").length;
+  $("#nFotos").textContent = nf ? nf + (nf === 1 ? " foto" : " fotos") : "";
+  $("#zFotos").innerHTML = de("foto").map(function(a){
+    return '<div class="foto"><img src="' + (a.vista || urlArch(a)) + '" alt="' + esc(a.nombre) + '" loading="lazy"><button type="button" class="x" data-quitar="' + a.id + '" aria-label="Quitar ' + esc(a.nombre) + '">' + ICO.x + '</button></div>';
+  }).join("") + cola("foto").map(function(it){
+    return '<div class="foto">' + (it.vista ? '<img src="' + it.vista + '" alt="">' : '') + (it.estado === "error"
+      ? '<div class="foto-sub mal">' + esc(it.error) + (it.fatal ? '' : '<button type="button" class="enl" style="min-height:32px" data-reintentar="' + it.tmp + '">Reintentar</button>') + '</div>'
+      : '<div class="foto-sub">' + (it.estado === "espera" ? "En espera" : '<div class="barra"><i id="prog-' + it.tmp + '" style="width:' + Math.round(it.prog * 100) + '%"></i></div>Subiendo') + '</div>')
+      + '<button type="button" class="x" data-descartar="' + it.tmp + '" aria-label="Quitar ' + esc(it.nombre) + '">' + ICO.x + '</button></div>';
+  }).join("") + '<button type="button" class="foto-agr" id="bFotos">' + ICO.mas + 'Agregar</button>';
   var lg = de("logo")[0], lc = cola("logo")[0];
   $("#zLogo").innerHTML = lc ? filaCola(lc)
-    : lg ? '<div class="arch" style="padding:12px 14px"><div class="logo-v"><img src="' + (lg.vista || urlArch(lg.id)) + '" alt="Tu logo"></div><div class="arch-t"><b>' + esc(lg.nombre) + '</b><small>Subido</small></div><button type="button" class="btn btn-2" id="bLogo" style="min-height:44px;padding:0 14px;font-size:13.5px">Cambiar</button></div>'
+    : lg ? '<div class="arch" style="padding:12px 14px"><div class="logo-v"><img src="' + (lg.vista || urlArch(lg)) + '" alt="Tu logo"></div><div class="arch-t"><b>' + esc(lg.nombre) + '</b><small>Subido</small></div><button type="button" class="btn btn-2" id="bLogo" style="min-height:44px;padding:0 14px;font-size:13.5px">Cambiar</button></div>'
     : '<button type="button" class="btn-agr" id="bLogo">Subir logo</button>';
+  var bf = $("#bFotos"); if (bf) bf.onclick = function(){ $("#fFotos").click(); };
   var bl = $("#bLogo"); if (bl) bl.onclick = function(){ $("#fLogo").click(); };
 }
 
-/* ── entrega y pagos ── */
-function filaZona(z, i){
-  return '<div class="zona"><div class="campo"><label for="zc-' + i + '">Comuna</label><input class="inp" id="zc-' + i + '" data-z="' + i + '" data-f="comuna" value="' + esc(z.comuna) + '" maxlength="60" autocomplete="off"></div>'
-    + '<div class="campo"><label for="zp-' + i + '">Costo</label><div class="precio"><input class="inp" id="zp-' + i + '" data-z="' + i + '" data-f="costo" value="' + esc(z.costo) + '" inputmode="numeric" maxlength="7" autocomplete="off"></div></div>'
-    + (D.zonas.length > 1 ? '<button type="button" class="x" data-quitar-zona="' + i + '" aria-label="Quitar la comuna ' + (i + 1) + '">' + ICO.x + '</button>' : '') + '</div>';
-}
 function vEntrega(){
-  if (D.delivery && !D.zonas.length) D.zonas = [{ comuna: D.comuna || "", costo: "" }];
   return '<h1 class="tit">Entrega y pagos</h1><p class="sub">Cómo reciben el pedido tus clientes y cómo te pagan.</p>'
     + '<div class="grupo"><h2>ENTREGA</h2>'
     + '<div class="op"><div><b>Delivery</b><span>Llevas el pedido a la dirección del cliente.</span></div>' + sw("delivery", "Delivery") + '</div>'
-    + (D.delivery ? '<div style="margin:0 0 16px"><div class="rot" style="margin-bottom:4px">¿A qué comunas despachas y cuánto cobras en cada una?</div>'
-        + '<p class="ayuda" style="margin-bottom:12px">Tu tienda solo aceptará pedidos con delivery a estas comunas, y cobrará el despacho de cada una.</p>'
-        + D.zonas.map(filaZona).join("")
-        + '<button type="button" class="enl" id="bZona">Agregar otra comuna</button>'
-        + '<div class="err" id="errZonas" role="alert">Completa la comuna y el costo de cada fila. Si el despacho es gratis, escribe 0.</div>'
-        + '<div class="campos" style="margin-top:12px"><div class="campo" id="c-gratisDesde"><label for="i-gratisDesde">Despacho gratis desde <span>(opcional)</span></label><div class="precio"><input class="inp" id="i-gratisDesde" data-k="gratisDesde" value="' + esc(D.gratisDesde) + '" inputmode="numeric" maxlength="9" autocomplete="off"></div><div class="ayuda">Si regalas el despacho en compras sobre cierto monto.</div></div>'
-        + campo("tiempo", "Tiempo estimado de entrega", "text", { ph: "Ej.: 30-45 min", opcional: true }) + '</div></div>' : '')
-    + '<div class="op" style="border-bottom:1px solid var(--linea)"><div><b>Retiro en local</b><span>El cliente pasa a buscar su pedido a ' + esc(D.direccion || "tu dirección") + '.</span></div>' + sw("retiro", "Retiro en local") + '</div>'
+    + (D.delivery ? '<div class="campos" style="margin:0 0 16px">' + campo("costoDespacho", "Costo del despacho", "text", { ph: "$1.500", modo: "numeric", opcional: true })
+        + campo("zonas", "¿A qué comunas o sectores llegas?", "text", { ph: "Ej.: Temuco centro y Padre Las Casas", opcional: true })
+        + campo("tiempo", "Tiempo estimado de entrega", "text", { ph: "Ej.: 30-45 min", opcional: true }) + '</div>' : '')
+    + '<div class="op" style="border-bottom:1px solid var(--linea)"><div><b>Retiro en local</b><span>El cliente pasa a buscar su pedido.</span></div>' + sw("retiro", "Retiro en local") + '</div>'
     + '<div class="err" id="errEntrega" role="alert" style="margin-top:8px">Activa al menos una forma de entrega.</div></div>'
     + '<div class="grupo"><h2>PAGOS</h2>'
     + '<div class="op"><div><b>Efectivo</b><span>El cliente paga al recibir o al retirar.</span></div>' + sw("pagoEfectivo", "Efectivo") + '</div>'
@@ -468,8 +390,8 @@ function horarioTexto(h){
   var N = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb", 0: "Dom" }, grupos = [];
   [1, 2, 3, 4, 5, 6, 0].forEach(function(d){
     var t = h.dias[d]; if (!t || !t.length){ grupos.push(null); return; }
-    var tx = t.map(function(x){ return x.a + "–" + x.c; }).join(" y "), u = grupos[grupos.length - 1];
-    if (u && u.txt === tx) u.dias.push(d); else grupos.push({ txt: tx, dias: [d] });
+    var txt = t.map(function(x){ return x.a + "–" + x.c; }).join(" y "), u = grupos[grupos.length - 1];
+    if (u && u.txt === txt) u.dias.push(d); else grupos.push({ txt: txt, dias: [d] });
   });
   return grupos.filter(Boolean).map(function(g){
     var n = g.dias.length, a = N[g.dias[0]], z = N[g.dias[n - 1]].toLowerCase();
@@ -481,30 +403,28 @@ function vRevisar(){
   var de = function(t){ return ARCH.filter(function(a){ return a.tipo === t; }).length; };
   var f = function(r, v){ return '<div class="rev-f"><span>' + r + '</span><div>' + (v ? esc(v) : '<span style="width:auto;font-weight:500">Sin indicar</span>') + '</div></div>'; };
   var pago = function(v){ return v === "tengo" ? "ya tengo cuenta" : v === "ayuda" ? "necesito ayuda" : v === "no" ? "no lo usaré" : ""; };
-  var zonas = D.zonas.filter(function(z){ return z.comuna && digitos(z.costo) !== ""; }).map(function(z){ return z.comuna + " " + (Number(digitos(z.costo)) ? plata(digitos(z.costo)) : "gratis"); }).join(" · ");
+  var entrega = [D.delivery ? "Delivery" + (String(D.costoDespacho == null ? "" : D.costoDespacho).replace(/\D/g, "") ? " ($" + Number(String(D.costoDespacho).replace(/\D/g, "")).toLocaleString("es-CL") + ")" : "") : "", D.retiro ? "Retiro en local" : ""].filter(Boolean).join(" · ");
   var pagos = [D.pagoEfectivo ? "Efectivo" : "", D.pagoMP ? "Mercado Pago: " + pago(D.pagoMP) : "", D.pagoWebpay ? "Webpay: " + pago(D.pagoWebpay) : ""].filter(Boolean).join(" · ");
-  var np = D.productos.length, conFoto = D.productos.filter(function(p){ return p.foto; }).length, cats = categorias();
   var falta = [];
+  if (!de("carta")) falta.push("tu carta o menú");
   if (!de("logo")) falta.push("tu logo");
-  if (np && conFoto < np) falta.push("la foto de " + (np - conFoto) + (np - conFoto === 1 ? " producto" : " productos"));
+  if (!horarioTxt()) falta.push("el horario");
   return '<h1 class="tit">Revisa y envía</h1><p class="sub">Si algo está mal, tócalo para corregirlo.</p>'
-    + (falta.length ? '<div class="aviso">Falta ' + falta.join(" y ") + '. Puedes enviar igual y agregarlo después con este mismo enlace.</div>' : '')
+    + (falta.length ? '<div class="aviso">Falta ' + falta.join(", ").replace(/, ([^,]*)$/, " y $1") + '. Puedes enviar igual y agregarlo después con este mismo enlace.</div>' : '')
     + '<div class="rev"><div class="rev-c"><b>Negocio y contacto</b><button type="button" class="enl" data-ir="1">Editar</button></div>'
-    + f("Negocio", D.negocio) + f("WhatsApp", D.whatsapp) + f("Correo", D.correo) + f("Dirección", [D.direccion, D.comuna, D.ciudad].filter(Boolean).join(", ")) + (D.instagram ? f("Instagram", D.instagram) : "") + '</div>'
+    + f("Negocio", D.negocio) + f("WhatsApp", D.whatsapp) + f("Correo", D.correo) + f("Dirección", D.direccion) + (D.instagram ? f("Instagram", D.instagram) : "") + '</div>'
     + '<div class="rev"><div class="rev-c"><b>Horario</b><button type="button" class="enl" data-ir="2">Editar</button></div>' + f("Atención", horarioTxt()) + '</div>'
-    + '<div class="rev"><div class="rev-c"><b>Productos</b><button type="button" class="enl" data-ir="3">Editar</button></div>'
-    + f("Productos", np ? np + (np === 1 ? " producto" : " productos") + " · " + conFoto + " con foto" : "") + f("Categorías", cats.join(", "))
-    + f(D.tipo === "comida" ? "Carta" : "Catálogo", de("carta") ? de("carta") + (de("carta") === 1 ? " archivo" : " archivos") : "") + f("Logo", de("logo") ? "Subido" : "") + '</div>'
+    + '<div class="rev"><div class="rev-c"><b>Carta, fotos y logo</b><button type="button" class="enl" data-ir="3">Editar</button></div>'
+    + f("Carta", de("carta") ? de("carta") + (de("carta") === 1 ? " archivo" : " archivos") : "") + f("Fotos", de("foto") ? String(de("foto")) : "") + f("Logo", de("logo") ? "Subido" : "") + '</div>'
     + '<div class="rev"><div class="rev-c"><b>Entrega y pagos</b><button type="button" class="enl" data-ir="4">Editar</button></div>'
-    + f("Delivery", D.delivery ? zonas + (digitos(D.gratisDesde) ? " · gratis desde " + plata(digitos(D.gratisDesde)) : "") : "No") + f("Retiro", D.retiro ? "Sí, en el local" : "No")
-    + f("Pagos", pagos) + (D.dominio ? f("Dominio", D.dominio === "tengo" ? (D.dominioCual || "Sí, ya tengo") : "No tengo") : "") + '</div>'
+    + f("Entrega", entrega) + f("Pagos", pagos) + (D.dominio ? f("Dominio", D.dominio === "tengo" ? (D.dominioCual || "Sí, ya tengo") : "No tengo") : "") + '</div>'
     + '<div class="aviso mal" id="errEnviar" role="alert" style="display:none"></div>';
 }
 
 function vListo(){
   return '<div class="centro"><div class="ok-ico">' + ICO.ok + '</div><h1 class="tit">Listo, recibimos todo.</h1>'
     + '<p>Con esto armamos la tienda de ' + esc(D.negocio || A.negocio) + '. Te escribiremos por WhatsApp cuando esté lista.</p>'
-    + '<button class="btn btn-2" id="bMas" style="margin-top:10px;width:100%;max-width:320px">Agregar o corregir productos</button>'
+    + '<button class="btn btn-2" id="bMas" style="margin-top:10px;width:100%;max-width:320px">Agregar más archivos</button>'
     + '<button class="enl" id="bRev">Revisar mis datos</button></div>';
 }
 
@@ -523,33 +443,18 @@ function horarioIncompleto(){
 }
 
 /* ── validación de cada paso ── */
-function mostrar(sel){ var e = $(sel); if (e){ e.classList.add("ver"); e.scrollIntoView({ block: "center" }); } }
 function validar(){
   var mal = [];
   if (paso === 1){
     if (!String(D.negocio).trim()) mal.push("negocio");
-    if (!A.tipo && !D.tipo) mal.push("tipo");
-    if (digitos(D.whatsapp).length < 8) mal.push("whatsapp");
+    if (String(D.whatsapp).replace(/\D/g, "").length < 8) mal.push("whatsapp");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(D.correo).trim())) mal.push("correo");
-    ["direccion", "comuna", "ciudad"].forEach(function(k){ if (!String(D[k]).trim()) mal.push(k); });
-    ["negocio", "tipo", "whatsapp", "correo", "direccion", "comuna", "ciudad"].forEach(function(k){ var c = $("#c-" + k); if (c) c.classList.toggle("mal", mal.indexOf(k) >= 0); });
-    if (mal.length){ var p = $("#i-" + mal[0]) || $("#c-" + mal[0]); if (p){ if (p.focus) p.focus(); p.scrollIntoView({ block: "center" }); } }
+    ["negocio", "whatsapp", "correo"].forEach(function(k){ var c = $("#c-" + k); if (c) c.classList.toggle("mal", mal.indexOf(k) >= 0); });
+    if (mal.length){ var p = $("#i-" + mal[0]); if (p){ p.focus(); p.scrollIntoView({ block: "center" }); } }
   } else if (paso === 2){
-    var vacio = !Object.keys(limpiarHorario().dias).length;
-    if (horarioIncompleto() || vacio){ mal.push("horario"); mostrar("#errHorario"); }
-  } else if (paso === 3){
-    var inc = D.productos.filter(incompleto), e = $("#errProd");
-    D.productos.forEach(function(p){ var c = document.getElementById("p-" + p.id); if (c) c.classList.toggle("mal", inc.indexOf(p) >= 0); });
-    e.classList.remove("ver");
-    if (inc.length){
-      mal.push("productos"); e.textContent = "Falta el nombre, el precio o la categoría en " + inc.length + (inc.length === 1 ? " producto" : " productos") + ". Sin eso no podemos cargarlo en tu tienda.";
-      e.classList.add("ver"); document.getElementById("p-" + inc[0].id).scrollIntoView({ block: "center" });
-    } else if (!D.productos.length && !ARCH.some(function(a){ return a.tipo === "carta"; }) && !COLA.some(function(x){ return x.tipo === "carta" && x.estado !== "error"; })){
-      mal.push("productos"); e.textContent = "Agrega tus productos (o al menos " + T().cartaCorta + " con precios) para poder armar tu tienda."; mostrar("#errProd");
-    }
+    var inc = horarioIncompleto(); $("#errHorario").classList.toggle("ver", inc); if (inc){ mal.push("horario"); $("#errHorario").scrollIntoView({ block: "center" }); }
   } else if (paso === 4){
-    if (!D.delivery && !D.retiro){ mal.push("entrega"); mostrar("#errEntrega"); }
-    else if (D.delivery && (!D.zonas.length || D.zonas.some(function(z){ return !String(z.comuna).trim() || digitos(z.costo) === ""; }))){ mal.push("zonas"); mostrar("#errZonas"); }
+    var sin = !D.delivery && !D.retiro; $("#errEntrega").classList.toggle("ver", sin); if (sin){ mal.push("entrega"); $("#errEntrega").scrollIntoView({ block: "center" }); }
   }
   return !mal.length;
 }
@@ -558,6 +463,7 @@ function enviar(){
   var e = $("#errEnviar"), b = $("#bSig");
   var decir = function(t){ e.textContent = t; e.style.display = "block"; e.scrollIntoView({ block: "center" }); };
   if (enCola()){ decir("Todavía se están subiendo archivos. Espera a que terminen y vuelve a enviar."); return; }
+  if (!String(D.negocio).trim() || String(D.whatsapp).replace(/\D/g, "").length < 8){ decir("Falta el nombre del negocio o el WhatsApp. Tócalo en “Negocio y contacto”."); return; }
   b.disabled = true; b.textContent = "Enviando…"; e.style.display = "none";
   clearTimeout(tGuardar); tGuardar = null; D.paso = 5;
   var datos = Object.assign(paraEnviar(), { horario: limpiarHorario() });
@@ -580,60 +486,28 @@ function enlazar(){
   if ((b = $("#bMas"))) b.onclick = function(){ ir(3); };
   if ((b = $("#bRev"))) b.onclick = function(){ ir(5); };
   if ((b = $("#bCarta"))) b.onclick = function(){ $("#fCarta").click(); };
-  if ((b = $("#bFotos"))) b.onclick = function(){ $("#fFotos").click(); };
-  if ((b = $("#bSinFoto"))) b.onclick = function(){
-    var p = nuevoProducto(); pintarProductos(); cambio();
-    var i = document.getElementById("pn-" + p.id); if (i){ i.focus(); i.scrollIntoView({ block: "center" }); }
-  };
-  if ((b = $("#bZona"))) b.onclick = function(){ D.zonas.push({ comuna: "", costo: "" }); cambio(); repintar(); var i = document.getElementById("zc-" + (D.zonas.length - 1)); if (i) i.focus(); };
   app.oninput = function(ev){
-    var t = ev.target, k = t.getAttribute("data-k"), hk = t.getAttribute("data-h"), pid = t.getAttribute("data-p"), zi = t.getAttribute("data-z");
+    var t = ev.target, k = t.getAttribute("data-k"), hk = t.getAttribute("data-h");
     if (k){ D[k] = t.value; var c = $("#c-" + k); if (c) c.classList.remove("mal"); cambio(); }
-    else if (hk){ var q = hk.split("-"); var tr = D.horario.dias[q[0]] && D.horario.dias[q[0]][Number(q[1])]; if (tr){ tr[q[2]] = t.value; $("#errHorario").classList.remove("ver"); cambio(); } }
-    else if (pid){ var p = prod(pid); if (p){ p[t.getAttribute("data-f")] = t.value; var card = document.getElementById("p-" + pid); if (card && !incompleto(p)) card.classList.remove("mal"); cambio(); } }
-    else if (zi != null){ var z = D.zonas[Number(zi)]; if (z){ z[t.getAttribute("data-f")] = t.value; var ez = $("#errZonas"); if (ez) ez.classList.remove("ver"); cambio(); } }
+    else if (hk){ var p = hk.split("-"); var tr = D.horario.dias[p[0]] && D.horario.dias[p[0]][Number(p[1])]; if (tr){ tr[p[2]] = t.value; $("#errHorario").classList.remove("ver"); cambio(); } }
   };
-  /* al salir de la categoría, se actualizan las sugerencias para los productos siguientes */
-  app.onfocusout = function(ev){ if (ev.target.getAttribute && ev.target.getAttribute("data-f") === "categoria") pintarCats(); };
   app.onclick = function(ev){
     var t = ev.target.closest("button"); if (!t) return;
     var v;
-    if ((v = t.getAttribute("data-chip"))){ var val = t.getAttribute("data-v"); D[v] = D[v] === val && v !== "tipo" ? "" : val; cambio(); if (v === "dominio"){ repintar(); return; }
-      app.querySelectorAll('[data-chip="' + v + '"]').forEach(function(x){ x.setAttribute("aria-pressed", String(x.getAttribute("data-v") === D[v])); }); var ct = $("#c-" + v); if (ct) ct.classList.remove("mal"); }
-    else if ((v = t.getAttribute("data-sw"))){ D[v] = !D[v]; cambio(); if (v === "delivery") repintar(); else t.setAttribute("aria-pressed", String(D[v])); var ee = $("#errEntrega"); if (ee) ee.classList.remove("ver"); }
-    else if ((v = t.getAttribute("data-dia")) != null){ if (Array.isArray(D.horario.dias[v])) delete D.horario.dias[v]; else D.horario.dias[v] = [{ a: "", c: "" }]; cambio(); repintar(); }
-    else if ((v = t.getAttribute("data-otro-tramo")) != null){ D.horario.dias[v].push({ a: "", c: "" }); cambio(); repintar(); }
-    else if ((v = t.getAttribute("data-quitar-tramo")) != null){ D.horario.dias[v].splice(1, 1); cambio(); repintar(); }
-    else if ((v = t.getAttribute("data-copiar")) != null){ var base = JSON.stringify(D.horario.dias[v]); DIAS.forEach(function(d){ D.horario.dias[d[0]] = JSON.parse(base); }); cambio(); repintar(); }
-    else if ((v = t.getAttribute("data-quitar-zona")) != null){ D.zonas.splice(Number(v), 1); cambio(); repintar(); }
+    if ((v = t.getAttribute("data-chip"))){ var val = t.getAttribute("data-v"); D[v] = D[v] === val && v !== "tipo" ? "" : val; cambio(); if (v === "dominio"){ pintar(); return; }
+      app.querySelectorAll('[data-chip="' + v + '"]').forEach(function(x){ x.setAttribute("aria-pressed", String(x.getAttribute("data-v") === D[v])); }); }
+    else if ((v = t.getAttribute("data-sw"))){ D[v] = !D[v]; cambio(); if (v === "delivery"){ var y = window.scrollY; pintar(); window.scrollTo(0, y); } else t.setAttribute("aria-pressed", String(D[v])); var ee = $("#errEntrega"); if (ee) ee.classList.remove("ver"); }
+    else if ((v = t.getAttribute("data-dia")) != null){ if (Array.isArray(D.horario.dias[v])) delete D.horario.dias[v]; else D.horario.dias[v] = [{ a: "", c: "" }]; cambio(); repintarHorario(); }
+    else if ((v = t.getAttribute("data-otro-tramo")) != null){ D.horario.dias[v].push({ a: "", c: "" }); cambio(); repintarHorario(); }
+    else if ((v = t.getAttribute("data-quitar-tramo")) != null){ D.horario.dias[v].splice(1, 1); cambio(); repintarHorario(); }
+    else if ((v = t.getAttribute("data-copiar")) != null){ var base = JSON.stringify(D.horario.dias[v]); DIAS.forEach(function(d){ D.horario.dias[d[0]] = JSON.parse(base); }); cambio(); repintarHorario(); }
     else if ((v = t.getAttribute("data-ir"))) ir(Number(v));
-    else if ((v = t.getAttribute("data-foto"))){ var it = COLA.filter(function(x){ return x.prodId === v; })[0];
-      if (it && it.estado === "error" && !it.fatal){ it.estado = "espera"; it.error = ""; it.prog = 0; pintarMini(v); procesarCola(); }
-      else if (!it || it.estado === "error"){ fotoPara = v; $("#fFotoUna").click(); } }
-    else if ((v = t.getAttribute("data-quitar-prod"))) quitarProducto(v);
     else if ((v = t.getAttribute("data-quitar"))) quitar(v);
     else if ((v = t.getAttribute("data-descartar"))){ COLA = COLA.filter(function(x){ return !(x.tmp === v && x.estado !== "subiendo"); }); pintarArchivos(); }
     else if ((v = t.getAttribute("data-reintentar"))){ COLA.forEach(function(x){ if (x.tmp === v){ x.estado = "espera"; x.error = ""; x.prog = 0; } }); pintarArchivos(); procesarCola(); }
   };
 }
-
-/* ── productos ── */
-function nuevoProducto(){
-  /* la categoría del anterior se repite: los productos suelen cargarse por grupos */
-  var ult = D.productos[D.productos.length - 1];
-  var p = { id: idProd(), nombre: "", precio: "", categoria: ult ? ult.categoria : "", descripcion: "", foto: "" };
-  D.productos.push(p); return p;
-}
-function quitarProducto(id){
-  var p = prod(id); if (!p) return;
-  if ((p.nombre || p.precio) && !window.confirm("¿Quitar " + (p.nombre || "este producto") + "?")) return;
-  D.productos = D.productos.filter(function(x){ return x.id !== id; });
-  COLA = COLA.filter(function(x){ return !(x.prodId === id && x.estado !== "subiendo"); });
-  if (p.foto) borrarArchivo(p.foto);
-  delete VISTAS[id];
-  var c = document.getElementById("p-" + id); if (c) c.remove();
-  contarProd(); pintarCats(); cambio();
-}
+function repintarHorario(){ var y = window.scrollY; pintar(); window.scrollTo(0, y); }
 
 /* ── archivos: preparar, subir, quitar ── */
 function aBlob(canvas, tipo, calidad){ return new Promise(function(ok){ canvas.toBlob(function(b){ ok(b); }, tipo, calidad); }); }
@@ -678,70 +552,35 @@ function subirXHR(blob, tipo, nombre, progreso){
     x.send(blob);
   });
 }
-function encolar(f, tipo, prodId){
-  var it = { tmp: "t" + (++nTmp), tipo: tipo, file: f, nombre: f.name || tipo, prog: 0, estado: "espera", error: "", fatal: false, prodId: prodId || "",
-    vista: /^image\//.test(f.type) ? URL.createObjectURL(f) : "" };
-  COLA.push(it); return it;
-}
-/* fotos de productos: cada foto elegida crea su producto, que se completa mientras sube */
-function agregarFotos(files){
-  var primero = null;
-  Array.prototype.forEach.call(files || [], function(f){
-    if (D.productos.length >= 200) return;
-    var p = nuevoProducto(), it = encolar(f, "foto", p.id);
-    VISTAS[p.id] = it.vista; if (!primero) primero = p;
-  });
-  if (!primero) return;
-  pintarProductos(); cambio(); procesarCola();
-  var e = $("#errProd"); if (e) e.classList.remove("ver");
-  var i = document.getElementById("pn-" + primero.id); if (i){ i.focus(); i.scrollIntoView({ block: "center" }); }
-}
-function fotoDeUno(files){
-  var f = files && files[0], p = prod(fotoPara); fotoPara = "";
-  if (!f || !p) return;
-  COLA = COLA.filter(function(x){ return !(x.prodId === p.id && x.estado !== "subiendo"); });
-  var it = encolar(f, "foto", p.id); VISTAS[p.id] = it.vista;
-  pintarMini(p.id); procesarCola();
-}
 function agregar(files, tipo){
   Array.prototype.forEach.call(files || [], function(f){
     if (tipo === "logo") COLA = COLA.filter(function(x){ return !(x.tipo === "logo" && x.estado !== "subiendo"); });
-    encolar(f, tipo, "");
+    COLA.push({ tmp: "t" + (++nTmp), tipo: tipo, file: f, nombre: f.name || tipo, prog: 0, estado: "espera", error: "", vista: /^image\//.test(f.type) ? URL.createObjectURL(f) : "" });
   });
   pintarArchivos(); procesarCola();
 }
-function refrescar(it){ if (it.prodId) pintarMini(it.prodId); else pintarArchivos(); }
 function procesarCola(){
   if (subiendo) return;
   var it = COLA.filter(function(x){ return x.estado === "espera"; })[0];
   if (!it){ pintarEstado(); return; }
-  subiendo = true; it.estado = "subiendo"; refrescar(it);
+  subiendo = true; it.estado = "subiendo"; pintarArchivos();
   preparar(it.file, it.tipo).catch(function(e){ e.fatal = true; throw e; }).then(function(p){
     return subirXHR(p.blob, it.tipo, p.nombre, function(v){ it.prog = v; var e = document.getElementById("prog-" + it.tmp); if (e) e.style.width = Math.round(v * 100) + "%"; });
   }).then(function(arch){
     arch.vista = it.vista;
-    COLA.splice(COLA.indexOf(it), 1);
     if (it.tipo === "logo") ARCH = ARCH.filter(function(a){ return a.tipo !== "logo"; });
-    if (it.tipo === "foto"){
-      var p = prod(it.prodId);
-      if (!p){ api({ accion: "quitar", codigo: COD, id: arch.id }).catch(function(){}); return; }   /* quitó el producto mientras subía */
-      if (p.foto && p.foto !== arch.id) borrarArchivo(p.foto);                                       /* cambió la foto */
-      p.foto = arch.id; cambio();
-    }
-    ARCH.push(arch);
+    ARCH.push(arch); COLA.splice(COLA.indexOf(it), 1);
   }).catch(function(e){ it.estado = "error"; it.fatal = !!e.fatal; it.error = e.message || "No se pudo subir"; })
-    .then(function(){ subiendo = false; refrescar(it); procesarCola(); });
+    .then(function(){ subiendo = false; pintarArchivos(); procesarCola(); });
 }
-function borrarArchivo(id){ ARCH = ARCH.filter(function(x){ return x.id !== id; }); api({ accion: "quitar", codigo: COD, id: id }).catch(function(){}); }
 function quitar(id){
   var a = ARCH.filter(function(x){ return x.id === id; })[0]; if (!a) return;
   ARCH = ARCH.filter(function(x){ return x.id !== id; }); pintarArchivos();
   api({ accion: "quitar", codigo: COD, id: id }).catch(function(){ ARCH.push(a); pintarArchivos(); marcar("No se pudo quitar el archivo", "mal"); });
 }
-document.getElementById("fCarta").addEventListener("change", function(ev){ agregar(ev.target.files, "carta"); ev.target.value = ""; });
-document.getElementById("fLogo").addEventListener("change", function(ev){ agregar(ev.target.files, "logo"); ev.target.value = ""; });
-document.getElementById("fFotos").addEventListener("change", function(ev){ agregarFotos(ev.target.files); ev.target.value = ""; });
-document.getElementById("fFotoUna").addEventListener("change", function(ev){ fotoDeUno(ev.target.files); ev.target.value = ""; });
+[["fCarta", "carta"], ["fFotos", "foto"], ["fLogo", "logo"]].forEach(function(p){
+  document.getElementById(p[0]).addEventListener("change", function(ev){ agregar(ev.target.files, p[1]); ev.target.value = ""; });
+});
 window.addEventListener("beforeunload", function(ev){ if (enCola() || guardando){ ev.preventDefault(); ev.returnValue = ""; } });
 document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden" && pendiente && A) guardar(); });
 

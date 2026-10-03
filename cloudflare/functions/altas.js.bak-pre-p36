@@ -1,12 +1,10 @@
 /* cloudflare/functions/altas.js
-   ALTA DE TIENDAS — lo que DerLabs le pide a un negocio que ya contrató,
-   pensado para dejarle la tienda lista: productos con nombre, precio y foto,
-   horario, comunas de despacho con su costo, contacto y logo.
+   ALTA DE TIENDAS — lo que DerLabs le pide a un negocio que ya contrató.
 
-   DerLabs crea un alta desde /altas.html (nombre y rubro del negocio) y le
-   manda su enlace (derlabs.cl/alta/<código>). El negocio la llena desde
-   /alta.html. DerLabs la revisa en /altas.html y, con un toque, pasa todo a
-   la tienda: configuración, zonas de despacho y productos.
+   DerLabs crea un alta desde /altas.html y le manda al negocio su enlace
+   (derlabs.cl/alta/<código>). El negocio llena sus datos y sube su carta,
+   fotos y logo desde /alta.html. DerLabs lo revisa en /altas.html, descarga
+   los archivos y pasa los datos a la tienda con un toque.
 
    Dónde se guarda:
      Firestore  altas/<código>                    datos y estado (solo el servidor)
@@ -21,12 +19,7 @@
      GET  ?accion=archivo&codigo=&id=[&descargar=1]   un archivo
      POST ?accion=subir&codigo=&tipo=&nombre=    cuerpo = el archivo (binario)
      POST { accion: "guardar" | "enviar" | "quitar", codigo, ... }
-     POST { accion: "crear" | "listar" | "aplicar" | "productos" | "cerrar" | "eliminar", ... }   + x-admin-secret
-   cerrar    = borra los archivos y apaga el enlace, pero conserva los datos (queda en "Cerradas")
-   eliminar  = borra el alta entera: para un enlace creado por error o para limpiar la lista
-   aplicar   = pasa la configuración y las zonas de despacho a una tienda
-   productos = crea en la tienda un lote de productos del alta (la página los manda de a pocos,
-               con la foto ya achicada al tamaño que usa la tienda) */
+     POST { accion: "crear" | "listar" | "aplicar" | "cerrar", ... }   + x-admin-secret */
 import { getDb } from "./_firebase.js";
 import { enviarPushLista } from "./notificar.js";
 
@@ -41,13 +34,11 @@ const json = (obj, status) => new Response(JSON.stringify(obj),
 const MB = 1024 * 1024;
 /* tipo de archivo → peso máximo, cuántos caben y qué formatos acepta */
 const TIPOS = {
-  carta: { max: 20 * MB, n: 12,  mimes: ["application/pdf", "image/jpeg", "image/png", "image/webp"] },
-  foto:  { max: 6 * MB,  n: 200, mimes: ["image/jpeg", "image/png", "image/webp"] },
-  logo:  { max: 8 * MB,  n: 1,   mimes: ["image/jpeg", "image/png", "image/webp"] }
+  carta: { max: 20 * MB, n: 12, mimes: ["application/pdf", "image/jpeg", "image/png", "image/webp"] },
+  foto:  { max: 6 * MB,  n: 80, mimes: ["image/jpeg", "image/png", "image/webp"] },
+  logo:  { max: 8 * MB,  n: 1,  mimes: ["image/jpeg", "image/png", "image/webp"] }
 };
 const EXT = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-const RUBROS = ["comida", "retail", "ropa", "otro"];
-const MAX_PRODUCTOS = 200, MAX_ZONAS = 40;
 
 /* Sin I, L, O, 0 ni 1: el código se puede dictar por teléfono sin confundirse */
 const ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -55,20 +46,13 @@ function codigoNuevo(){
   const a = crypto.getRandomValues(new Uint8Array(8));
   return Array.from(a).map(x => ALFABETO[x % ALFABETO.length]).join("");
 }
-function idNuevo(n){
-  const a = crypto.getRandomValues(new Uint8Array(n || 10));
+function idNuevo(){
+  const a = crypto.getRandomValues(new Uint8Array(10));
   return Array.from(a).map(x => "abcdefghijkmnpqrstuvwxyz23456789"[x % 32]).join("");
 }
-const ID_ARCH = /^[a-z2-9]{10}$/;
 const codigoDe = v => { const c = String(v || "").trim().toUpperCase(); return /^[A-Z2-9]{8}$/.test(c) ? c : ""; };
 const txt = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000b-\u001f]/g, "").trim().slice(0, n);
 const uno = (v, lista) => (lista.indexOf(v) >= 0 ? v : lista[0]);
-/* número entero entre 0 y max, o null si no viene */
-function entero(v, max){
-  if (v === null || v === undefined || v === "") return null;
-  const n = Math.round(Number(v));
-  return n >= 0 && n <= max ? n : null;
-}
 
 /* El formato real del archivo se lee de sus primeros bytes, no de lo que diga quien lo sube */
 function formatoDe(b){
@@ -91,43 +75,22 @@ function horarioLimpio(h){
   }
   return alguno ? { activo: true, dias } : null;
 }
-/* Comunas a las que despacha, cada una con su costo. Las filas a medio llenar se
-   conservan (el negocio puede seguir después); las vacías no. */
-function zonasLimpias(z){
-  return (Array.isArray(z) ? z : []).slice(0, MAX_ZONAS)
-    .map(x => ({ comuna: txt(x && x.comuna, 60), costo: entero(x && x.costo, 100000) }))
-    .filter(x => x.comuna || x.costo !== null);
-}
-/* Productos: nombre, precio, categoría, descripción y, si tiene, el id de su foto */
-function productosLimpios(p){
-  const vistos = {};
-  return (Array.isArray(p) ? p : []).slice(0, MAX_PRODUCTOS).map(function(x){
-    x = x || {};
-    let id = /^[a-z0-9]{6,12}$/.test(String(x.id || "")) ? String(x.id) : idNuevo(8);
-    if (vistos[id]) id = idNuevo(8);
-    vistos[id] = 1;
-    return { id, nombre: txt(x.nombre, 80), precio: entero(x.precio, 100000000), categoria: txt(x.categoria, 40),
-             descripcion: txt(x.descripcion, 200), foto: ID_ARCH.test(String(x.foto || "")) ? String(x.foto) : "" };
-  });
-}
 function datosLimpios(d){
   d = d || {};
+  const costo = (d.costoDespacho === null || d.costoDespacho === undefined || d.costoDespacho === "") ? NaN : Math.round(Number(d.costoDespacho));
   return {
     negocio: txt(d.negocio, 100),
-    tipo: uno(d.tipo, [""].concat(RUBROS)),
+    tipo: uno(d.tipo, ["", "comida", "retail", "ropa", "otro"]),
     whatsapp: txt(d.whatsapp, 30),
     correo: txt(d.correo, 120),
     direccion: txt(d.direccion, 200),
-    comuna: txt(d.comuna, 60),
-    ciudad: txt(d.ciudad, 60),
     instagram: txt(d.instagram, 60),
     responsable: txt(d.responsable, 80),
     horario: horarioLimpio(d.horario),
-    productos: productosLimpios(d.productos),
     delivery: d.delivery === true,
     retiro: d.retiro === true,
-    zonas: zonasLimpias(d.zonas),
-    gratisDesde: entero(d.gratisDesde, 100000000),
+    costoDespacho: costo >= 0 && costo <= 100000 ? costo : null,
+    zonas: txt(d.zonas, 300),
     tiempo: txt(d.tiempo, 40),
     pagoEfectivo: d.pagoEfectivo === true,
     pagoMP: uno(d.pagoMP, ["", "tengo", "ayuda", "no"]),
@@ -137,25 +100,6 @@ function datosLimpios(d){
     notas: txt(d.notas, 1000),
     paso: Math.min(5, Math.max(0, Math.round(Number(d.paso)) || 0))
   };
-}
-const productoCompleto = p => !!(p.nombre && p.precio !== null && p.precio > 0 && p.categoria);
-const zonaCompleta = z => !!(z.comuna && z.costo !== null);
-
-/* Lo que tiene que estar para poder enviar: es lo mínimo para dejar la tienda lista */
-function faltantes(d, archivos){
-  const f = [];
-  if (!d.negocio) f.push("el nombre del negocio");
-  if (d.whatsapp.replace(/\D/g, "").length < 8) f.push("el WhatsApp");
-  if (!d.direccion || !d.comuna || !d.ciudad) f.push("la dirección, comuna y ciudad");
-  const inc = d.productos.filter(p => !productoCompleto(p)).length;
-  if (inc) f.push("el nombre, precio y categoría de " + inc + (inc === 1 ? " producto" : " productos"));
-  const usadas = {}; d.productos.forEach(p => { if (p.foto) usadas[p.foto] = 1; });
-  const sueltas = archivos.filter(a => a.tipo === "foto" && !usadas[a.id]).length;
-  if (sueltas) f.push("el nombre y precio de " + sueltas + (sueltas === 1 ? " foto" : " fotos"));
-  if (!d.productos.length && !archivos.some(a => a.tipo === "carta")) f.push("tus productos o tu carta con precios");
-  if (!d.delivery && !d.retiro) f.push("cómo entregas (delivery o retiro)");
-  if (d.delivery && (!d.zonas.length || d.zonas.some(z => !zonaCompleta(z)))) f.push("las comunas de despacho con su costo");
-  return f;
 }
 
 async function archivosDe(db, codigo){
@@ -190,18 +134,13 @@ function horarioTexto(h){
   var N = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb", 0: "Dom" }, grupos = [];
   [1, 2, 3, 4, 5, 6, 0].forEach(function(d){
     var t = h.dias[d]; if (!t || !t.length){ grupos.push(null); return; }
-    var tx = t.map(function(x){ return x.a + "–" + x.c; }).join(" y "), u = grupos[grupos.length - 1];
-    if (u && u.txt === tx) u.dias.push(d); else grupos.push({ txt: tx, dias: [d] });
+    var txt = t.map(function(x){ return x.a + "–" + x.c; }).join(" y "), u = grupos[grupos.length - 1];
+    if (u && u.txt === txt) u.dias.push(d); else grupos.push({ txt: txt, dias: [d] });
   });
   return grupos.filter(Boolean).map(function(g){
     var n = g.dias.length, a = N[g.dias[0]], z = N[g.dias[n - 1]].toLowerCase();
     return (n === 1 ? a : n === 2 ? a + " y " + z : a + " a " + z) + " " + g.txt;
   }).join(" · ");
-}
-async function borrarColeccion(db, ruta){
-  const s = await db.collection(ruta).get();
-  for (const d of (s.docs || [])) await db.doc(ruta + "/" + d.id).delete();
-  return (s.docs || []).length;
 }
 
 export async function alta(request, env){
@@ -226,7 +165,7 @@ export async function alta(request, env){
     const codigo = codigoDe(url.searchParams.get("codigo"));
     if (url.searchParams.get("accion") === "archivo"){
       const id = String(url.searchParams.get("id") || "");
-      if (!codigo || !ID_ARCH.test(id) || !kv) return new Response("No encontrado", { status: 404 });
+      if (!codigo || !/^[a-z2-9]{10}$/.test(id) || !kv) return new Response("No encontrado", { status: 404 });
       const d = await db.doc("altas/" + codigo + "/archivos/" + id).get();
       if (!d.exists) return new Response("No encontrado", { status: 404 });
       const a = d.data();
@@ -247,7 +186,7 @@ export async function alta(request, env){
       await r.ref.set({ estado: r.a.estado, abiertaEn: r.a.abiertaEn }, { merge: true });
     }
     const archivos = await archivosDe(db, codigo);
-    return json({ ok: true, alta: { codigo, negocio: r.a.negocio || "", tipo: r.a.tipo || "", estado: r.a.estado, datos: r.a.datos || null,
+    return json({ ok: true, alta: { codigo, negocio: r.a.negocio || "", estado: r.a.estado, datos: r.a.datos || null,
       guardadoEn: r.a.guardadoEn || null, completadaEn: r.a.completadaEn || null, archivos: archivos.map(vistaArchivo) } });
   }
   if (request.method !== "POST") return json({ ok: false, error: "Usa GET o POST" }, 405);
@@ -265,13 +204,13 @@ export async function alta(request, env){
     if (!bytes.length) return json({ ok: false, error: "El archivo llegó vacío" }, 400);
     if (bytes.length > T.max) return json({ ok: false, error: "El archivo pesa más de " + Math.round(T.max / MB) + " MB" }, 413);
     const mime = formatoDe(bytes);
-    if (T.mimes.indexOf(mime) < 0) return json({ ok: false, error: tipo === "carta" ? "Debe ser un PDF o una foto (JPG, PNG o WebP)" : "Debe ser una imagen JPG, PNG o WebP" }, 400);
+    if (T.mimes.indexOf(mime) < 0) return json({ ok: false, error: tipo === "carta" ? "La carta debe ser un PDF o una foto (JPG, PNG o WebP)" : "Debe ser una imagen JPG, PNG o WebP" }, 400);
     const ya = (await archivosDe(db, codigo)).filter(a => a.tipo === tipo);
     if (T.n === 1){
       /* un solo logo: el nuevo reemplaza al anterior */
       for (const v of ya){ await kv.delete("alta:" + codigo + ":" + v.id); await db.doc("altas/" + codigo + "/archivos/" + v.id).delete(); }
     } else if (ya.length >= T.n) return json({ ok: false, error: "Ya subiste el máximo de " + T.n + " archivos de este tipo" }, 400);
-    const id = idNuevo(10);
+    const id = idNuevo();
     let nombre = txt(url.searchParams.get("nombre"), 120).replace(/[\\/:*?"<>|]+/g, "-") || (tipo + "." + EXT[mime]);
     if (!/\.[A-Za-z0-9]{2,5}$/.test(nombre)) nombre += "." + EXT[mime];
     const arch = { id, tipo, nombre, mime, bytes: bytes.length, subidoEn: new Date().toISOString() };
@@ -287,46 +226,43 @@ export async function alta(request, env){
   if (accion === "guardar" || accion === "enviar"){
     const r = await abierta(codigoDe(b.codigo)); if (r.error) return r.error;
     const datos = datosLimpios(b.datos);
-    if (r.a.tipo) datos.tipo = r.a.tipo;                 /* el rubro lo fija DerLabs al crear el alta */
     const ahora = new Date().toISOString();
     const cambio = { datos, guardadoEn: ahora };
     if (accion === "enviar"){
-      const arch = await archivosDe(db, r.a.codigo);
-      const falta = faltantes(datos, arch);
-      if (falta.length) return json({ ok: false, falta, error: "Falta " + falta.join("; ") + "." }, 400);
-      cambio.estado = "completa"; cambio.completadaEn = ahora; cambio.negocio = datos.negocio;
+      if (!datos.negocio || datos.whatsapp.replace(/\D/g, "").length < 8) return json({ ok: false, error: "Faltan el nombre del negocio o el WhatsApp" }, 400);
+      cambio.estado = "completa"; cambio.completadaEn = ahora;
+      if (datos.negocio) cambio.negocio = datos.negocio;
     }
     /* Se reescribe el documento entero: con "merge", Firestore mezcla los mapas por dentro
        y un día que el negocio quitó del horario seguiría apareciendo. */
     await r.ref.set(Object.assign({}, r.a, cambio));
     if (accion === "enviar"){
-      const n = datos.productos.length;
+      const n = (await archivosDe(db, r.a.codigo)).length;
       await avisar(db, env, (r.a.estado === "completa" ? "Alta actualizada: " : "Alta completada: ") + (datos.negocio || r.a.negocio),
-        n + (n === 1 ? " producto" : " productos") + " · WA " + datos.whatsapp);
+        n + (n === 1 ? " archivo" : " archivos") + " · WA " + datos.whatsapp);
     }
     return json({ ok: true, guardadoEn: ahora, estado: cambio.estado || r.a.estado });
   }
   if (accion === "quitar"){
     const codigo = codigoDe(b.codigo), id = String(b.id || "");
     const r = await abierta(codigo); if (r.error) return r.error;
-    if (!ID_ARCH.test(id)) return json({ ok: false, error: "Archivo desconocido" }, 400);
+    if (!/^[a-z2-9]{10}$/.test(id)) return json({ ok: false, error: "Archivo desconocido" }, 400);
     if (kv) await kv.delete("alta:" + codigo + ":" + id);
     await db.doc("altas/" + codigo + "/archivos/" + id).delete();
     return json({ ok: true });
   }
 
   /* ───────── DerLabs (clave de administrador) ───────── */
-  if (["crear", "listar", "aplicar", "productos", "cerrar", "eliminar"].indexOf(accion) < 0) return json({ ok: false, error: "Acción desconocida" }, 400);
+  if (["crear", "listar", "aplicar", "cerrar"].indexOf(accion) < 0) return json({ ok: false, error: "Acción desconocida" }, 400);
   if (!esAdmin) return json({ ok: false, error: "Clave incorrecta" }, 401);
 
   if (accion === "crear"){
-    const negocio = txt(b.negocio, 100), tipo = String(b.tipo || "");
+    const negocio = txt(b.negocio, 100);
     if (!negocio) return json({ ok: false, error: "Escribe el nombre del negocio" }, 400);
-    if (RUBROS.indexOf(tipo) < 0) return json({ ok: false, error: "Elige el rubro del negocio" }, 400);
     let codigo = "";
     for (let i = 0; i < 5 && !codigo; i++){ const c = codigoNuevo(); if (!(await db.doc("altas/" + c).get()).exists) codigo = c; }
     if (!codigo) return json({ ok: false, error: "No se pudo crear el enlace. Intenta de nuevo." }, 500);
-    const a = { codigo, negocio, tipo, estado: "pendiente", creadaEn: new Date().toISOString(), datos: datosLimpios({ negocio, tipo }) };
+    const a = { codigo, negocio, estado: "pendiente", creadaEn: new Date().toISOString(), datos: datosLimpios({ negocio }) };
     await db.doc("altas/" + codigo).set(a);
     return json({ ok: true, alta: Object.assign({}, a, { archivos: [] }) });
   }
@@ -336,7 +272,6 @@ export async function alta(request, env){
     const altas = [];
     for (const d of (s.docs || [])){
       const a = d.data(); if (!a || !a.codigo) continue;
-      a.datos = datosLimpios(a.datos);                   /* también las altas guardadas con una versión anterior */
       a.archivos = a.estado === "cerrada" ? [] : (await archivosDe(db, a.codigo)).map(vistaArchivo);
       altas.push(a);
     }
@@ -349,42 +284,18 @@ export async function alta(request, env){
   if (!doc || !doc.exists) return json({ ok: false, error: "Esa alta no existe" }, 404);
   const a = doc.data();
 
-  if (accion === "cerrar" || accion === "eliminar"){
+  if (accion === "cerrar"){
     const arch = await archivosDe(db, codigo);
     for (const v of arch){ if (kv) await kv.delete("alta:" + codigo + ":" + v.id); await db.doc("altas/" + codigo + "/archivos/" + v.id).delete(); }
-    if (accion === "eliminar") await ref.delete();
-    else await ref.set({ estado: "cerrada", cerradaEn: new Date().toISOString() }, { merge: true });
+    await ref.set({ estado: "cerrada", cerradaEn: new Date().toISOString() }, { merge: true });
     return json({ ok: true, borrados: arch.length });
   }
 
+  /* aplicar: pasa los datos del alta a la configuración de una tienda que ya existe */
   const storeId = String(b.storeId || "").replace(/[^A-Za-z0-9_-]/g, "");
-  const base = "tiendas/" + storeId;
-  const cfgRef = db.doc(base + "/config/general"), cfgDoc = storeId ? await cfgRef.get() : null;
-  if (!cfgDoc || !cfgDoc.exists) return json({ ok: false, error: "Esa tienda no existe" }, 404);
-  const d = datosLimpios(a.datos);
-
-  /* productos: un lote. El id sale del producto del alta, así que pasar los datos dos veces
-     actualiza los mismos productos en vez de duplicarlos. */
-  if (accion === "productos"){
-    const lote = Array.isArray(b.productos) ? b.productos.slice(0, 10) : [];
-    const desde = Math.max(0, Math.round(Number(b.desde)) || 0);
-    let n = 0;
-    for (let i = 0; i < lote.length; i++){
-      const x = lote[i] || {}, p = d.productos.filter(q => q.id === x.id)[0];
-      if (!p || !productoCompleto(p)) continue;
-      const img = String(x.imagen || "");
-      const imagen = /^data:image\/(jpeg|png|webp);base64,/.test(img) && img.length < 450000 ? img : "";
-      const id = "alta_" + p.id;
-      await db.doc(base + "/productos/" + id).set({ id, orden: desde + i + 1, nombre: p.nombre, precio: p.precio,
-        descripcion: p.descripcion, categoria: p.categoria, imagen, activo: true });
-      n++;
-    }
-    return json({ ok: true, creados: n });
-  }
-
-  /* aplicar: configuración, zonas de despacho, local y categorías */
-  const reemplazar = b.reemplazar === true;
-  const general = {}, hecho = [], omitido = [];
+  const cfgRef = db.doc("tiendas/" + storeId + "/config/general");
+  if (!storeId || !(await cfgRef.get()).exists) return json({ ok: false, error: "Esa tienda no existe" }, 404);
+  const d = datosLimpios(a.datos), general = {}, hecho = [], omitido = [];
   const wsp = whatsappTienda(d.whatsapp);
   if (wsp){ general.whatsapp = wsp; hecho.push("WhatsApp"); } else omitido.push("WhatsApp (no parece un número válido)");
   if (d.horario){
@@ -395,13 +306,7 @@ export async function alta(request, env){
   } else omitido.push("Horario (no lo indicó)");
   if (d.delivery || d.retiro){
     general.deliveryActivo = d.delivery; general.retiroActivo = d.retiro; hecho.push("Delivery y retiro");
-    const zonas = d.zonas.filter(zonaCompleta);
-    if (d.delivery && zonas.length){
-      const gratis = d.gratisDesde || 0;
-      general.zonas = zonas.map(z => ({ nombre: z.comuna, comunas: z.comuna, costo: z.costo, minGratis: gratis }));
-      general.deliveryCosto = zonas[0].costo; general.deliveryMinimo = gratis;
-      hecho.push(zonas.length + (zonas.length === 1 ? " comuna de despacho" : " comunas de despacho"));
-    } else if (d.delivery) omitido.push("Comunas de despacho (no las indicó)");
+    if (d.delivery && d.costoDespacho != null){ general.deliveryCosto = d.costoDespacho; hecho.push("Costo de despacho"); }
   } else omitido.push("Delivery y retiro (no los indicó)");
   if (d.tiempo){ general.tiempoEntrega = d.tiempo; hecho.push("Tiempo de entrega"); }
   const logo = String(b.logoBase64 || ""), ico = String(b.faviconBase64 || "");
@@ -409,40 +314,21 @@ export async function alta(request, env){
     general.logoBase64 = logo; hecho.push("Logo");
     if (/^data:image\/png;base64,/.test(ico) && ico.length < 200000){ general.faviconBase64 = ico; hecho.push("Ícono"); }
   } else omitido.push("Logo (no subió uno)");
-  /* categorías, en el orden en que aparecen en los productos del alta */
-  const listos = d.productos.filter(productoCompleto);
-  const cats = []; listos.forEach(p => { if (cats.indexOf(p.categoria) < 0) cats.push(p.categoria); });
-  if (cats.length){
-    const previas = Array.isArray(cfgDoc.data().categorias) ? cfgDoc.data().categorias : [];
-    general.categorias = reemplazar ? cats : previas.concat(cats.filter(c => previas.indexOf(c) < 0));
-  }
   if (Object.keys(general).length) await cfgRef.set(general, { merge: true });
-
   if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.correo)){
-    await db.doc(base + "/config/privado").set({ emailVendedor: d.correo, emailNotif: d.correo }, { merge: true });
+    await db.doc("tiendas/" + storeId + "/config/privado").set({ emailVendedor: d.correo, emailNotif: d.correo }, { merge: true });
     hecho.push("Correo de avisos");
   } else omitido.push("Correo (no parece válido)");
-
-  /* tienda nueva: fuera los productos y locales de muestra */
-  let ordenBase = 0;
-  if (reemplazar){
-    const np = await borrarColeccion(db, base + "/productos"); await borrarColeccion(db, base + "/locales");
-    if (np) hecho.push("Se quitaron " + np + (np === 1 ? " producto anterior" : " productos anteriores"));
-  } else {
-    const prev = await db.collection(base + "/productos").get();
-    ordenBase = (prev.docs || []).filter(x => String(x.id).indexOf("alta_") !== 0).length;
-  }
-  if (d.retiro && d.direccion){
-    const loc = await db.collection(base + "/locales").get();
+  if (d.direccion){
+    const loc = await db.collection("tiendas/" + storeId + "/locales").get();
     const lista = loc.docs || [];
     if (lista.length <= 1){
       const id = lista.length ? lista[0].id : "principal";
-      const nuevo = lista.length ? {} : { id, nombre: d.negocio || a.negocio || "Local", imagen: "", abierto: true };
-      const dir = d.direccion + (d.comuna && d.direccion.toLowerCase().indexOf(d.comuna.toLowerCase()) < 0 ? ", " + d.comuna : "");
-      await db.doc(base + "/locales/" + id).set(Object.assign(nuevo, { direccion: dir, horario: horarioTexto(d.horario) }), { merge: true });
+      const base = lista.length ? {} : { id, nombre: d.negocio || a.negocio || "Local", imagen: "", abierto: true };
+      await db.doc("tiendas/" + storeId + "/locales/" + id).set(Object.assign(base, { direccion: d.direccion, horario: horarioTexto(d.horario) }), { merge: true });
       hecho.push("Dirección del local");
     } else omitido.push("Dirección (la tienda tiene más de un local: cámbiala a mano)");
-  } else if (!d.retiro) omitido.push("Local (no tiene retiro en local)");
+  } else omitido.push("Dirección (no la indicó)");
   await ref.set({ storeId, aplicadaEn: new Date().toISOString() }, { merge: true });
-  return json({ ok: true, hecho, omitido, ordenBase, productos: listos.map(p => p.id) });
+  return json({ ok: true, hecho, omitido });
 }
