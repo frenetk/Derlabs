@@ -746,14 +746,10 @@ function renderOnline(){
     const e = ESTS[p.estado] || [p.estado, ""];
     let sig = SIG[p.estado];
     if (sig && sig[0] === "__listo") sig = p.tipo === "delivery" ? ["camino", "🛵 Salió"] : ["listo", "✅ Entregado"];
-    /* retiro en efectivo: se puede cobrar aquí (entra al turno y emite la boleta si está activa) */
-    const porCobrar = p.metodoPago === "efectivo" && !p.pagado && p.tipo !== "delivery";
-    const bolOn = Object.keys(p.boletas || {}).map(k => p.boletas[k].folio).filter(Boolean)[0];
     return '<div class="card"><div class="card-top"><b>#' + esc(p.id) + ' · ' + esc(cl.nombre || "") + '</b><span>' + (p.cocinaListo && p.estado === "preparacion" ? '<span class="badge ok">👨‍🍳 Cocina lista</span> ' : '') + '<span class="badge ' + e[1] + '">' + e[0] + '</span></span></div>' +
-      '<span class="muted small">' + (p.tipo === "delivery" ? "🛵 Delivery · " + esc(cl.direccion || "") : "🏠 Retiro") + ' · ' + minutos(p.fecha) + ' min · ' + (p.metodoPago === "mercadopago" || p.metodoPago === "flow" ? "Pagado online" : p.pagado ? "Pagado en caja" + (bolOn ? " · boleta N° " + esc(bolOn) : "") : "Efectivo") + '</span>' +
+      '<span class="muted small">' + (p.tipo === "delivery" ? "🛵 Delivery · " + esc(cl.direccion || "") : "🏠 Retiro") + ' · ' + minutos(p.fecha) + ' min · ' + (p.metodoPago === "mercadopago" || p.metodoPago === "flow" ? "Pagado online" : "Efectivo") + '</span>' +
       '<div class="card-top"><span class="muted small">' + esc((p.items || []).map(i => i.cantidad + "× " + i.nombre).join(", ")) + '</span><b>' + $$(p.total) + '</b></div>' +
-      '<div class="acciones"><button class="btn btn-sm" data-impon="' + esc(p._docId) + '">🖨 Comanda</button>' +
-        (porCobrar ? '<button class="btn btn-sm btn-ok solo-caja" data-cobon="' + esc(p._docId) + '">💵 Cobrar ' + $$(p.total) + '</button>' : '') + '</div>' +
+      '<div class="acciones"><button class="btn btn-sm" data-impon="' + esc(p._docId) + '">🖨 Comanda</button></div>' +
       (sig && !(p.envio && p.envio.metodo === "repartidor" && p.estado !== "nuevo") ? '<div class="acciones solo-caja"><button class="btn btn-sm btn-info" data-avanza="' + esc(p._docId) + '" data-a="' + sig[0] + '">' + sig[1] + '</button></div>' : '') + '</div>';
   };
   qs("#listaOnline").innerHTML = (act.length ? act.map(card).join("") : '<div class="vacio">No hay pedidos online en curso.</div>') +
@@ -765,42 +761,6 @@ qs("#listaOnline").addEventListener("click", e => {
   const cl = p.cliente || {};
   imprimirComanda({ titulo: (p.tipo === "delivery" ? "Delivery" : "Retiro") + " · " + (cl.nombre || ""), sub: "Online · #" + p.id, items: p.items || [], nota: cl.notas, fecha: p.fecha }, true);
 });
-qs("#listaOnline").addEventListener("click", e => {
-  const b = e.target.closest("[data-cobon]"); if (!b) return;
-  const p = pedidoPorId(b.dataset.cobon); if (p) cobrarOnline(p);
-});
-/* Cobro en la caja de un pedido online para retiro (efectivo, tarjeta o transferencia) */
-function cobrarOnline(p){
-  if (!S.turno){ toast("Abre el turno de caja para cobrar"); return; }
-  const cl = p.cliente || {}, total = p.total || 0;
-  let metodo = "efectivo";
-  const pint = () => {
-    qs("#mBox").innerHTML = '<h3>💵 Cobrar pedido online</h3><div class="card-top"><span class="muted">#' + esc(p.id) + ' · ' + esc(cl.nombre || "") + '</span><b class="grande">' + $$(total) + '</b></div>' +
-      '<div class="opts metodos" style="display:grid;grid-template-columns:repeat(3,1fr)">' + [["efectivo", "💵 Efectivo"], ["tarjeta", "💳 Tarjeta"], ["transferencia", "🏦 Transferencia"]].map(m => '<button class="opt' + (metodo === m[0] ? " activo" : "") + '" data-comet="' + m[0] + '">' + m[1] + '</button>').join("") + '</div>' +
-      (metodo === "efectivo" ? '<input id="coRec" type="number" inputmode="numeric" placeholder="Con cuánto paga (opcional)"><div class="muted small" id="coVuelto"></div>' : '') +
-      '<div class="fila2"><button class="btn" data-cerrar>Cancelar</button><button class="btn btn-ok" id="coOk">Cobrar ' + $$(total) + '</button></div>';
-  };
-  modal(""); pint();
-  const box = qs("#mBox");
-  box.addEventListener("input", e => { if (e.target.id === "coRec"){ const r = Number(e.target.value) || 0; qs("#coVuelto").textContent = r > total ? "Vuelto: " + $$(r - total) : r && r < total ? "Es menos que el total" : ""; } });
-  box.addEventListener("click", async e => {
-    let b;
-    if ((b = e.target.closest("[data-comet]"))){ metodo = b.dataset.comet; pint(); return; }
-    if (!(b = e.target.closest("#coOk"))) return;
-    const rec = qs("#coRec") ? Number(qs("#coRec").value) || 0 : 0;
-    if (metodo === "efectivo" && rec && rec < total){ toast("Lo recibido es menor que el total"); return; }
-    b.disabled = true;
-    try {
-      const r = await api("cobrarOnline", { pedidoId: p._docId, metodo, recibido: rec });
-      const conBoleta = r.boleta && r.boleta.estado === "emitida";
-      box.innerHTML = '<div style="text-align:center;display:grid;gap:10px;padding:10px 0"><div style="font-size:48px">✅</div><h3>Pedido cobrado</h3>' +
-        (r.vuelto ? '<p class="grande">Vuelto: ' + $$(r.vuelto) + '</p>' : '') + avisoBoleta(r.boleta) +
-        (conBoleta ? '<button class="btn" id="coBol">🖨 Boleta</button>' : '') + '<button class="btn btn-ok" data-cerrar>Listo</button></div>';
-      if (conBoleta){ qs("#coBol").onclick = () => imprimirBoleta(r.boleta); if (DL.print.activa() && DL.print.cfg().autoPago) imprimirBoleta(r.boleta); }
-      _bolHora = 0; refrescarTurno(true);
-    } catch(err){ toast("❌ " + err.message, 4000); b.disabled = false; }
-  });
-}
 qs("#listaOnline").addEventListener("click", async e => {
   const b = e.target.closest("[data-avanza]"); if (!b) return;
   const p = pedidoPorId(b.dataset.avanza); if (!p) return;

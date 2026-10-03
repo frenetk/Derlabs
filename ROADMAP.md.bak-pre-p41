@@ -802,20 +802,7 @@ cabecera `apikey`. `GET /organization` y `GET /organization/document`
 - **Timbre en impresora térmica directa (RawBT):** el formato de los bytes
   está probado, falta verlo en papel y leerlo con un lector.
 - Anular una boleta (nota de crédito) se hace por ahora en OpenFactura.
-
-### Pedidos de la tienda online (P41) — decidido
-
-- Pagados con Mercado Pago o Flow: **no llevan boleta**; el comprobante del
-  pago electrónico vale como boleta (criterio del negocio, confirmarlo con
-  su contador).
-- En efectivo con delivery: la boleta la hace el dueño por su vía habitual.
-- En efectivo **para retiro**: en la caja (plan Pro), pestaña Online, cada
-  pedido sin pagar tiene el botón **Cobrar**. Se elige efectivo, tarjeta o
-  transferencia; el cobro entra al turno (ventas, efectivo esperado) y, si
-  la boleta está activa, se emite con el detalle del pedido. Con cupón, la
-  boleta lleva una sola línea por el total. No toca el stock ni el estado
-  del pedido. Acción `cobrarOnline` de `cajaLocal.js`; el pedido queda con
-  `pagado`, `pagos`, `cobroCaja` y `turnoId`.
+- Boleta para los pedidos de la tienda online.
 
 ## 23. Carrusel de destacados que no tapa la etiqueta (P38) — ✅ hecho
 
@@ -827,27 +814,3 @@ cabecera `apikey`. `GET /organization` y `GET /organization/document`
   palabras largas. Está en `_vtCss` de `app.js` (reglas `.vt-track`,
   `.vt-slide`, `.vt-sl-txt`, `.vt-sl-tit`).
 - Probado a 320, 360 y 412 px, con títulos normales y largos.
-
-
-## 24. Panel completo en tarjetas y plan a la vista (P41) — ✅ hecho
-
-- **Plantilla de comida (`index.html`).** Las nueve secciones del panel que
-  seguían con el formato antiguo (títulos rojos en mayúsculas y formularios
-  largos) pasaron a tarjetas `.pcard`, igual que en P30: Pedidos,
-  Productos, Banners, Cupones, Finanzas, Inventario, Zonas de despacho,
-  Correos y Notificaciones. Mismos campos y mismos `id`: el código de
-  `app.js` no cambió para esto.
-- Lo que se usa poco va plegado: *Crear cupón*, *Agregar banner* e
-  *Ingresos y gastos a mano*. En Cupones y Banners primero se ve lo que ya
-  existe.
-- Correos: solo queda a la vista el correo donde llegan los pedidos. Los
-  campos antiguos de Resend siguen en la página, ocultos (el código todavía
-  los lee).
-- **Tu plan, en el inicio del panel** (`v41Plan` en `app.js`, solo tiendas
-  de comida): en Básico dice "Versión Básica" e invita a subir a Pro (caja
-  local para las mesas y boleta electrónica del SII) con un botón que abre
-  el WhatsApp de DerLabs; en Pro lo confirma, sin botón. Retail y boutique
-  no lo muestran.
-- **Pendiente:** las plantillas retail y boutique (`index-retail.html`,
-  `index-boutique.html`) siguen con el panel anterior en todas sus
-  secciones (tampoco recibieron las tarjetas de P30).

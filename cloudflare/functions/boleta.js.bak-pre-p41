@@ -225,12 +225,11 @@ async function anotarEnPedido(db, storeId, b){
 
 /* Crea la boleta de un pago y la intenta emitir de inmediato. Nunca lanza: si falla, queda pendiente. */
 export async function boletaDelPago(db, storeId, cfgB, o){
-  /* o: { pedidoId, p (el pedido con el pago ya aplicado), pago, monto, unico, lugar, turnoId, quien, ahora, lineas? }
-     lineas: detalle ya armado (pedidos online cobrados en la caja); si no viene, sale de la cuenta con lineasDe */
+  /* o: { pedidoId, p (el pedido con el pago ya aplicado), pago, monto, unico, lugar, turnoId, quien, ahora } */
   try {
     const id = (o.pedidoId + "_" + o.pago.id).replace(/[^A-Za-z0-9_-]/g, "");
     const dia = fmtDia.format(new Date(o.ahora));
-    const dte = armarDte(cfgB.emisor, dia, o.monto, o.lineas || lineasDe(o.p, o.monto, o.unico));
+    const dte = armarDte(cfgB.emisor, dia, o.monto, lineasDe(o.p, o.monto, o.unico));
     const t = dte.Encabezado.Totales;
     const b = { id, pedidoId: o.pedidoId, pedidoNum: o.p.id || o.pedidoId, pagoId: o.pago.id, lugar: o.lugar || "", metodo: o.pago.metodo, total: o.monto, neto: t.MntNeto, iva: t.IVA,
                 fecha: o.ahora, dia, turnoId: o.turnoId || "", creadoPor: o.quien || "", ambiente: cfgB.ambiente || "produccion", estado: "pendiente", intentos: 0, ultimoError: "",

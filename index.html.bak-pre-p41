@@ -1369,14 +1369,6 @@ body.v-app #bannerPedidoActivo{margin:0}
 .pdetc summary small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;line-height:1.35}
 .pdetc summary::after{color:#8A8580}
 .pdetc-b{margin-top:12px}
-/* P41 · resto del panel en tarjetas */
-.fin-pers{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.pcard .fin-card{background:#F7F5F3;border:0;border-radius:14px}
-.pcard .fin-val{color:inherit;font-size:21px}
-.pcard .fin-lab{text-transform:none;letter-spacing:0;font-size:12px}
-.pcard>#pedLista,.pcard>#catListaAdmin,.pcard>#cupAdminList,.pcard>#promoAdminList,.pcard>#invLista,.pcard>#zonasList,.pcard>#devicesList{margin-top:12px}
-.pcard>#pedLista:empty,.pcard>#catListaAdmin:empty,.pcard>#cupAdminList:empty,.pcard>#promoAdminList:empty,.pcard>#invLista:empty,.pcard>#zonasList:empty,.pcard>#devicesList:empty{margin-top:0}
-.pcard .switch-row{margin-top:10px}
 .psub{margin:18px 0 8px 4px;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:900;text-align:left}
 .pintro{font-size:13px;color:var(--muted);font-weight:600;line-height:1.45;margin:0 0 12px;text-align:left}
 .pv-aviso{border-color:var(--rojo)!important;background:var(--crema)!important;margin-bottom:16px!important}
@@ -2406,9 +2398,7 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 
     <!-- TAB TIENDA -->
     <div class="psec" id="pt-pedidos">
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Pedidos recientes</b><small id="pedCont"></small></div></div>
-      </div>
+      <h4 style="display:flex;justify-content:space-between;align-items:center;margin-top:0">Pedidos recientes <span id="pedCont" style="font-size:11px;font-weight:600;color:var(--muted)"></span></h4>
       <div id="pedLista"><p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Cargando…</p></div>
     </div>
 
@@ -2436,177 +2426,153 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 
     <!-- TAB PRODUCTOS -->
     <div class="psec" id="pt-productos">
-      <div class="pcard" id="panelCatsGestion">
-        <div class="pcard-h"><div><b>Categorías</b><small>Ordenan tu carta. Cada producto va en una.</small></div></div>
+      <!-- Gestión de categorías -->
+      <div id="panelCatsGestion" style="margin-bottom:20px">
+        <h4 style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+          <span>📂 Categorías</span>
+        </h4>
         <div id="catListaAdmin"></div>
-        <button class="pill pill-outline pill-sm panel-full" id="btnNuevaCatAdmin">＋ Nueva categoría</button>
+        <button class="pill pill-outline pill-sm panel-full" id="btnNuevaCatAdmin" style="margin-top:8px">＋ Nueva categoría</button>
       </div>
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Productos</b><small>Toca el lápiz para cambiar precio, foto o extras.</small></div></div>
-        <button class="pill pill-solid pill-sm panel-full" id="btnNuevoProd">＋ Nuevo producto</button>
-      </div>
-      <!-- la lista va fuera de la tarjeta: cada producto ya es una fila con sus botones y necesita el ancho completo -->
-      <div id="panelProds"></div>
+
+      <!-- Productos -->
+      <button class="pill pill-outline pill-sm panel-full" id="btnNuevoProd">＋ Nuevo producto</button>
+      <div id="panelProds" style="margin-top:12px"></div>
     </div>
 
     <!-- TAB PROMOS (banners promocionales del inicio) -->
     <div class="psec" id="pt-promos">
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Banners del inicio</b><small>Promociones en carrusel. Los vencidos se ocultan solos.</small></div></div>
-        <div id="promoAdminList"></div>
+      <h4 style="margin-top:0">📢 Banners promocionales</h4>
+      <p class="pnota">Carrusel de promociones en la página de inicio, entre las categorías y "Más pedidos". Los banners vencidos se ocultan automáticamente — no hace falta borrarlos a mano.</p>
+
+      <label class="plabel" for="bnTitulo">Título</label>
+      <input class="field" id="bnTitulo" type="text" placeholder="2x1 en combos">
+      <label class="plabel" for="bnSubtitulo">Subtítulo</label>
+      <input class="field" id="bnSubtitulo" type="text" placeholder="Solo hoy, válido en delivery">
+      <label class="plabel" for="bnEmoji">Emoji</label>
+      <input class="field" id="bnEmoji" type="text" placeholder="🎉" maxlength="4">
+      <label class="plabel" for="bnColor">Color de fondo</label>
+      <div class="color-row">
+        <input type="color" id="bnColor" value="#9B1B30">
+        <input class="field" id="bnColorHex" type="text" placeholder="9B1B30" maxlength="7" style="flex:1">
       </div>
-      <details class="pcard pdetc">
-        <summary><div><b>Agregar banner</b><small>Título, color y fecha de término.</small></div></summary>
-        <div class="pdetc-b">
-          <label class="plabel" for="bnTitulo">Título</label>
-          <input class="field" id="bnTitulo" type="text" placeholder="2x1 en combos">
-          <label class="plabel" for="bnSubtitulo">Subtítulo</label>
-          <input class="field" id="bnSubtitulo" type="text" placeholder="Solo hoy, válido en delivery">
-          <label class="plabel" for="bnEmoji">Emoji</label>
-          <input class="field" id="bnEmoji" type="text" placeholder="🎉" maxlength="4">
-          <label class="plabel" for="bnColor">Color de fondo</label>
-          <div class="color-row">
-            <input type="color" id="bnColor" value="#9B1B30">
-            <input class="field" id="bnColorHex" type="text" placeholder="9B1B30" maxlength="7" style="flex:1">
+      <label class="plabel" for="bnVence">Vence (opcional)</label>
+      <input class="field" id="bnVence" type="date">
+
+      <p class="plabel" style="margin-top:14px">Vista previa</p>
+      <div id="bnPreviewWrap" class="promo-preview-wrap">
+        <div class="promo-card" id="bnPreviewCard" style="background:#9B1B30">
+          <span class="promo-emoji" id="bnPreviewEmoji">🎉</span>
+          <div class="promo-txt">
+            <p class="promo-titulo" id="bnPreviewTit">Título del banner</p>
+            <p class="promo-sub" id="bnPreviewSub">Subtítulo del banner</p>
           </div>
-          <label class="plabel" for="bnVence">Vence (opcional)</label>
-          <input class="field" id="bnVence" type="date">
-          <p class="plabel" style="margin-top:14px">Así se verá en la tienda</p>
-          <div id="bnPreviewWrap" class="promo-preview-wrap">
-            <div class="promo-card" id="bnPreviewCard" style="background:#9B1B30">
-              <span class="promo-emoji" id="bnPreviewEmoji">🎉</span>
-              <div class="promo-txt">
-                <p class="promo-titulo" id="bnPreviewTit">Título del banner</p>
-                <p class="promo-sub" id="bnPreviewSub">Subtítulo del banner</p>
-              </div>
-            </div>
-          </div>
-          <button class="pill pill-solid pill-sm panel-full" id="btnNuevoBanner">＋ Agregar banner</button>
         </div>
-      </details>
+      </div>
+      <p class="pnota">Así se ve exactamente en la tienda — mismo tamaño, mismo lugar: el carrusel entre categorías y "Más pedidos" de la página de inicio.</p>
+
+      <button class="pill pill-solid pill-sm panel-full" id="btnNuevoBanner" style="margin-top:14px">＋ Agregar banner</button>
+      <h4>Banners existentes</h4>
+      <div id="promoAdminList" style="margin-top:12px"></div>
     </div>
 
     <!-- TAB CUPONES -->
     <div class="psec" id="pt-cupones">
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Tus cupones</b><small>Códigos de descuento que el cliente escribe al pagar.</small></div></div>
-        <div id="cupAdminList"></div>
+      <h4 style="margin-top:0">🎟 Crear cupón</h4>
+      <label class="plabel" for="cpCodigo">Código</label>
+      <input class="field" id="cpCodigo" type="text" placeholder="NUEVO30" autocapitalize="characters" spellcheck="false">
+      <label class="plabel" for="cpTipo">Tipo de descuento</label>
+      <select class="field" id="cpTipo">
+        <option value="porcentaje">Porcentaje %</option>
+        <option value="monto">Monto fijo $</option>
+      </select>
+      <label class="plabel" for="cpValor">Valor del descuento</label>
+      <input class="field" id="cpValor" type="number" inputmode="numeric" placeholder="30">
+      <label class="plabel" for="cpLimiteTotal">Límite total de usos (vacío = ilimitado)</label>
+      <input class="field" id="cpLimiteTotal" type="number" inputmode="numeric" placeholder="Ilimitado">
+      <label class="plabel" for="cpLimiteUsuario">Límite por usuario</label>
+      <input class="field" id="cpLimiteUsuario" type="number" inputmode="numeric" value="1">
+      <label class="plabel" for="cpVence">Fecha de expiración (opcional)</label>
+      <input class="field" id="cpVence" type="date">
+      <label class="plabel" for="cpDescripcion">Descripción (visible al cliente)</label>
+      <input class="field" id="cpDescripcion" type="text" placeholder="30% en tu primera compra">
+      <div class="switch-row">
+        <span>Solo para usuarios registrados</span>
+        <label class="switch"><input type="checkbox" id="cpSoloReg"><span class="slider"></span></label>
       </div>
-      <details class="pcard pdetc">
-        <summary><div><b>Crear cupón</b><small>Porcentaje o monto fijo, con límites y vencimiento.</small></div></summary>
-        <div class="pdetc-b">
-          <label class="plabel" for="cpCodigo">Código</label>
-          <input class="field" id="cpCodigo" type="text" placeholder="NUEVO30" autocapitalize="characters" spellcheck="false">
-          <div class="pgrid2">
-            <div><label class="plabel" for="cpTipo">Tipo de descuento</label>
-              <select class="field" id="cpTipo">
-                <option value="porcentaje">Porcentaje %</option>
-                <option value="monto">Monto fijo $</option>
-              </select></div>
-            <div><label class="plabel" for="cpValor">Valor</label>
-              <input class="field" id="cpValor" type="number" inputmode="numeric" placeholder="30"></div>
-          </div>
-          <label class="plabel" for="cpDescripcion">Descripción (la ve el cliente)</label>
-          <input class="field" id="cpDescripcion" type="text" placeholder="30% en tu primera compra">
-          <div class="pgrid2" style="margin-top:10px">
-            <div><label class="plabel" for="cpLimiteTotal">Usos en total</label>
-              <input class="field" id="cpLimiteTotal" type="number" inputmode="numeric" placeholder="Sin límite"></div>
-            <div><label class="plabel" for="cpLimiteUsuario">Usos por cliente</label>
-              <input class="field" id="cpLimiteUsuario" type="number" inputmode="numeric" value="1"></div>
-          </div>
-          <label class="plabel" for="cpVence">Vence (opcional)</label>
-          <input class="field" id="cpVence" type="date">
-          <div class="switch-row">
-            <span>Solo para clientes registrados</span>
-            <label class="switch"><input type="checkbox" id="cpSoloReg"><span class="slider"></span></label>
-          </div>
-          <div class="switch-row">
-            <span>Solo en la primera compra</span>
-            <label class="switch"><input type="checkbox" id="cpPrimera"><span class="slider"></span></label>
-          </div>
-          <p class="pnota">"Primera compra" pide cuenta y que el cliente no tenga pedidos anteriores.</p>
-          <button class="pill pill-solid pill-sm panel-full" id="btnCrearCupon">＋ Crear cupón</button>
-        </div>
-      </details>
+      <div class="switch-row">
+        <span>Condición: primera compra</span>
+        <label class="switch"><input type="checkbox" id="cpPrimera"><span class="slider"></span></label>
+      </div>
+      <p class="pnota">"Primera compra" exige cuenta y que el historial del cliente esté vacío. Activa también "solo registrados" automáticamente.</p>
+      <button class="pill pill-solid pill-sm panel-full" id="btnCrearCupon">＋ Crear cupón</button>
+      <h4>Cupones existentes</h4>
+      <div id="cupAdminList"></div>
     </div>
 
     <!-- TAB FINANZAS -->
     <div class="psec" id="pt-finanzas">
-      <div class="pcard">
-        <b class="pcard-t">Ventas del período</b>
-        <div class="fin-pers">
-          <button class="pill pill-outline pill-sm fin-per active" data-per="hoy">Hoy</button>
-          <button class="pill pill-outline pill-sm fin-per" data-per="semana">7 días</button>
-          <button class="pill pill-outline pill-sm fin-per" data-per="mes">Este mes</button>
-          <button class="pill pill-outline pill-sm fin-per" data-per="90">90 días</button>
-          <button class="pill pill-outline pill-sm fin-per" data-per="cal">📅 Día</button>
-          <button class="pill pill-outline pill-sm fin-per" data-per="total">Todo</button>
-        </div>
-        <div id="finCalWrap" style="display:none;margin-top:10px">
-          <input type="date" id="finCalFecha" class="field" style="font-size:14px">
-        </div>
-        <div id="finResumen" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
-          <div class="fin-card"><div class="fin-val" id="finVentas">$0</div><div class="fin-lab">Ventas</div></div>
-          <div class="fin-card"><div class="fin-val" id="finPedidos">0</div><div class="fin-lab">Pedidos</div></div>
-          <div class="fin-card"><div class="fin-val" id="finTicket">$0</div><div class="fin-lab">Ticket promedio</div></div>
-          <div class="fin-card"><div class="fin-val" id="finDelivery">$0</div><div class="fin-lab">Delivery cobrado</div></div>
-        </div>
+      <h4 style="margin-top:0">💰 Ganancias del período</h4>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="pill pill-outline pill-sm fin-per active" data-per="hoy">Hoy</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="semana">7 días</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="mes">Este mes</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="90">90 días</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="cal">📅 Día</button>
+        <button class="pill pill-outline pill-sm fin-per" data-per="total">Todo</button>
       </div>
-      <div class="pcard">
-        <b class="pcard-t">Ventas por día</b>
-        <canvas id="finChart" style="width:100%;max-height:200px;margin-top:10px"></canvas>
+      <div id="finCalWrap" style="display:none;margin-bottom:12px">
+        <input type="date" id="finCalFecha" class="field" style="font-size:14px">
       </div>
-      <div class="pcard">
-        <b class="pcard-t">Más vendidos</b>
-        <div id="finTopProds" style="margin-top:8px"></div>
+      <div id="finResumen" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div class="fin-card"><div class="fin-val" id="finVentas">$0</div><div class="fin-lab">Ventas</div></div>
+        <div class="fin-card"><div class="fin-val" id="finPedidos">0</div><div class="fin-lab">Pedidos</div></div>
+        <div class="fin-card"><div class="fin-val" id="finTicket">$0</div><div class="fin-lab">Ticket prom.</div></div>
+        <div class="fin-card"><div class="fin-val" id="finDelivery">$0</div><div class="fin-lab">Delivery cobrado</div></div>
       </div>
-      <details class="pcard pdetc">
-        <summary><div><b>Ingresos y gastos a mano</b><small>Anota gastos o ingresos que no pasan por la tienda.</small></div></summary>
-        <div class="pdetc-b">
-          <div class="pgrid2">
-            <div><label class="plabel" for="finTipoReg">Tipo</label>
-              <select class="field" id="finTipoReg">
-                <option value="ingreso">Ingreso</option>
-                <option value="egreso">Egreso</option>
-              </select></div>
-            <div><label class="plabel" for="finMonto">Monto</label>
-              <input class="field" id="finMonto" type="number" inputmode="numeric" placeholder="$"></div>
-          </div>
-          <label class="plabel" for="finDesc">Descripción</label>
-          <input class="field" id="finDesc" placeholder="Ej: gas, propinas">
-          <button class="pill pill-solid pill-sm panel-full" id="btnFinGuardar">＋ Registrar</button>
-          <div id="finRegistros" style="margin-top:14px"></div>
-        </div>
-      </details>
+      <h4>Ventas por día</h4>
+      <canvas id="finChart" style="width:100%;max-height:200px;margin-bottom:16px"></canvas>
+      <h4>Top productos</h4>
+      <div id="finTopProds"></div>
+      <h4>Registro diario manual</h4>
+      <p class="pnota">Agrega ingresos o egresos manuales (gastos, propinas, etc.)</p>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <select class="field" id="finTipoReg" style="flex:1">
+          <option value="ingreso">Ingreso</option>
+          <option value="egreso">Egreso</option>
+        </select>
+        <input class="field" id="finMonto" type="number" inputmode="numeric" placeholder="Monto $" style="flex:1">
+      </div>
+      <input class="field" id="finDesc" placeholder="Descripción (ej: gasto gas)" style="margin-bottom:8px">
+      <button class="pill pill-solid pill-sm panel-full" id="btnFinGuardar">＋ Registrar</button>
+      <div id="finRegistros" style="margin-top:14px"></div>
     </div>
 
     <!-- TAB INVENTARIO -->
     <div class="psec" id="pt-inventario">
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Stock de productos</b><small>Al llegar a 0, el producto se marca sin stock solo.</small></div></div>
-        <div id="invLista"></div>
+      <h4 style="margin-top:0">📦 Inventario de productos</h4>
+      <p class="pnota">Controla el stock de cada producto. Al llegar a 0 se marca sin stock automáticamente.</p>
+      <div id="invLista" style="margin-bottom:12px"></div>
+      <h4>Alertas de stock</h4>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <label class="plabel" style="margin:0;white-space:nowrap">Avisar cuando queden</label>
+        <input class="field" id="invAlertMin" type="number" inputmode="numeric" placeholder="5" style="width:70px">
+        <label class="plabel" style="margin:0">unidades</label>
       </div>
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Aviso de stock bajo</b><small>Te avisa cuando a un producto le quede poco.</small></div></div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <label class="plabel" for="invAlertMin" style="margin:0;white-space:nowrap">Avisar cuando queden</label>
-          <input class="field" id="invAlertMin" type="number" inputmode="numeric" placeholder="5" style="width:70px">
-          <span class="plabel" style="margin:0">unidades</span>
-        </div>
-        <button class="pill pill-outline pill-sm panel-full" id="btnInvGuardar">Guardar aviso</button>
-        <div id="invAlertas" style="margin-top:12px"></div>
-      </div>
+      <button class="pill pill-outline pill-sm panel-full" id="btnInvGuardar">Guardar alertas</button>
+      <div id="invAlertas" style="margin-top:12px"></div>
     </div>
 
     <!-- TAB CHECKOUT & WHATSAPP -->
     <!-- TAB ZONAS DE DESPACHO -->
     <div class="psec" id="pt-zonas">
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Zonas de despacho</b><small>Sectores con su propio precio. El cliente ve el costo al escribir su dirección.</small></div></div>
-        <div id="zonasList"></div>
-        <p id="zonasEmptyNote" class="pnota">Todavía no hay zonas: se cobra el costo único de "Entrega y mensajes".</p>
-        <button class="pill pill-solid pill-sm panel-full" id="btnNuevaZona">＋ Nueva zona</button>
-      </div>
+      <h4 style="margin-top:0">📍 Zonas de despacho</h4>
+      <p class="pnota" style="margin-bottom:14px">
+        Define sectores con precio propio. Al escribir su dirección, el cliente ve el costo automáticamente gracias a Google Maps. Si no configuras zonas se usa el costo único del tab Checkout.
+      </p>
+      <div id="zonasList"></div>
+      <p id="zonasEmptyNote">Sin zonas todavía. Agrega la primera con el botón de abajo.</p>
+      <button class="pill pill-solid pill-sm panel-full" id="btnNuevaZona">＋ Nueva zona</button>
     </div>
 
     <div class="psec" id="pt-envio">
@@ -2752,35 +2718,37 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 
     <!-- TAB EMAILS (Resend) -->
     <div class="psec" id="pt-emails">
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Correo de pedidos</b><small>Aquí te llega un correo por cada pedido nuevo.</small></div></div>
-        <label class="plabel" for="pEmailVendedor">Tu correo</label>
-        <input class="field" id="pEmailVendedor" type="email" placeholder="tucorreo@gmail.com">
-        <button class="pill pill-solid pill-sm panel-full" id="btnGuardarEmails">Guardar</button>
-        <button class="pill pill-outline pill-sm panel-full" id="btnEmailPrueba">✉️ Enviar correo de prueba</button>
-        <div class="mp-estado" id="emailEstado"></div>
+      <h4 style="margin-top:0">📧 Emails transaccionales</h4>
+      <div class="mp-guia">
+        Paso 1: Crea una cuenta gratis en resend.com<br>
+        Paso 2: Verifica tu dominio (o usa onboarding@resend.dev para pruebas)<br>
+        Paso 3: Copia tu API key y pégala abajo
       </div>
-      <!-- El envío lo hace DerLabs: estos campos antiguos quedan fuera de la vista (el código todavía los lee) -->
-      <div hidden>
-        <div class="token-row">
-          <input class="field" id="pResendKey" type="text" autocomplete="off" data-lpignore="true" data-form-type="other" style="-webkit-text-security:disc;text-security:disc">
-          <button class="ibtn" id="btnEyeResend" title="Mostrar / ocultar">👁</button>
-        </div>
-        <input class="field" id="pEmailEmisor" type="email">
+      <label class="plabel" for="pResendKey">Resend API Key</label>
+      <div class="token-row">
+        <input class="field" id="pResendKey" type="text"
+               autocomplete="off" data-lpignore="true" data-form-type="other"
+               style="-webkit-text-security:disc;text-security:disc">
+        <button class="ibtn" id="btnEyeResend" title="Mostrar / ocultar">👁</button>
       </div>
+      <label class="plabel" for="pEmailEmisor">Email emisor</label>
+      <input class="field" id="pEmailEmisor" type="email" placeholder="pedidos@tutienda.cl">
+      <label class="plabel" for="pEmailVendedor">Email del vendedor (recibe cada pedido)</label>
+      <input class="field" id="pEmailVendedor" type="email" placeholder="tucorreo@gmail.com">
+      <button class="pill pill-solid pill-sm panel-full" id="btnGuardarEmails">Guardar configuración</button>
+      <button class="pill pill-outline pill-sm panel-full" id="btnEmailPrueba">✉️ Enviar email de prueba</button>
+      <div class="mp-estado" id="emailEstado"></div>
+      <p class="pnota">Mientras falte la API key, los emails no se envían (falla silenciosa). Los pedidos se crean igual en Firestore.</p>
     </div>
 
     <!-- TAB NOTIFICACIONES -->
     <div class="psec" id="pt-notif">
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Alertas de pedidos</b><small>Tu celular suena cuando entra un pedido.</small></div></div>
-        <button class="pill pill-solid pill-sm panel-full" id="btnActivarNotif">🔔 Activar en este celular</button>
-        <div class="mp-estado" id="notifEstado"></div>
-      </div>
-      <div class="pcard">
-        <div class="pcard-h"><div><b>Dispositivos activos</b><small>Hasta 5 al mismo tiempo.</small></div></div>
-        <div id="devicesList"></div>
-      </div>
+      <h4>Alertas de pedidos</h4>
+      <button class="pill pill-solid pill-sm panel-full" id="btnActivarNotif">🔔 Activar notificaciones en este celular</button>
+      <div class="mp-estado" id="notifEstado"></div>
+      <h4>Dispositivos activos</h4>
+      <div id="devicesList"></div>
+      <p class="pnota">Máximo 5 dispositivos simultáneos. Cada uno recibirá una alerta cuando entre un pedido pagado.</p>
     </div>
 
     <!-- TAB CONFIG -->

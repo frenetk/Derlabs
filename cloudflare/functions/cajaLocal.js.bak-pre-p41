@@ -20,7 +20,7 @@ import { cfgBoleta, vistaCfg, guardarCfg, llevaBoleta, ventaDelPago, boletaDelPa
      cocina → ver comandas y marcarlas listas */
 export function emailPersonal(usuario, storeId){ return usuario + "--" + storeId + "@personal.derlabs.cl"; }
 const PERMISOS = {
-  cajero: ["estado", "pedidos", "abrirTurno", "movimiento", "crearPedido", "agregarItems", "anularItem", "ajustes", "pagar", "estadoLlevar", "moverMesa", "cerrarTurno", "turnos", "cocinaListo", "estadoOnline", "cobrarOnline",
+  cajero: ["estado", "pedidos", "abrirTurno", "movimiento", "crearPedido", "agregarItems", "anularItem", "ajustes", "pagar", "estadoLlevar", "moverMesa", "cerrarTurno", "turnos", "cocinaListo", "estadoOnline",
            "boletas", "boletaVer", "boletaReintentar", "boletaPdf",
            "datosMesa", "pedirCuenta", "asignarComensal", "moverItems", "juntarMesas", "separarMesas"],
   garzon: ["estado", "pedidos", "crearPedido", "agregarItems", "moverMesa", "datosMesa", "pedirCuenta", "asignarComensal", "moverItems", "juntarMesas", "separarMesas"],
@@ -146,20 +146,18 @@ async function turnoAbierto(db, storeId){
 async function resumenTurno(db, storeId, turnoId, t){
   const s = await db.collection("tiendas/" + storeId + "/pedidos").where("turnoId", "==", turnoId).get();
   const r = { pedidos: 0, ventas: 0, propinas: 0, descuentos: 0, porMetodo: { efectivo: 0, tarjeta: 0, transferencia: 0 },
-              porCanal: { mesa: 0, llevar: 0, online: 0 }, anulados: 0, top: {} };
+              porCanal: { mesa: 0, llevar: 0 }, anulados: 0, top: {} };
   s.docs.forEach(function(d){
     const p = d.data();
     if (p.movida) return;
     if (p.estado === "cancelado"){ r.anulados++; return; }
     if (!p.pagado) return;
     r.pedidos++;
-    /* un pedido online cobrado en la caja entra al turno por su total (con cupón y despacho ya aplicados) */
-    const local = p.canal === "local";
-    r.ventas += local ? (p.subtotal || 0) - (p.descuentoLocal || 0) : (p.total || 0);
+    r.ventas += (p.subtotal || 0) - (p.descuentoLocal || 0);
     r.propinas += p.propina || 0;
-    r.descuentos += local ? (p.descuentoLocal || 0) : 0;
+    r.descuentos += p.descuentoLocal || 0;
     (p.pagos || []).forEach(function(x){ if (r.porMetodo[x.metodo] != null) r.porMetodo[x.metodo] += Number(x.monto) || 0; });
-    r.porCanal[!local ? "online" : p.mesa ? "mesa" : "llevar"]++;
+    r.porCanal[p.mesa ? "mesa" : "llevar"]++;
     (p.items || []).forEach(function(i){ if (!i.anulado){ r.top[i.nombre] = (r.top[i.nombre] || 0) + (i.cantidad || 1); } });
   });
   /* El efectivo cobrado incluye el vuelto entregado: se guarda solo lo que quedó en caja */
@@ -322,38 +320,6 @@ export async function cajaLocal(request, env){
         if (ORDEN.indexOf(nuevo) <= ORDEN.indexOf(a.p.estado)) return json({ ok: false, error: "Ese pedido ya avanzó" }, 409);
         await a.ref.set({ estado: nuevo, estadoTimeline: Object.assign({}, a.p.estadoTimeline || {}, { [nuevo]: ahora }) }, { merge: true });
         return json({ ok: true });
-      }
-      case "cobrarOnline": {  /* pedido de la tienda online, para retiro y en efectivo: se cobra en la caja al entregarlo.
-                                 El cobro entra al turno y, si la boleta está activa, se emite. No toca stock ni estado. */
-        const t = await turnoAbierto(db, storeId);
-        if (!t) return json({ ok: false, error: "Abre el turno de caja para cobrar" }, 409);
-        const a = await pedidoLocal(b.pedidoId);
-        if (a.p.canal === "local") return json({ ok: false, error: "No corresponde" }, 400);
-        if (a.p.estado === "cancelado") return json({ ok: false, error: "Ese pedido está cancelado" }, 409);
-        if (a.p.metodoPago !== "efectivo") return json({ ok: false, error: "Ese pedido ya se pagó online" }, 409);
-        if (a.p.tipo === "delivery") return json({ ok: false, error: "Los pedidos con delivery se cobran al entregar" }, 409);
-        if (a.p.pagado) return json({ ok: false, error: "Ese pedido ya está cobrado" }, 409);
-        const metodo = METODOS.indexOf(b.metodo) >= 0 ? b.metodo : null;
-        if (!metodo) return json({ ok: false, error: "Elige cómo paga" }, 400);
-        const monto = Math.max(0, num(a.p.total));
-        if (!monto) return json({ ok: false, error: "Ese pedido no tiene monto" }, 400);
-        const recibido = metodo === "efectivo" ? Math.max(monto, num(b.recibido) || monto) : monto;
-        const pago = { id: token().slice(0, 10), metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: "", venta: monto };
-        const cambios = { pagos: [pago], pagado: true, cobradoEn: ahora, cobradoPor: quien, turnoId: t.id, cobroCaja: true };
-        await a.ref.set(cambios, { merge: true });
-        let boleta = null;
-        const cfgB = await cfgBoleta(db, storeId).catch(() => null);
-        if (llevaBoleta(cfgB, metodo)){
-          /* con cupón, o si los productos y el despacho no suman el total, va una sola línea por el monto */
-          const its = (a.p.items || []).filter(i => i && i.precio > 0 && i.cantidad > 0), envio = Math.max(0, num(a.p.costoDelivery));
-          const suma = its.reduce((x, i) => x + i.precio * i.cantidad, 0);
-          const lineas = !(a.p.descuento > 0) && its.length && suma + envio === monto
-            ? its.map(i => ({ nombre: i.nombre || "Producto", cantidad: i.cantidad, precio: i.precio })).concat(envio ? [{ nombre: "Despacho", cantidad: 1, precio: envio }] : [])
-            : [{ nombre: "Pedido online " + (a.p.id || ""), cantidad: 1, precio: monto }];
-          boleta = await boletaDelPago(db, storeId, cfgB, { pedidoId: idOk(b.pedidoId), p: Object.assign({}, a.p, cambios), pago, monto, unico: true, lineas,
-            lugar: "Retiro online", turnoId: t.id, quien, ahora });
-        }
-        return json({ ok: true, vuelto: recibido - monto, boleta });
       }
       case "guardarEstaciones": {  /* qué categorías van a la barra (el resto, cocina) */
         if (rol !== "propietario") return json({ ok: false, error: "Solo el propietario puede cambiar las estaciones" }, 403);

@@ -8450,7 +8450,6 @@ function v26PanelHome(){
     '<div class="pv-estado"><div><b>' + tit + '</b><small>' + subt + '</small></div>' +
       '<label class="switch"><input type="checkbox" id="pvAbierto"' + (abierta ? " checked" : "") + '><span class="slider"></span></label></div>' +
     (v28EsComida() && !hrTiene(state.config.horario) ? '<button type="button" class="pv-fila pv-aviso" data-pvir="tienda"><span class="pv-ico">🕒</span><span class="pv-txt"><b>Agrega tu horario de atención</b><small>La tienda abre y cierra sola a la hora que indiques</small></span><span class="pv-chev">›</span></button>' : '') +
-    v41Plan() +
     V26_GRUPOS.map(function(g){
       var filas = g.items.filter(function(it){
         var tab = qs('.ptab[data-pt="' + it[0] + '"]');
@@ -8516,7 +8515,6 @@ function v26PanelInit(){
   home.addEventListener("click", function(e){
     var f = e.target.closest("[data-pvir]"); if (f) v26PanelIr(f.dataset.pvir);
     if (e.target.closest("[data-pvcaja]")) v28AbrirCaja();
-    if (e.target.closest("[data-pvpro]")) v28AvisoPro("Plan Pro");
   });
   home.addEventListener("change", function(e){
     if (e.target.id !== "pvAbierto") return;
@@ -8549,26 +8547,15 @@ function v28FilaCaja(){
     '<span class="pv-txt"><b>Caja y mesas</b><small>Atención en el local: mesas, cocina y cobro</small></span>' +
     (v28EsPro() ? '<span class="pv-chev">›</span>' : '<span class="pv-pro">Pro</span>') + '</button>';
 }
-/* P41 · El plan de la tienda en el inicio del panel (solo comida: el Pro es la caja del local).
-   Básico: invita a subir a Pro. Pro: lo confirma, sin botón. */
-function v41Plan(){
-  if (!v28EsComida()) return "";
-  if (v28EsPro()) return '<div class="pv-plan"><div class="pv-plan-h"><div><b>Versión Pro</b><small>Tienes caja local, mesas, cocina y boleta electrónica.</small></div><span class="pv-pro pv-pro-on">Tu plan</span></div></div>';
-  return '<div class="pv-plan"><div class="pv-plan-h"><div><b>Versión Básica</b><small>Sube a Pro y suma la caja local para tus mesas y la boleta electrónica del SII.</small></div><span class="pv-pro">Tu plan</span></div>' +
-    '<button type="button" class="pv-plan-b" data-pvpro="1">Subir a Pro</button></div>';
-}
 function v28AbrirCaja(){
   if (v28EsPro()){ location.href = "/caja"; return; }
-  v28AvisoPro("Caja y mesas");
-}
-function v28AvisoPro(titulo){
   var o = qs("#v28Pro"); if (o) o.remove();
   var msj = "Hola, quiero pasar mi tienda " + ((state.config || {}).nombre || location.hostname) + " (" + location.hostname + ") al plan Pro.";
   o = document.createElement("div"); o.id = "v28Pro";
   o.innerHTML = '<div class="v28-hoja" role="dialog" aria-modal="true" aria-labelledby="v28Tit">' +
-    '<h4 id="v28Tit">' + titulo + '</h4>' +
-    (titulo === "Plan Pro" ? '<p><b>Todo lo de tu tienda, más la caja del local.</b></p>' : '<p><b>Solo disponible en el plan Pro.</b></p>') +
-    '<p>Incluye mesas, comandas a cocina, cobro en el local y boleta electrónica del SII.</p>' +
+    '<h4 id="v28Tit">Caja y mesas</h4>' +
+    '<p><b>Solo disponible en el plan Pro.</b></p>' +
+    '<p>Incluye mesas, comandas a cocina y cobro en el local.</p>' +
     '<a class="v28-si" target="_blank" rel="noopener" href="https://wa.me/' + v28Whatsapp() + '?text=' + encodeURIComponent(msj) + '">Pasar al plan Pro</a>' +
     '<button type="button" class="v28-no">Ahora no</button></div>';
   o.addEventListener("click", function(e){ if (e.target === o || e.target.closest(".v28-no") || e.target.closest(".v28-si")) o.remove(); });
@@ -8579,11 +8566,6 @@ function v28AvisoPro(titulo){
   var st = document.createElement("style");
   st.textContent = [
     ".pv-pro{flex:none;font-size:11px;font-weight:900;letter-spacing:.4px;padding:4px 10px;border-radius:999px;background:var(--crema,#F1EFED);color:#555}",
-    ".pv-pro-on{background:#E3F2E8;color:#14562A}",
-    ".pv-plan{padding:14px;border-radius:16px;border:1px solid var(--borde,#eee);background:#fff;margin-bottom:16px}",
-    ".pv-plan-h{display:flex;align-items:flex-start;gap:12px}.pv-plan-h>div{flex:1;min-width:0}",
-    ".pv-plan b{display:block;font-size:15px}.pv-plan small{display:block;font-size:12.5px;color:var(--muted,#666);margin-top:2px;line-height:1.4}",
-    ".pv-plan-b{display:block;width:100%;min-height:44px;margin-top:12px;border:0;border-radius:12px;background:#1A1A1A;color:#fff;font:inherit;font-size:14px;font-weight:900;cursor:pointer}",
     "#v28Pro{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}",
     "@media(min-width:600px){#v28Pro{align-items:center}}",
     ".v28-hoja{width:100%;max-width:400px;background:#fff;color:#1A1A1A;border-radius:22px 22px 0 0;padding:24px 20px calc(20px + env(safe-area-inset-bottom));text-align:center}",
