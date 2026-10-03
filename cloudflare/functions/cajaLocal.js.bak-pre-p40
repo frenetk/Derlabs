@@ -10,7 +10,7 @@
    (cuenta de servicio): no hace falta tocar las reglas de Firestore. */
 import { getDb, corsHeaders, admin, uidDesdeToken, authRest, calcularExtras } from "./_firebase.js";
 import { planDe } from "./planTienda.js";
-import { cfgBoleta, vistaCfg, guardarCfg, llevaBoleta, ventaDelPago, boletaDelPago, vistaBoleta, reintentar, pdfDe } from "./boleta.js";
+import { cfgBoleta, vistaCfg, guardarCfg, conectarTienda, llevaBoleta, ventaDelPago, boletaDelPago, vistaBoleta, reintentar, pdfDe } from "./boleta.js";
 
 /* Personal del local (fase 2): cuentas con usuario y clave, SIN rol en
    usuarios/{uid}.roles (las reglas de Firestore no les abren nada).
@@ -603,19 +603,20 @@ export async function cajaLocal(request, env){
         await a.ref.set({ mesasUnidas: [] }, { merge: true });
         return json({ ok: true });
       }
-      case "boletaConfig": {  /* el propietario ve su boleta y ajusta dos cosas: pausarla y si la tarjeta lleva boleta.
-                                 Conectar y desconectar OpenFactura lo hace DerLabs (planTienda, acción "boleta"). */
+      case "boletaConfig": {  /* conectar OpenFactura y elegir cuándo se emite (solo el propietario) */
         if (rol !== "propietario") return json({ ok: false, error: "Solo el propietario configura la boleta" }, 403);
-        const actual = await cfgBoleta(db, storeId);
-        const paraDueno = x => { const v = vistaCfg(x); delete v.llave; return v; };
-        if (b.op === "conectar" || b.op === "desconectar") return json({ ok: false, error: "La conexión con OpenFactura la gestiona DerLabs" }, 403);
-        if (b.op === "guardar"){
-          if (!actual) return json({ ok: false, error: "La boleta todavía no está activada en esta tienda" }, 409);
-          const n = Object.assign({}, actual, { activo: b.activo !== false, tarjeta: b.tarjeta === true });
-          await guardarCfg(db, storeId, n);
-          return json({ ok: true, boleta: paraDueno(n) });
-        }
-        return json({ ok: true, boleta: paraDueno(actual) });
+        try {
+          const actual = await cfgBoleta(db, storeId);
+          if (b.op === "conectar") return json({ ok: true, boleta: vistaCfg(await conectarTienda(db, storeId, b.llave, b.demo === true, ahora)) });
+          if (b.op === "desconectar"){ await guardarCfg(db, storeId, null); return json({ ok: true, boleta: vistaCfg(null) }); }
+          if (b.op === "guardar"){
+            if (!actual) return json({ ok: false, error: "Primero conecta tu OpenFactura" }, 409);
+            const n = Object.assign({}, actual, { activo: b.activo !== false, tarjeta: b.tarjeta === true });
+            await guardarCfg(db, storeId, n);
+            return json({ ok: true, boleta: vistaCfg(n) });
+          }
+          return json({ ok: true, boleta: vistaCfg(actual) });
+        } catch(e){ return json({ ok: false, error: e.message }, e.st || 400); }
       }
       case "boletas": {  /* boletas del turno (o de las últimas 36 horas si no hay turno abierto) */
         const t = b.turnoId ? { id: idOk(b.turnoId) } : await turnoAbierto(db, storeId);
@@ -631,7 +632,7 @@ export async function cajaLocal(request, env){
         if (!d || !d.exists) return json({ ok: false, error: "Boleta no encontrada" }, 404);
         if (b.accion === "boletaVer") return json({ ok: true, boleta: vistaBoleta(d.data(), true) });
         const cfgB = await cfgBoleta(db, storeId);
-        if (!cfgB) return json({ ok: false, error: "La boleta no está activada en esta tienda. Escríbele a DerLabs." }, 409);
+        if (!cfgB) return json({ ok: false, error: "Conecta tu OpenFactura para seguir" }, 409);
         try {
           if (b.accion === "boletaPdf"){
             if (!d.data().token) return json({ ok: false, error: "Esta boleta todavía no se emite" }, 409);

@@ -702,7 +702,7 @@ la tienda lista (eso es lo que cubre la cuota de integración). No es
 - "Turno abierto" es un punto lleno y "Caja cerrada" un aro vacío: el color
   lo pone el chip, no el emoji.
 
-## 22. Boleta electrónica en la caja local (P39–P40) — ✅ hecho, falta probar con OpenFactura real
+## 22. Boleta electrónica en la caja local (P39) — ✅ hecho, falta probar con OpenFactura real
 
 **Proveedor: OpenFactura (Haulmer).** Con el programa de partners un negocio
 con ventas bajo $100 millones al mes paga $60.000 + IVA al año (≈ $5.000 al
@@ -712,30 +712,18 @@ unos 4 negocios (5 UF al año para todos), pero cada negocio tendría que
 certificarse ante el SII con el software de DerLabs, cargar sus folios y
 DerLabs guardar los XML 6 años.
 
-### Quién hace qué (P40)
+### Qué hace el negocio (una sola vez)
 
-La boleta la gestiona DerLabs; el dueño no ve llaves ni instrucciones.
+1. Contrata OpenFactura y saca su llave de integración (API Key).
+2. En la caja: **Turno → Boleta electrónica → Conectar OpenFactura**, pega la
+   llave y toca Conectar. Sus datos (RUT, razón social, giro, dirección,
+   folios disponibles) se leen solos de OpenFactura; no escribe nada más.
+3. Elige si los pagos con tarjeta llevan boleta (por defecto no: vale el
+   comprobante de la máquina).
 
-**DerLabs, una vez por negocio:**
-1. El dueño consigue su firma electrónica (es personal, lo único que no se
-   puede hacer por él). DerLabs abre la cuenta del negocio en OpenFactura
-   con su RUT y copia su llave de integración (API Key). La llave es una
-   por empresa.
-2. En `generar-tienda.html` → **Planes de las tiendas** → la tienda (tiene
-   que estar en Pro) → **Conectar boleta**, pega la llave y Conectar. Los
-   datos del negocio (RUT, razón social, giro, dirección, folios) se leen
-   solos. Ahí mismo se cambia la llave o se desconecta.
-3. **Modo de prueba** conecta la empresa de demostración de OpenFactura:
-   boletas sin validez ("BOLETA DE PRUEBA - SIN VALIDEZ"), para mostrar el
-   flujo antes de contratar.
-
-**El dueño, en su caja (Turno → Boleta electrónica):**
-- Sin activar: ve "DerLabs la deja funcionando por ti" y un botón *Pedir
-  activación* que abre el WhatsApp de DerLabs.
-- Activa: ve su empresa y el botón *Ajustes*, con dos opciones: pausar la
-  emisión y elegir si los pagos con tarjeta llevan boleta (por defecto no:
-  vale el comprobante de la máquina). No puede conectar, desconectar ni
-  activar el modo de prueba; el servidor también lo rechaza.
+"Probar con boletas de prueba" conecta la empresa de demostración de
+OpenFactura: sirve para mostrar el flujo antes de contratar. Esas boletas
+dicen "BOLETA DE PRUEBA - SIN VALIDEZ".
 
 ### Qué pasa al cobrar
 
@@ -766,11 +754,8 @@ La boleta la gestiona DerLabs; el dueño no ve llaves ni instrucciones.
   `ventaDelPago`), configuración y emisión (`boletaDelPago`, `reintentar`,
   `reintentarBoletas` para el cron).
 - `cajaLocal.js`: acción `pagar` (emite tras guardar el pago) y acciones
-  nuevas `boletaConfig` (solo propietario: ver y ajustar), `boletas`,
-  `boletaVer`, `boletaReintentar`, `boletaPdf`.
-- `planTienda.js`: acción `boleta` (clave de administrador): conectar,
-  desconectar y ver. La lista de tiendas trae el estado de la boleta de
-  cada tienda Pro. La pantalla está en `generar-tienda.html`.
+  nuevas `boletaConfig` (solo propietario), `boletas`, `boletaVer`,
+  `boletaReintentar`, `boletaPdf`.
 - Datos: `tiendas/{s}/config/privado.boleta` (llave, ambiente, emisor,
   activo, tarjeta; la llave nunca vuelve al navegador),
   `tiendas/{s}/boletas/{pedido_pago}` (cada boleta con su folio, timbre y lo
@@ -796,9 +781,8 @@ cabecera `apikey`. `GET /organization` y `GET /organization/document`
 
 - **Probar contra OpenFactura real.** Desde el entorno donde se programó no
   hay salida a sus servidores: se probó contra un OpenFactura simulado que
-  responde como su documentación. Primera prueba: en Planes de las
-  tiendas, "Modo de prueba" en una tienda Pro; después cobrar en efectivo
-  en su caja y revisar folio, timbre impreso y PDF.
+  responde como su documentación. Primera prueba: "Probar con boletas de
+  prueba", cobrar en efectivo y revisar folio, timbre impreso y PDF.
 - **Timbre en impresora térmica directa (RawBT):** el formato de los bytes
   está probado, falta verlo en papel y leerlo con un lector.
 - Anular una boleta (nota de crédito) se hace por ahora en OpenFactura.

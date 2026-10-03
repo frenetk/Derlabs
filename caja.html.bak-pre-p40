@@ -1422,11 +1422,9 @@ function verTurno(id){
 }
 
 /* ───────────── Boleta electrónica (OpenFactura) ─────────────
-   El servidor emite la boleta al cobrar (cloudflare/functions/boleta.js). La conexión con
-   OpenFactura la hace DerLabs desde su administración (generar-tienda.html → Planes de las
-   tiendas). Aquí: el estado, dos ajustes del propietario (pausar y boleta con tarjeta), la
-   lista de boletas del turno y la impresión. */
-const WSP_DERLABS = "56930025299";
+   El servidor emite la boleta al cobrar (cloudflare/functions/boleta.js). Aquí: el estado y la
+   conexión (solo el propietario), la lista de boletas del turno y la impresión. */
+const AYUDA_LLAVE = "https://help.haulmer.com/hc/api/como-obtengo-la-api-key-de-openfactura-aa728802-2fe2-4f3d-9bb5-2113c357ba6a";
 let _boletas = [], _bolTodas = false, _bolHora = 0;
 function avisoBoleta(b){
   if (!b) return "";
@@ -1440,15 +1438,13 @@ function imprimirBoleta(b){
 }
 function seccionBoleta(){
   const B = S.boleta || {}, dueno = S.rol === "propietario";
-  const estado = !B.conectado ? '<span class="badge">Sin activar</span>' : !B.activo ? '<span class="badge warn">En pausa</span>'
+  const estado = !B.conectado ? '<span class="badge">Sin conectar</span>' : !B.activo ? '<span class="badge warn">En pausa</span>'
     : B.ambiente === "pruebas" ? '<span class="badge warn">Modo de prueba</span>' : '<span class="badge ok">Activa</span>';
-  const texto = !B.conectado ? (dueno ? "Todavía no está activada en tu caja. DerLabs la deja funcionando por ti: no tienes que configurar nada." : "Todavía no está activada en esta tienda. Las ventas se cobran sin boleta.")
-    : !B.activo ? "Está en pausa: se cobra sin emitir boleta."
-    : "Se emite sola al cobrar en efectivo" + (B.tarjeta ? ", transferencia y tarjeta." : " y transferencia. Con tarjeta vale el comprobante de la máquina.") + (B.ambiente === "pruebas" ? " Son boletas de prueba, sin validez." : "");
-  const accion = !dueno ? '' : B.conectado ? '<div class="acciones"><button class="btn btn-sm" id="bolCfg">Ajustes</button></div>'
-    : '<div class="acciones"><a class="btn btn-sm" id="bolPedir" target="_blank" rel="noopener" href="https://wa.me/' + WSP_DERLABS + '?text=' + encodeURIComponent("Hola, soy de " + (S.cfg.nombre || "mi tienda") + ": quiero activar la boleta electrónica en mi caja.") + '">Pedir activación</a></div>';
+  const texto = !B.conectado ? (dueno ? "Conecta tu OpenFactura y la caja emite la boleta sola al cobrar." : "El propietario todavía no la conecta. Las ventas se cobran sin boleta.")
+    : !B.activo ? "Conectada, pero no se está emitiendo al cobrar."
+    : "Se emite sola al cobrar en efectivo" + (B.tarjeta ? ", transferencia y tarjeta." : " y transferencia. Con tarjeta vale el comprobante de la máquina.");
   return '<div class="sec-t">Boleta electrónica</div><div class="card" id="bolCard"><div class="card-top"><b>🧾 Boleta electrónica</b>' + estado + '</div>' +
-    '<span class="muted small">' + texto + '</span>' + accion + '</div>' +
+    '<span class="muted small">' + texto + '</span>' + (dueno ? '<div class="acciones"><button class="btn btn-sm" id="bolCfg">' + (B.conectado ? "Configurar" : "Conectar OpenFactura") + '</button></div>' : '') + '</div>' +
     (B.conectado ? '<div id="bolLista" style="margin-top:8px"><div class="muted small">Cargando boletas…</div></div>' : '');
 }
 async function cargarBoletas(forzar){
@@ -1498,7 +1494,7 @@ async function pdfBoleta(id, btn){
   } catch(e){ toast("❌ " + e.message, 4000); }
   btn.disabled = false;
 }
-/* Ajustes del propietario: pausar la emisión y decidir si los pagos con tarjeta llevan boleta */
+/* Conexión y opciones: solo el propietario */
 async function abrirBoletaCfg(){
   modal('<h3>🧾 Boleta electrónica</h3><p class="muted small">Cargando…</p>');
   let B;
@@ -1506,27 +1502,53 @@ async function abrirBoletaCfg(){
   const fila = (k, v) => v ? '<tr><td>' + k + '</td><td>' + esc(v) + '</td></tr>' : '';
   const pint = () => {
     const box = qs("#mBox");
-    if (!B.conectado){ box.innerHTML = '<h3>🧾 Boleta electrónica</h3><p class="muted small">Todavía no está activada en tu caja. DerLabs la deja funcionando por ti.</p><button class="btn" data-cerrar>Cerrar</button>'; return; }
+    if (!B.conectado){
+      box.innerHTML = '<h3>🧾 Boleta electrónica</h3><p class="muted small">La caja emite la boleta sola cada vez que cobras, con tu cuenta de OpenFactura. No tienes que escribir tus datos: se leen de tu empresa.</p>' +
+        '<div class="card"><b>Cómo conectarla</b><span class="small">1. Entra a tu cuenta de OpenFactura.<br>2. Copia tu llave de integración (API Key).<br>3. Pégala aquí y toca Conectar.</span>' +
+        '<a class="small" href="' + AYUDA_LLAVE + '" target="_blank" rel="noopener" style="font-weight:800">¿Dónde encuentro mi llave?</a></div>' +
+        '<input id="bolLlave" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Pega aquí tu llave de OpenFactura" maxlength="90">' +
+        '<div id="bolErr" class="small" style="color:var(--bad-t)"></div>' +
+        '<button class="btn btn-ok" id="bolCon">Conectar</button>' +
+        '<button class="btn" id="bolDemo">Probar con boletas de prueba</button><p class="muted small">Las boletas de prueba no tienen validez. Sirven para ver cómo funciona antes de contratar.</p>' +
+        '<button class="btn" data-cerrar>Cerrar</button>';
+      return;
+    }
     const prueba = B.ambiente === "pruebas";
     box.innerHTML = '<h3>🧾 Boleta electrónica</h3>' +
       '<div class="card"><div class="card-top"><b>' + esc(B.razonSocial) + '</b><span class="badge ' + (prueba ? "warn" : "ok") + '">' + (prueba ? "Modo de prueba" : "Conectada") + '</span></div>' +
-      '<table class="t">' + fila("RUT", B.rut) + fila("Giro", B.giro) + fila("Dirección", B.direccion) + (B.folios != null ? fila("Folios de boleta disponibles", Number(B.folios).toLocaleString("es-CL")) : '') + '</table>' +
-      (prueba ? '<span class="small" style="color:var(--warn-t)">Estas boletas son de prueba y no tienen validez.</span>' : '') +
-      (B.folios === 0 ? '<span class="small" style="color:var(--bad-t)">Tu empresa no tiene folios de boleta. Avísale a DerLabs.</span>' : '') + '</div>' +
+      '<table class="t">' + fila("RUT", B.rut) + fila("Giro", B.giro) + fila("Dirección", B.direccion) + (B.folios != null ? fila("Folios de boleta disponibles", Number(B.folios).toLocaleString("es-CL")) : '') + fila("Llave", B.llave) + '</table>' +
+      (prueba ? '<span class="small" style="color:var(--warn-t)">Estas boletas son de prueba y no tienen validez. Para emitir de verdad, desconecta y pega la llave de tu empresa.</span>' : '') +
+      (B.folios === 0 ? '<span class="small" style="color:var(--bad-t)">Tu empresa no tiene folios de boleta. Revísalo en OpenFactura.</span>' : '') + '</div>' +
       '<div class="sec-t" style="margin:6px 0 0">Emitir boleta al cobrar</div><div class="opts"><button class="opt' + (B.activo ? " activo" : "") + '" data-bact="1">Sí, emitir</button><button class="opt' + (!B.activo ? " activo" : "") + '" data-bact="0">En pausa</button></div>' +
       '<div class="sec-t" style="margin:6px 0 0">Pagos con tarjeta</div><div class="opts"><button class="opt' + (!B.tarjeta ? " activo" : "") + '" data-btar="0">Sin boleta</button><button class="opt' + (B.tarjeta ? " activo" : "") + '" data-btar="1">Con boleta</button></div>' +
       '<p class="muted small">Si tu máquina de tarjetas entrega un comprobante que vale como boleta, déjalo en "Sin boleta" para no emitir dos veces.</p>' +
-      '<button class="btn btn-ok" data-cerrar>Listo</button>';
+      '<div class="fila2"><button class="btn btn-bad" id="bolDes">Desconectar</button><button class="btn btn-ok" data-cerrar>Listo</button></div>';
   };
   const guardar = async cambios => {
     try { B = (await api("boletaConfig", Object.assign({ op: "guardar", activo: B.activo, tarjeta: B.tarjeta }, cambios))).boleta; pint(); refrescarTurno(true); }
     catch(e){ toast("❌ " + e.message); }
   };
+  const conectar = async (datos, btn) => {
+    const err = qs("#bolErr"); if (err) err.textContent = "";
+    btn.disabled = true; const txt = btn.textContent; btn.textContent = "Conectando…";
+    try { B = (await api("boletaConfig", Object.assign({ op: "conectar" }, datos))).boleta; pint(); toast("✅ OpenFactura conectado"); refrescarTurno(true); }
+    catch(e){ if (qs("#bolErr")) qs("#bolErr").textContent = e.message; btn.disabled = false; btn.textContent = txt; }
+  };
   pint();
   qs("#mBox").addEventListener("click", e => {
     let b;
-    if ((b = e.target.closest("[data-bact]"))) guardar({ activo: b.dataset.bact === "1" });
+    if ((b = e.target.closest("#bolCon"))){
+      const llave = qs("#bolLlave").value.trim();
+      if (!llave){ qs("#bolErr").textContent = "Pega tu llave de OpenFactura"; return; }
+      conectar({ llave }, b);
+    }
+    else if ((b = e.target.closest("#bolDemo"))) conectar({ demo: true }, b);
+    else if ((b = e.target.closest("[data-bact]"))) guardar({ activo: b.dataset.bact === "1" });
     else if ((b = e.target.closest("[data-btar]"))) guardar({ tarjeta: b.dataset.btar === "1" });
+    else if (e.target.closest("#bolDes")){
+      if (!confirm("¿Desconectar OpenFactura? La caja dejará de emitir boletas.")) return;
+      api("boletaConfig", { op: "desconectar" }).then(r => { B = r.boleta; pint(); refrescarTurno(true); }).catch(er => toast("❌ " + er.message));
+    }
   });
 }
 

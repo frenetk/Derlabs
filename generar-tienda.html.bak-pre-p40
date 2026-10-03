@@ -193,18 +193,6 @@ header p{color:var(--txt2);font-size:14px}
 .pl-seg button.activo{background:#F5F5F5;color:#111}
 .pl-seg button:disabled{opacity:.5;cursor:default}
 .pl-nota{font-size:12px;color:var(--txt3);flex:none}
-.pl-fila{flex-wrap:wrap}
-.pl-bol{flex-basis:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--borde);font-size:13px}
-.pl-bol-txt{flex:1;min-width:160px;color:var(--txt2);line-height:1.4}
-.pl-bol-txt b{color:var(--txt);font-size:13px;display:inline}
-.pl-bol button{min-height:40px;padding:0 13px;border-radius:10px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-size:13px;font-weight:800;cursor:pointer}
-.pl-bol button.principal{background:#F5F5F5;color:#111;border-color:#F5F5F5}
-.pl-bol button:disabled{opacity:.5}
-.pl-bol-form{flex-basis:100%;display:grid;gap:8px}
-.pl-bol-form input{width:100%;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--borde);background:var(--bg2);color:var(--txt);font:inherit;font-size:14px;box-sizing:border-box}
-.pl-bol-form .fila{display:flex;gap:8px;flex-wrap:wrap}
-.pl-bol-err{color:#FF8A80;min-height:0}
-.pl-bol-ok{color:#7CE0A3}.pl-bol-prueba{color:#FFD37A}
 </style>
 </head>
 <body>
@@ -327,7 +315,7 @@ header p{color:var(--txt2);font-size:14px}
 
   <section id="planes">
     <h2>Planes de las tiendas</h2>
-    <p>Básico: tienda online y delivery. Pro: además caja local, mesas y cocina (solo comida). En las tiendas Pro también se conecta aquí la boleta electrónica, con la llave de OpenFactura del negocio.</p>
+    <p>Básico: tienda online y delivery. Pro: además caja local, mesas y cocina (solo comida).</p>
     <button type="button" id="btnPlanes">Ver tiendas</button>
     <div id="planesMsg" role="status"></div>
     <div id="planesLista"></div>
@@ -1016,7 +1004,7 @@ qs("#formTienda").addEventListener("submit", async (e) => {
 (function(){
   var btn = qs("#btnPlanes"), msg = qs("#planesMsg"), lista = qs("#planesLista");
   if (!btn) return;
-  var tiendas = [], bolAbierta = null;   /* tienda con el formulario de boleta abierto */
+  var tiendas = [];
   function e(t){ return String(t == null ? "" : t).replace(/[&<>"']/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function aviso(t, err){ msg.textContent = t || ""; msg.classList.toggle("error", !!err); }
   async function api(cuerpo){
@@ -1033,51 +1021,8 @@ qs("#formTienda").addEventListener("submit", async (e) => {
             '<button type="button" data-plan="basico" data-tienda="' + e(t.storeId) + '"' + (t.plan === "basico" ? ' class="activo" aria-pressed="true"' : ' aria-pressed="false"') + '>Básico</button>' +
             '<button type="button" data-plan="pro" data-tienda="' + e(t.storeId) + '"' + (t.plan === "pro" ? ' class="activo" aria-pressed="true"' : ' aria-pressed="false"') + '>Pro</button></div>'
         : '<span class="pl-nota">Retail</span>';
-      return '<div class="pl-fila"><div class="pl-txt"><b>' + e(t.nombre) + '</b><small>' + e((t.dominios || [])[0] || t.storeId) + '</small></div>' + seg + boletaHTML(t) + '</div>';
+      return '<div class="pl-fila"><div class="pl-txt"><b>' + e(t.nombre) + '</b><small>' + e((t.dominios || [])[0] || t.storeId) + '</small></div>' + seg + '</div>';
     }).join("") || '<p>No hay tiendas todavía.</p>';
-  }
-  /* Boleta electrónica de una tienda Pro: estado y conexión con la llave de OpenFactura del negocio */
-  function boletaHTML(t){
-    if (t.plan !== "pro" || !t.comida) return "";
-    var B = t.boleta || {}, id = e(t.storeId);
-    if (bolAbierta === t.storeId)
-      return '<div class="pl-bol"><div class="pl-bol-form"><label for="bol-' + id + '" class="pl-bol-txt">Llave de OpenFactura (API Key) de <b>' + e(t.nombre) + '</b>. Se lee sola la empresa: RUT, razón social, giro y dirección.</label>' +
-        '<input id="bol-' + id + '" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="90" placeholder="Pega aquí la llave del negocio">' +
-        '<div class="pl-bol-err" id="bolErr-' + id + '" role="alert"></div>' +
-        '<div class="fila"><button type="button" class="principal" data-bol="conectar" data-tienda="' + id + '">Conectar</button><button type="button" data-bol="demo" data-tienda="' + id + '">Modo de prueba</button><button type="button" data-bol="cerrar" data-tienda="' + id + '">Cancelar</button></div>' +
-        '<div class="pl-bol-txt">Modo de prueba usa la empresa de demostración de OpenFactura: boletas sin validez, para mostrar cómo funciona.</div></div></div>';
-    if (!B.conectado)
-      return '<div class="pl-bol"><div class="pl-bol-txt">Boleta electrónica: sin conectar</div><button type="button" data-bol="abrir" data-tienda="' + id + '">Conectar boleta</button></div>';
-    var prueba = B.ambiente === "pruebas";
-    return '<div class="pl-bol"><div class="pl-bol-txt">Boleta electrónica: <b class="' + (prueba ? "pl-bol-prueba" : "pl-bol-ok") + '">' + (prueba ? "modo de prueba" : (B.activo ? "activa" : "en pausa por el dueño")) + '</b><br>' +
-      e(B.razonSocial) + ' · ' + e(B.rut) + (B.folios != null ? ' · ' + Number(B.folios).toLocaleString("es-CL") + ' folios' : '') + ' · llave ' + e(B.llave) + '</div>' +
-      '<button type="button" data-bol="abrir" data-tienda="' + id + '">Cambiar llave</button><button type="button" data-bol="desconectar" data-tienda="' + id + '">Desconectar</button></div>';
-  }
-  async function boletaClick(b){
-    var t = tiendas.find(function(x){ return x.storeId === b.dataset.tienda; }); if (!t) return;
-    var op = b.dataset.bol;
-    if (op === "abrir"){ bolAbierta = t.storeId; pintar(); var i = document.getElementById("bol-" + t.storeId); if (i) i.focus(); return; }
-    if (op === "cerrar"){ bolAbierta = null; pintar(); return; }
-    var cuerpo = { accion: "boleta", storeId: t.storeId };
-    if (op === "desconectar"){
-      if (!confirm("¿Desconectar la boleta de «" + t.nombre + "»? La caja dejará de emitir boletas.")) return;
-      cuerpo.op = "desconectar";
-    } else {
-      cuerpo.op = "conectar";
-      if (op === "demo") cuerpo.demo = true;
-      else {
-        cuerpo.llave = (document.getElementById("bol-" + t.storeId).value || "").trim();
-        if (!cuerpo.llave){ document.getElementById("bolErr-" + t.storeId).textContent = "Pega la llave de OpenFactura del negocio."; return; }
-      }
-    }
-    var txt = b.textContent; b.disabled = true; b.textContent = op === "desconectar" ? "Desconectando…" : "Conectando…";
-    try {
-      t.boleta = (await api(cuerpo)).boleta; bolAbierta = null; pintar();
-      aviso(op === "desconectar" ? "«" + t.nombre + "» quedó sin boleta electrónica." : "Boleta de «" + t.nombre + "» conectada: " + t.boleta.razonSocial + " (" + t.boleta.rut + ")" + (t.boleta.ambiente === "pruebas" ? ", en modo de prueba." : "."));
-    } catch(err){
-      b.disabled = false; b.textContent = txt;
-      var er = document.getElementById("bolErr-" + t.storeId); if (er) er.textContent = err.message; else aviso(err.message, true);
-    }
   }
   async function cargar(){
     btn.disabled = true; aviso("Cargando…");
@@ -1087,13 +1032,12 @@ qs("#formTienda").addEventListener("submit", async (e) => {
   }
   btn.addEventListener("click", cargar);
   lista.addEventListener("click", async function(ev){
-    var bb = ev.target.closest("[data-bol]"); if (bb){ boletaClick(bb); return; }
     var b = ev.target.closest("[data-plan]"); if (!b || b.classList.contains("activo")) return;
     var t = tiendas.find(function(x){ return x.storeId === b.dataset.tienda; }); if (!t) return;
     var plan = b.dataset.plan;
     if (!confirm("¿Pasar «" + t.nombre + "» al plan " + (plan === "pro" ? "Pro" : "Básico") + "?" + (plan === "basico" ? "\n\nLa caja local, las mesas y la cocina quedarán bloqueadas en esa tienda." : ""))) return;
     lista.querySelectorAll("button").forEach(function(x){ x.disabled = true; });
-    try { await api({ accion: "cambiar", storeId: t.storeId, plan: plan }); t.plan = plan; if (plan === "pro" && !t.boleta) t.boleta = { conectado: false }; aviso("«" + t.nombre + "» quedó en plan " + (plan === "pro" ? "Pro" : "Básico") + ". Puede tardar un minuto en verse en la tienda."); }
+    try { await api({ accion: "cambiar", storeId: t.storeId, plan: plan }); t.plan = plan; aviso("«" + t.nombre + "» quedó en plan " + (plan === "pro" ? "Pro" : "Básico") + ". Puede tardar un minuto en verse en la tienda."); }
     catch(err){ aviso(err.message, true); }
     pintar();
   });

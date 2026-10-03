@@ -11,13 +11,8 @@
 
    /api/planTienda (clave de administrador, igual que crearTienda):
      { accion:"listar" }                    → tiendas con su plan
-     { accion:"cambiar", storeId, plan }    → cambia el plan de una tienda
-     { accion:"boleta", storeId, op:"conectar", llave | demo:true }   → conecta el OpenFactura del negocio
-     { accion:"boleta", storeId, op:"desconectar" | "ver" }
-   La boleta electrónica la conecta DerLabs desde aquí (generar-tienda.html);
-   en la caja, el dueño solo la pausa o elige si la tarjeta lleva boleta. */
+     { accion:"cambiar", storeId, plan }    → cambia el plan de una tienda */
 import { getDb, corsHeaders } from "./_firebase.js";
-import { cfgBoleta, vistaCfg, guardarCfg, conectarTienda } from "./boleta.js";
 
 export const PLANES = ["basico", "pro"];
 const _cache = new Map();          /* storeId → { plan, t } (por instancia del Worker) */
@@ -84,9 +79,7 @@ export async function planTienda(request, env){
           /* tienda anterior a los planes: se deja registrada con lo que ya tenía */
           plan = await fijarPlan(db, storeId, cfg.cajaLocal === true ? "pro" : "basico");
         }
-        let boleta = null;
-        if (plan === "pro"){ try { boleta = vistaCfg(await cfgBoleta(db, storeId)); } catch(e){ boleta = null; } }
-        tiendas.push({ storeId, nombre: cfg.nombre || storeId, comida: esComida(cfg), plan, boleta,
+        tiendas.push({ storeId, nombre: cfg.nombre || storeId, comida: esComida(cfg), plan,
                        dominios: porTienda[storeId].sort(function(a, z){ return a.length - z.length; }) });
       }
       return json({ ok: true, tiendas });
@@ -103,18 +96,6 @@ export async function planTienda(request, env){
       await fijarPlan(db, storeId, plan);
       await ref.set({ plan, cajaLocal: plan === "pro" }, { merge: true });
       return json({ ok: true, storeId, plan });
-    }
-
-    if (b.accion === "boleta"){
-      const storeId = String(b.storeId || "").replace(/[^A-Za-z0-9_-]/g, "");
-      const cfgD = storeId ? await db.doc("tiendas/" + storeId + "/config/general").get() : null;
-      if (!cfgD || !cfgD.exists) return json({ ok: false, error: "Esa tienda no existe" }, 404);
-      if (await planDe(db, storeId, cfgD.data()) !== "pro") return json({ ok: false, error: "La boleta va con la caja local: pasa la tienda al plan Pro primero" }, 400);
-      try {
-        if (b.op === "conectar") return json({ ok: true, storeId, boleta: vistaCfg(await conectarTienda(db, storeId, b.llave, b.demo === true, new Date().toISOString())) });
-        if (b.op === "desconectar"){ await guardarCfg(db, storeId, null); return json({ ok: true, storeId, boleta: vistaCfg(null) }); }
-        return json({ ok: true, storeId, boleta: vistaCfg(await cfgBoleta(db, storeId)) });
-      } catch (e) { return json({ ok: false, error: e.message || "No se pudo conectar" }, 400); }
     }
 
     return json({ ok: false, error: "Acción desconocida" }, 400);
