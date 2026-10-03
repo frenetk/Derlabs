@@ -319,8 +319,7 @@ const S = { cfg: {}, productos: [], pedidos: [], turno: null, resumen: null, rol
             catCat: "Todos", catQ: "",
             juntar: null,   /* { ids:[mesaId] } mientras se eligen mesas para juntar */
             comSel: 0,      /* a quién se le anota lo que se agrega: 0 = compartir, 1..n = comensal */
-            equipo: [],
-            boleta: {} };   /* { conectado, activo, ambiente, tarjeta }: boleta electrónica de la tienda */
+            equipo: [] };
 
 async function api(accion, datos){
   const u = auth.currentUser; if (!u) throw new Error("Sin sesión");
@@ -366,7 +365,7 @@ async function entrar(){
     qs("#loginTienda").textContent = "La caja del local es parte del plan Pro. Pídelo a DerLabs.";
     return;
   }
-  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.rol = e.rol; S.quien = e.quien; S.equipo = e.equipo || []; S.boleta = e.boleta || {}; if (e.mesas) S.cfg.cajaMesas = e.mesas; }
+  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.rol = e.rol; S.quien = e.quien; S.equipo = e.equipo || []; if (e.mesas) S.cfg.cajaMesas = e.mesas; }
   catch(e){ qs("#login").classList.remove("oculto"); qs("#app").classList.add("oculto"); qs("#loginErr").textContent = e.message; return; }
   if (S.rol === "cocina"){ location.href = "/cocina"; return; }
   qs("#login").classList.add("oculto"); qs("#app").classList.remove("oculto");
@@ -1317,22 +1316,15 @@ function abrirCobro(modoIni){
         if (r.completo){
           box.onclick = null;
           box.innerHTML = '<div style="text-align:center;display:grid;gap:10px;padding:10px 0"><div style="font-size:48px">✅</div><h3>Cuenta pagada</h3>' +
-            (r.vuelto ? '<p class="grande">Vuelto: ' + $$(r.vuelto) + '</p>' : '') + avisoBoleta(r.boleta) +
-            (r.boleta && r.boleta.estado === "emitida" ? '<button class="btn" id="kBol">🖨 Boleta</button>' : '') + '<button class="btn" id="kImp">🖨 Comprobante</button><button class="btn btn-ok" id="kFin">Listo</button></div>';
+            (r.vuelto ? '<p class="grande">Vuelto: ' + $$(r.vuelto) + '</p>' : '') + '<button class="btn" id="kImp">🖨 Comprobante</button><button class="btn btn-ok" id="kFin">Listo</button></div>';
           const pagosTk = (pp.pagos || []).concat([{ metodo: st.metodo, monto: mTxt, recibido: rTxt || mTxt, vuelto: r.vuelto || 0 }]);
           const docTk = DL.print.docComprobante(Object.assign({}, pp, { pagos: pagosTk, propina: r.propina != null ? r.propina : pp.propina }), S.cfg.nombre, tituloCuenta(S.cuenta, pp));
           qs("#kImp").onclick = () => imprimirDoc(docTk);
-          const conBoleta = r.boleta && r.boleta.estado === "emitida";
-          if (conBoleta) qs("#kBol").onclick = () => imprimirBoleta(r.boleta);
-          /* al cobrar sale la boleta; si no hay (o quedó pendiente), el comprobante interno */
-          if (DL.print.activa() && DL.print.cfg().autoPago){ if (conBoleta) imprimirBoleta(r.boleta); else DL.print.imprimir(docTk); }
+          if (DL.print.activa() && DL.print.cfg().autoPago) DL.print.imprimir(docTk);
           qs("#kFin").onclick = () => { cerrarModal(); if (S.cuenta && S.cuenta.mesa) cerrarCuenta(); };
-          _bolHora = 0; refrescarTurno(true);
+          refrescarTurno(true);
         } else {
-          _bolHora = 0;
-          const bp = r.boleta;
-          toast("Pago registrado" + (r.vuelto ? " · vuelto " + $$(r.vuelto) : "") + " · falta " + $$(r.falta) + (bp ? (bp.estado === "emitida" ? " · boleta N° " + bp.folio : " · boleta pendiente") : ""), 3500);
-          if (bp && bp.estado === "emitida" && DL.print.activa() && DL.print.cfg().autoPago) imprimirBoleta(bp);
+          toast("Pago registrado" + (r.vuelto ? " · vuelto " + $$(r.vuelto) : "") + " · falta " + $$(r.falta), 3500);
           st.selItems = {}; st.prop = 0; st.com = null; setTimeout(pint, 600);
         }
       } catch(err){ toast("❌ " + err.message, 4000); btn.disabled = false; }
@@ -1343,7 +1335,7 @@ function abrirCobro(modoIni){
 
 /* ───────────── Turno de caja ───────────── */
 async function refrescarTurno(silencioso){
-  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; S.boleta = e.boleta || {}; render(); }
+  try { const e = await api("estado"); S.turno = e.turno; S.resumen = e.resumen; render(); }
   catch(err){ if (!silencioso) toast("❌ " + err.message); }
 }
 function renderTurno(){
@@ -1351,8 +1343,8 @@ function renderTurno(){
   if (!t){
     b.innerHTML = '<div class="card" style="max-width:460px"><b style="font-size:18px">🔴 La caja está cerrada</b><p class="muted small">Abre el turno con el efectivo que hay en la caja al comenzar. Sin turno abierto puedes tomar pedidos, pero no cobrar.</p>' +
       '<input id="tIni" type="number" inputmode="numeric" placeholder="Efectivo inicial (ej. 30000)"><button class="btn btn-ok" id="tAbrir">Abrir turno</button></div>' +
-      seccionBoleta() + '<div class="sec-t">Turnos anteriores</div><div class="lista" id="tHist"><div class="muted small">Cargando…</div></div>';
-    cargarHistorial(); cargarBoletas(); return;
+      '<div class="sec-t">Turnos anteriores</div><div class="lista" id="tHist"><div class="muted small">Cargando…</div></div>';
+    cargarHistorial(); return;
   }
   const R = r || { ventas: 0, pedidos: 0, propinas: 0, ticketPromedio: 0, porMetodo: {}, esperado: {}, top: [] };
   b.innerHTML = '<div class="card-top" style="margin-bottom:12px"><div><b style="font-size:18px">🟢 Turno abierto</b><div class="muted small">Desde ' + new Date(t.abiertoEn).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" }) + ' · ' + esc(t.abiertoPor || "") + '</div></div><button class="btn btn-sm" id="tRef">🔄</button></div>' +
@@ -1362,9 +1354,9 @@ function renderTurno(){
     '<div class="sec-t">Movimientos de efectivo</div><div class="fila2"><button class="btn" data-mov="ingreso">＋ Ingreso</button><button class="btn" data-mov="retiro">− Retiro</button></div>' +
     '<table class="t" style="margin-top:8px">' + ((t.movimientos || []).map(m => '<tr><td>' + (m.tipo === "ingreso" ? "＋ " : "− ") + esc(m.nota || m.tipo) + '<br><span class="muted small">' + new Date(m.fecha).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) + '</span></td><td>' + (m.tipo === "retiro" ? "−" : "") + $$(m.monto) + '</td></tr>').join("") || '<tr><td class="muted small">Sin movimientos</td><td></td></tr>') + '</table>' +
     (R.top && R.top.length ? '<div class="sec-t">Más vendidos del turno</div><table class="t">' + R.top.map(x => '<tr><td>' + esc(x.nombre) + '</td><td>' + x.cantidad + '</td></tr>').join("") + '</table>' : '') +
-    seccionBoleta() + '<button class="btn btn-acc" id="tCerrar" style="width:100%;margin-top:18px">Cerrar turno y hacer arqueo</button>' +
+    '<button class="btn btn-acc" id="tCerrar" style="width:100%;margin-top:18px">Cerrar turno y hacer arqueo</button>' +
     '<div class="sec-t">Turnos anteriores</div><div class="lista" id="tHist"><div class="muted small">Cargando…</div></div>';
-  cargarHistorial(); cargarBoletas();
+  cargarHistorial();
 }
 qs("#turnoBody").addEventListener("click", async e => {
   let b;
@@ -1376,12 +1368,7 @@ qs("#turnoBody").addEventListener("click", async e => {
     const m = prompt((tipo === "ingreso" ? "Ingreso de efectivo" : "Retiro de efectivo") + " — monto:"); if (!m) return;
     const nota = prompt("Motivo (ej: pago a proveedor, sencillo):", "") || "";
     try { await api("movimiento", { tipo, monto: Number(String(m).replace(/\D/g, "")), nota }); refrescarTurno(); } catch(err){ toast("❌ " + err.message); }
-  } else if (e.target.closest("#bolCfg")) abrirBoletaCfg();
-  else if ((b = e.target.closest("[data-bimp]"))) reimprimirBoleta(b.dataset.bimp);
-  else if ((b = e.target.closest("[data-bpdf]"))) pdfBoleta(b.dataset.bpdf, b);
-  else if ((b = e.target.closest("[data-bre]"))) reintentarBoleta(b.dataset.bre, b);
-  else if (e.target.closest("#bolMas")){ _bolTodas = true; pintarBoletas(); }
-  else if (e.target.closest("#tCerrar")) arqueo();
+  } else if (e.target.closest("#tCerrar")) arqueo();
   else if ((b = e.target.closest("[data-turno]"))) verTurno(b.dataset.turno);
 });
 function arqueo(){
@@ -1419,137 +1406,6 @@ function verTurno(id){
     '<div class="sec-t">Arqueo</div><table class="t">' + ["efectivo", "tarjeta", "transferencia"].map(k => '<tr><td>' + k + '<br><span class="muted small">esperado ' + $$((R.esperado || {})[k]) + ' · contado ' + $$(c[k]) + '</span></td><td>' + (d[k] ? (d[k] > 0 ? "+" : "−") + $$(Math.abs(d[k])) : "✅") + '</td></tr>').join("") + '</table>' +
     (R.top && R.top.length ? '<div class="sec-t">Más vendidos</div><table class="t">' + R.top.map(x => '<tr><td>' + esc(x.nombre) + '</td><td>' + x.cantidad + '</td></tr>').join("") + '</table>' : '') +
     (t.nota ? '<p class="muted small">Nota: ' + esc(t.nota) + '</p>' : '') + '<button class="btn" data-cerrar>Cerrar</button>');
-}
-
-/* ───────────── Boleta electrónica (OpenFactura) ─────────────
-   El servidor emite la boleta al cobrar (cloudflare/functions/boleta.js). Aquí: el estado y la
-   conexión (solo el propietario), la lista de boletas del turno y la impresión. */
-const AYUDA_LLAVE = "https://help.haulmer.com/hc/api/como-obtengo-la-api-key-de-openfactura-aa728802-2fe2-4f3d-9bb5-2113c357ba6a";
-let _boletas = [], _bolTodas = false, _bolHora = 0;
-function avisoBoleta(b){
-  if (!b) return "";
-  if (b.estado === "emitida") return '<p class="small" style="font-weight:800">Boleta N° ' + esc(b.folio || "") + (b.ambiente === "pruebas" ? ' <span class="badge warn">de prueba</span>' : '') + '</p>';
-  if (b.estado === "pendiente") return '<p class="small" style="color:var(--warn-t)">⚠️ La boleta quedó pendiente: se emite sola en unos minutos. La encuentras en Turno.</p>';
-  return '<p class="small" style="color:var(--bad-t)">❌ No se pudo emitir la boleta: ' + esc(b.error || "error") + '. Revísala en Turno.</p>';
-}
-function imprimirBoleta(b){
-  if (!DL.print.activa()){ toast("Configura la impresora de este equipo"); abrirAjustesImpresion(); return; }
-  DL.print.preparar(DL.print.docBoleta(b, S.cfg.nombre)).then(d => DL.print.imprimir(d));
-}
-function seccionBoleta(){
-  const B = S.boleta || {}, dueno = S.rol === "propietario";
-  const estado = !B.conectado ? '<span class="badge">Sin conectar</span>' : !B.activo ? '<span class="badge warn">En pausa</span>'
-    : B.ambiente === "pruebas" ? '<span class="badge warn">Modo de prueba</span>' : '<span class="badge ok">Activa</span>';
-  const texto = !B.conectado ? (dueno ? "Conecta tu OpenFactura y la caja emite la boleta sola al cobrar." : "El propietario todavía no la conecta. Las ventas se cobran sin boleta.")
-    : !B.activo ? "Conectada, pero no se está emitiendo al cobrar."
-    : "Se emite sola al cobrar en efectivo" + (B.tarjeta ? ", transferencia y tarjeta." : " y transferencia. Con tarjeta vale el comprobante de la máquina.");
-  return '<div class="sec-t">Boleta electrónica</div><div class="card" id="bolCard"><div class="card-top"><b>🧾 Boleta electrónica</b>' + estado + '</div>' +
-    '<span class="muted small">' + texto + '</span>' + (dueno ? '<div class="acciones"><button class="btn btn-sm" id="bolCfg">' + (B.conectado ? "Configurar" : "Conectar OpenFactura") + '</button></div>' : '') + '</div>' +
-    (B.conectado ? '<div id="bolLista" style="margin-top:8px"><div class="muted small">Cargando boletas…</div></div>' : '');
-}
-async function cargarBoletas(forzar){
-  if (!(S.boleta || {}).conectado || S.rol === "garzon") return;
-  /* la pantalla se repinta con cada cambio de los pedidos: no se pide la lista más de una vez cada 5 s */
-  if (!forzar && Date.now() - _bolHora < 5000){ pintarBoletas(); return; }
-  _bolHora = Date.now();
-  try { _boletas = (await api("boletas")).boletas || []; pintarBoletas(); }
-  catch(e){ const l = qs("#bolLista"); if (l) l.innerHTML = '<div class="muted small">No se pudieron cargar las boletas.</div>'; }
-}
-function pintarBoletas(){
-  const l = qs("#bolLista"); if (!l) return;
-  if (!_boletas.length){ l.innerHTML = '<div class="muted small">' + (S.turno ? "Todavía no hay boletas en este turno." : "No hay boletas en las últimas horas.") + '</div>'; return; }
-  const n = e => _boletas.filter(x => x.estado === e).length, pen = n("pendiente"), err = n("error");
-  /* primero las que necesitan atención */
-  const orden = _boletas.slice().sort((a, b) => (a.estado === "emitida") - (b.estado === "emitida"));
-  const ver = _bolTodas ? orden : orden.slice(0, Math.max(8, pen + err));
-  l.innerHTML = '<div class="muted small" style="margin-bottom:6px">' + n("emitida") + (n("emitida") === 1 ? ' emitida · ' : ' emitidas · ') + $$(_boletas.filter(x => x.estado === "emitida").reduce((a, x) => a + x.total, 0)) +
-    (pen ? ' · <b style="color:var(--warn-t)">' + pen + ' pendiente' + (pen > 1 ? "s" : "") + '</b>' : '') + (err ? ' · <b style="color:var(--bad-t)">' + err + ' con error</b>' : '') + '</div>' +
-    ver.map(x => '<div class="card" style="margin-bottom:8px"><div class="card-top"><b>' + (x.folio ? "N° " + esc(x.folio) : "Sin folio") + ' · ' + $$(x.total) + '</b><span class="badge ' + (x.estado === "emitida" ? "ok" : x.estado === "pendiente" ? "warn" : "bad") + '">' +
-      (x.estado === "emitida" ? "Emitida" : x.estado === "pendiente" ? "Pendiente" : "Error") + '</span></div>' +
-      '<span class="muted small">' + esc(x.lugar || "") + ' · ' + new Date(x.fecha).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) + ' · ' + esc(x.metodo) + '</span>' +
-      (x.estado !== "emitida" && x.error ? '<span class="small" style="color:var(--bad-t)">' + esc(x.error) + '</span>' : '') +
-      '<div class="acciones">' + (x.estado === "emitida" ? '<button class="btn btn-sm" data-bimp="' + esc(x.id) + '">🖨 Imprimir</button>' : '<button class="btn btn-sm" data-bre="' + esc(x.id) + '">🔄 Reintentar</button>') +
-      (x.tienePdf ? '<button class="btn btn-sm" data-bpdf="' + esc(x.id) + '">Ver PDF</button>' : '') + '</div></div>').join("") +
-    (ver.length < orden.length ? '<button class="btn btn-sm" id="bolMas" style="width:100%">Ver las ' + orden.length + ' boletas</button>' : '');
-}
-async function reimprimirBoleta(id){
-  try { imprimirBoleta((await api("boletaVer", { boletaId: id })).boleta); } catch(e){ toast("❌ " + e.message); }
-}
-async function reintentarBoleta(id, btn){
-  btn.disabled = true;
-  try {
-    const b = (await api("boletaReintentar", { boletaId: id })).boleta;
-    toast(b.estado === "emitida" ? "✅ Boleta N° " + b.folio + " emitida" : b.estado === "pendiente" ? "Sigue pendiente: " + (b.error || "OpenFactura no responde") : "❌ " + (b.error || "No se pudo emitir"), 4500);
-  } catch(e){ toast("❌ " + e.message, 4500); }
-  cargarBoletas(true);
-}
-async function pdfBoleta(id, btn){
-  btn.disabled = true;
-  try {
-    const r = await api("boletaPdf", { boletaId: id });
-    const bin = atob(r.pdf), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    const url = URL.createObjectURL(new Blob([u8], { type: "application/pdf" }));
-    const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.download = "boleta-" + (r.folio || id) + ".pdf";
-    document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 30000);
-  } catch(e){ toast("❌ " + e.message, 4000); }
-  btn.disabled = false;
-}
-/* Conexión y opciones: solo el propietario */
-async function abrirBoletaCfg(){
-  modal('<h3>🧾 Boleta electrónica</h3><p class="muted small">Cargando…</p>');
-  let B;
-  try { B = (await api("boletaConfig", { op: "ver" })).boleta; } catch(e){ toast("❌ " + e.message); cerrarModal(); return; }
-  const fila = (k, v) => v ? '<tr><td>' + k + '</td><td>' + esc(v) + '</td></tr>' : '';
-  const pint = () => {
-    const box = qs("#mBox");
-    if (!B.conectado){
-      box.innerHTML = '<h3>🧾 Boleta electrónica</h3><p class="muted small">La caja emite la boleta sola cada vez que cobras, con tu cuenta de OpenFactura. No tienes que escribir tus datos: se leen de tu empresa.</p>' +
-        '<div class="card"><b>Cómo conectarla</b><span class="small">1. Entra a tu cuenta de OpenFactura.<br>2. Copia tu llave de integración (API Key).<br>3. Pégala aquí y toca Conectar.</span>' +
-        '<a class="small" href="' + AYUDA_LLAVE + '" target="_blank" rel="noopener" style="font-weight:800">¿Dónde encuentro mi llave?</a></div>' +
-        '<input id="bolLlave" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Pega aquí tu llave de OpenFactura" maxlength="90">' +
-        '<div id="bolErr" class="small" style="color:var(--bad-t)"></div>' +
-        '<button class="btn btn-ok" id="bolCon">Conectar</button>' +
-        '<button class="btn" id="bolDemo">Probar con boletas de prueba</button><p class="muted small">Las boletas de prueba no tienen validez. Sirven para ver cómo funciona antes de contratar.</p>' +
-        '<button class="btn" data-cerrar>Cerrar</button>';
-      return;
-    }
-    const prueba = B.ambiente === "pruebas";
-    box.innerHTML = '<h3>🧾 Boleta electrónica</h3>' +
-      '<div class="card"><div class="card-top"><b>' + esc(B.razonSocial) + '</b><span class="badge ' + (prueba ? "warn" : "ok") + '">' + (prueba ? "Modo de prueba" : "Conectada") + '</span></div>' +
-      '<table class="t">' + fila("RUT", B.rut) + fila("Giro", B.giro) + fila("Dirección", B.direccion) + (B.folios != null ? fila("Folios de boleta disponibles", Number(B.folios).toLocaleString("es-CL")) : '') + fila("Llave", B.llave) + '</table>' +
-      (prueba ? '<span class="small" style="color:var(--warn-t)">Estas boletas son de prueba y no tienen validez. Para emitir de verdad, desconecta y pega la llave de tu empresa.</span>' : '') +
-      (B.folios === 0 ? '<span class="small" style="color:var(--bad-t)">Tu empresa no tiene folios de boleta. Revísalo en OpenFactura.</span>' : '') + '</div>' +
-      '<div class="sec-t" style="margin:6px 0 0">Emitir boleta al cobrar</div><div class="opts"><button class="opt' + (B.activo ? " activo" : "") + '" data-bact="1">Sí, emitir</button><button class="opt' + (!B.activo ? " activo" : "") + '" data-bact="0">En pausa</button></div>' +
-      '<div class="sec-t" style="margin:6px 0 0">Pagos con tarjeta</div><div class="opts"><button class="opt' + (!B.tarjeta ? " activo" : "") + '" data-btar="0">Sin boleta</button><button class="opt' + (B.tarjeta ? " activo" : "") + '" data-btar="1">Con boleta</button></div>' +
-      '<p class="muted small">Si tu máquina de tarjetas entrega un comprobante que vale como boleta, déjalo en "Sin boleta" para no emitir dos veces.</p>' +
-      '<div class="fila2"><button class="btn btn-bad" id="bolDes">Desconectar</button><button class="btn btn-ok" data-cerrar>Listo</button></div>';
-  };
-  const guardar = async cambios => {
-    try { B = (await api("boletaConfig", Object.assign({ op: "guardar", activo: B.activo, tarjeta: B.tarjeta }, cambios))).boleta; pint(); refrescarTurno(true); }
-    catch(e){ toast("❌ " + e.message); }
-  };
-  const conectar = async (datos, btn) => {
-    const err = qs("#bolErr"); if (err) err.textContent = "";
-    btn.disabled = true; const txt = btn.textContent; btn.textContent = "Conectando…";
-    try { B = (await api("boletaConfig", Object.assign({ op: "conectar" }, datos))).boleta; pint(); toast("✅ OpenFactura conectado"); refrescarTurno(true); }
-    catch(e){ if (qs("#bolErr")) qs("#bolErr").textContent = e.message; btn.disabled = false; btn.textContent = txt; }
-  };
-  pint();
-  qs("#mBox").addEventListener("click", e => {
-    let b;
-    if ((b = e.target.closest("#bolCon"))){
-      const llave = qs("#bolLlave").value.trim();
-      if (!llave){ qs("#bolErr").textContent = "Pega tu llave de OpenFactura"; return; }
-      conectar({ llave }, b);
-    }
-    else if ((b = e.target.closest("#bolDemo"))) conectar({ demo: true }, b);
-    else if ((b = e.target.closest("[data-bact]"))) guardar({ activo: b.dataset.bact === "1" });
-    else if ((b = e.target.closest("[data-btar]"))) guardar({ tarjeta: b.dataset.btar === "1" });
-    else if (e.target.closest("#bolDes")){
-      if (!confirm("¿Desconectar OpenFactura? La caja dejará de emitir boletas.")) return;
-      api("boletaConfig", { op: "desconectar" }).then(r => { B = r.boleta; pint(); refrescarTurno(true); }).catch(er => toast("❌ " + er.message));
-    }
-  });
 }
 
 /* ───────────── Personal (solo propietario) ───────────── */

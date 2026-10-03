@@ -39,7 +39,6 @@ import { planTienda } from "./functions/planTienda.js";
 import { webhookFlow, retornoFlow } from "./functions/flow.js";
 import { aceptarContrato } from "./functions/contrato.js";
 import { alta } from "./functions/altas.js";
-import { reintentarBoletas } from "./functions/boleta.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -542,6 +541,5 @@ export default {
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(limpiarPendientes(env));
     ctx.waitUntil(revisarDominios(env));
-    ctx.waitUntil(reintentarBoletas(env, getDb));   /* boletas electrónicas que quedaron pendientes */
   }
 };

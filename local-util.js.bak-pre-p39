@@ -112,9 +112,7 @@
   };
 
   /* Un documento es una lista de líneas:
-       { t, a:"l|c|r", b:negrita, g:grande, ind:sangría }  ·  { izq, der, b, g }  ·  { sep:true }  ·  { v:n líneas en blanco }
-       { img:"data:image/png;base64,…" }  imagen centrada (el timbre de la boleta). En impresión directa hay que
-       pasar antes por preparar(), que la convierte a puntos (raster) para la impresora. */
+       { t, a:"l|c|r", b:negrita, g:grande, ind:sangría }  ·  { izq, der, b, g }  ·  { sep:true }  ·  { v:n líneas en blanco } */
   function aBytes(doc, c){
     var W = cols(c), out = [];
     var push = function(){ for (var i = 0; i < arguments.length; i++) out.push(arguments[i]); };
@@ -129,18 +127,6 @@
     doc.forEach(function(l){
       if (l.v){ for (var i = 0; i < l.v; i++) push(0x0A); return; }
       if (l.sep){ push(0x1B, 0x61, 0x00); txt(new Array(W + 1).join("-")); push(0x0A); return; }
-      if (l.img != null){
-        /* imagen en bandas (GS v 0): cada banda avanza el papel justo su alto, así quedan pegadas */
-        var R = l.raster; if (!R || !R.w || !R.h) return;
-        push(0x1B, 0x61, 0x01);
-        for (var y0 = 0; y0 < R.h; y0 += 96){
-          var alto = Math.min(96, R.h - y0);
-          push(0x1D, 0x76, 0x30, 0x00, R.w & 255, R.w >> 8, alto & 255, alto >> 8);
-          for (var k = y0 * R.w, fin = (y0 + alto) * R.w; k < fin; k++) out.push(R.data[k]);
-        }
-        push(0x1B, 0x61, 0x00);
-        return;
-      }
       var w = l.g ? Math.floor(W / 2) : W;
       push(0x1B, 0x45, l.b ? 1 : 0, 0x1D, 0x21, l.g ? 0x11 : 0x00);
       if (l.izq != null){
@@ -166,42 +152,10 @@
     return doc.map(function(l){
       if (l.v) return '<div style="height:' + (l.v * 10) + 'px"></div>';
       if (l.sep) return '<div style="border-top:1px dashed #000;margin:4px 0"></div>';
-      if (l.img != null) return /^data:image\/png;base64,[A-Za-z0-9+\/=]+$/.test(l.img) ? '<div style="text-align:center;margin:4px 0"><img src="' + l.img + '" alt="" style="width:86%;max-width:62mm;image-rendering:pixelated"></div>' : "";
       var st = "font-weight:" + (l.b ? 800 : 500) + ";font-size:" + (l.g ? 19 : 12.5) + "px;line-height:1.3;";
       if (l.izq != null) return '<div style="display:flex;gap:8px;' + st + '"><span style="flex:1">' + esc(limpiar(l.izq)) + '</span><span>' + esc(limpiar(l.der)) + '</span></div>';
       return '<div style="text-align:' + (l.a === "c" ? "center" : l.a === "r" ? "right" : "left") + ";" + (l.ind ? "padding-left:" + (l.ind * 6) + "px;" : "") + st + '">' + esc(limpiar(l.t)) + '</div>';
     }).join("");
-  }
-  /* Convierte una imagen a puntos blanco/negro para la impresora (1 bit por punto, 8 puntos por byte) */
-  function puntos(src, ancho){
-    return new Promise(function(ok){
-      var im = new Image();
-      im.onload = function(){
-        try {
-          /* se agranda por un número entero para no deformar las barras del timbre */
-          var k = Math.floor(ancho / im.width), w = k >= 1 ? im.width * k : ancho, h = Math.max(1, Math.round(im.height * w / im.width));
-          var wb = Math.ceil(w / 8), cv = document.createElement("canvas"); cv.width = wb * 8; cv.height = h;
-          var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, h); cx.imageSmoothingEnabled = false; cx.drawImage(im, 0, 0, w, h);
-          var px = cx.getImageData(0, 0, cv.width, h).data, data = new Array(wb * h);
-          for (var y = 0; y < h; y++) for (var xb = 0; xb < wb; xb++){
-            var byte = 0;
-            for (var bit = 0; bit < 8; bit++){ var i = (y * cv.width + xb * 8 + bit) * 4; if (px[i + 3] > 127 && (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) < 128000) byte |= 0x80 >> bit; }
-            data[y * wb + xb] = byte;
-          }
-          ok({ w: wb, h: h, data: data });
-        } catch(e){ ok(null); }
-      };
-      im.onerror = function(){ ok(null); };
-      im.src = src;
-    });
-  }
-  /* Deja listas las imágenes de uno o varios documentos (solo hace falta en impresión directa) */
-  function preparar(docs){
-    var c = cfg(), lista = (Array.isArray(docs[0]) ? docs : [docs]), esperas = [];
-    if (c.metodo !== "rawbt") return Promise.resolve(docs);
-    var ancho = Number(c.ancho) === 58 ? 368 : 480;
-    lista.forEach(function(d){ (d || []).forEach(function(l){ if (l && l.img != null && !l.raster) esperas.push(puntos(l.img, ancho).then(function(r){ l.raster = r; })); }); });
-    return Promise.all(esperas).then(function(){ return docs; });
   }
   function b64(bytes){ var s = ""; for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s); }
 
@@ -230,8 +184,7 @@
       pg = document.createElement("style"); pg.id = "dlPrintPage"; pg.textContent = "@page{size:" + mm + "mm auto;margin:0}@media print{#dlPrintArea{width:" + (mm - 4) + "mm}}";
       document.head.appendChild(pg);
       area.innerHTML = docs.map(function(d){ return '<div class="dl-tk">' + aHTML(d) + '</div>'; }).join("");
-      var ims = Array.prototype.slice.call(area.querySelectorAll("img"));
-      Promise.all(ims.map(function(i){ return i.decode ? i.decode().catch(function(){}) : null; })).then(function(){ setTimeout(function(){ window.print(); }, 60); });
+      setTimeout(function(){ window.print(); }, 60);
       return true;
     }
     return false;
@@ -294,27 +247,6 @@
     d.push({ v: 1 }, { t: "Gracias por tu visita", a: "c", b: true }, { t: "Documento interno. No es boleta.", a: "c" });
     return d;
   }
-  /* Boleta electrónica: lo que exige el SII en la copia impresa (emisor, folio, detalle, IVA, timbre y resolución).
-     b es la boleta tal como la entrega el servidor (cajaLocal: pagar / boletaVer). */
-  function rutLindo(r){ var m = /^(\d+)-([\dkK])$/.exec(String(r || "").replace(/\./g, "")); return m ? m[1].replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "-" + m[2].toUpperCase() : String(r || ""); }
-  function docBoleta(b, tienda){
-    var e = b.emisor || {}, res = b.resolucion || {}, d = [];
-    d.push({ t: e.RznSocEmisor || tienda || "", a: "c", b: true }, { t: "RUT " + rutLindo(e.RUTEmisor), a: "c" });
-    if (e.GiroEmisor) d.push({ t: e.GiroEmisor, a: "c" });
-    if (e.DirOrigen) d.push({ t: e.DirOrigen + (e.CmnaOrigen ? ", " + e.CmnaOrigen : ""), a: "c" });
-    d.push({ sep: true }, { t: "BOLETA ELECTRONICA", a: "c", b: true }, { t: "N° " + (b.folio || ""), a: "c", b: true, g: true },
-      { t: hora(b.fecha) + (b.lugar ? " · " + b.lugar : "") + (b.pedidoNum ? " · #" + b.pedidoNum : ""), a: "c" }, { sep: true });
-    (b.lineas || []).forEach(function(l){ d.push({ izq: (l.cantidad || 1) + " x " + (l.nombre || ""), der: plata(l.monto) }); });
-    d.push({ sep: true }, { izq: "TOTAL", der: plata(b.total), b: true }, { t: "El IVA de esta boleta es " + plata(b.iva), a: "c" });
-    if (b.metodo) d.push({ izq: "Forma de pago", der: String(b.metodo).charAt(0).toUpperCase() + String(b.metodo).slice(1) });
-    d.push({ v: 1 });
-    if (b.timbre) d.push({ img: "data:image/png;base64," + b.timbre }, { t: "Timbre Electrónico SII", a: "c" });
-    else d.push({ t: "El timbre electrónico está en el PDF de esta boleta.", a: "c" });
-    d.push({ t: (res.numero !== undefined && res.numero !== "" ? "Res. " + res.numero + " de " + String(res.fecha || "").slice(0, 4) + " - " : "") + "Verifique documento: www.sii.cl", a: "c" });
-    if (b.ambiente === "pruebas") d.push({ v: 1 }, { t: "BOLETA DE PRUEBA - SIN VALIDEZ", a: "c", b: true });
-    d.push({ v: 1 }, { t: "Gracias por tu visita", a: "c", b: true });
-    return d;
-  }
   function docPrueba(tienda){
     return [{ t: tienda || "Prueba", a: "c", b: true, g: true }, { t: "PRUEBA DE IMPRESORA", a: "c", b: true }, { sep: true },
       { izq: "1 x Hamburguesa clásica", der: "$7.990" }, { t: "Extras: Tocino x2, sin cebolla", ind: 3 }, { izq: "TOTAL", der: "$7.990", b: true }, { sep: true },
@@ -342,7 +274,7 @@
         (c.metodo !== "no" ? '<div style="font-weight:800;margin:14px 0 6px">Ancho del papel</div><div style="display:flex;gap:6px">' + op("ancho", 58, "58 mm") + op("ancho", 80, "80 mm") + '</div>' +
           (c.metodo === "rawbt" ? chk("tildes", "Mi impresora imprime tildes y eñe") + chk("corte", "Cortar el papel al terminar") : "") +
           chk("autoComanda", o.pantalla === "cocina" ? "Imprimir cada comanda nueva al llegar" : "Imprimir la comanda al enviar a cocina") +
-          (o.pantalla === "cocina" ? "" : chk("autoPago", "Imprimir el comprobante o la boleta al cobrar")) : "") +
+          (o.pantalla === "cocina" ? "" : chk("autoPago", "Imprimir el comprobante al cobrar")) : "") +
         ((o.barra || []).length || o.puedeEditarBarra ? '<div style="font-weight:800;margin:14px 0 6px">Este equipo ' + (c.metodo === "no" ? "muestra" : "imprime") + ' comandas de</div><div style="display:flex;gap:6px">' + op("estacion", "todo", "Todo") + op("estacion", "cocina", "Cocina") + op("estacion", "barra", "Barra") + '</div>' : "") +
         (o.puedeEditarBarra ? '<div style="font-weight:800;margin:16px 0 4px">Categorías que van a la barra</div><p style="margin:0 0 6px;font-size:12.5px;color:#555">Lo marcado sale en la comanda de BARRA; el resto, en COCINA. Vale para toda la tienda.</p><div style="display:flex;flex-wrap:wrap;gap:6px">' +
           (cats.length ? cats.map(function(k){ var on = barra.some(function(b){ return String(b).toLowerCase() === String(k).toLowerCase(); }); return '<button type="button" data-cat="' + esc(k) + '" style="padding:8px 12px;border-radius:999px;border:2px solid ' + (on ? "#1a1a1a" : "#ddd") + ";background:" + (on ? "#1a1a1a" : "#fff") + ";color:" + (on ? "#fff" : "#1a1a1a") + ';font:inherit;font-weight:700;cursor:pointer">' + esc(k) + '</button>'; }).join("") : '<span style="color:#777">Sin categorías todavía.</span>') + '</div>' : "") +
@@ -367,7 +299,7 @@
   }
 
   DL.print = { cfg: cfg, activa: function(){ return cfg().metodo !== "no"; }, imprimir: imprimir, comandas: comandas, docComanda: docComanda,
-               docPrecuenta: docPrecuenta, docComprobante: docComprobante, docBoleta: docBoleta, preparar: preparar, docPrueba: docPrueba, abrirAjustes: abrirAjustes, _bytes: aBytes, _html: aHTML };
+               docPrecuenta: docPrecuenta, docComprobante: docComprobante, docPrueba: docPrueba, abrirAjustes: abrirAjustes, _bytes: aBytes, _html: aHTML };
 })();
 
 /* ───────────── Íconos en vez de emojis ─────────────

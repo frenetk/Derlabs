@@ -702,91 +702,35 @@ la tienda lista (eso es lo que cubre la cuota de integración). No es
 - "Turno abierto" es un punto lleno y "Caja cerrada" un aro vacío: el color
   lo pone el chip, no el emoji.
 
-## 22. Boleta electrónica en la caja local (P39) — ✅ hecho, falta probar con OpenFactura real
+## 22. Boleta electrónica en la caja local — investigado, pendiente de decidir
 
-**Proveedor: OpenFactura (Haulmer).** Con el programa de partners un negocio
-con ventas bajo $100 millones al mes paga $60.000 + IVA al año (≈ $5.000 al
-mes), con emisión ilimitada, folios automáticos y certificación ante el SII
-incluidas. Se descartó SimpleAPI por ahora: es más barata en cuotas desde
-unos 4 negocios (5 UF al año para todos), pero cada negocio tendría que
-certificarse ante el SII con el software de DerLabs, cargar sus folios y
-DerLabs guardar los XML 6 años.
-
-### Qué hace el negocio (una sola vez)
-
-1. Contrata OpenFactura y saca su llave de integración (API Key).
-2. En la caja: **Turno → Boleta electrónica → Conectar OpenFactura**, pega la
-   llave y toca Conectar. Sus datos (RUT, razón social, giro, dirección,
-   folios disponibles) se leen solos de OpenFactura; no escribe nada más.
-3. Elige si los pagos con tarjeta llevan boleta (por defecto no: vale el
-   comprobante de la máquina).
-
-"Probar con boletas de prueba" conecta la empresa de demostración de
-OpenFactura: sirve para mostrar el flujo antes de contratar. Esas boletas
-dicen "BOLETA DE PRUEBA - SIN VALIDEZ".
-
-### Qué pasa al cobrar
-
-- Cada pago en efectivo o transferencia emite una boleta (tipo 39) por lo
-  vendido en ese pago, **sin la propina**. Con la cuenta dividida sale una
-  boleta por pago; el último pago cuadra la venta al peso.
-- Si el pago cubre la cuenta entera y no hay descuento, la boleta lista los
-  productos. Si es una parte de la cuenta o hay descuento, lleva una sola
-  línea "Consumo en el local" por el monto.
-- La pantalla de "Cuenta pagada" muestra el folio y el botón **Boleta**. Si
-  este equipo imprime al cobrar, sale la boleta (con su timbre) en vez del
-  comprobante interno.
-- **Si OpenFactura no responde, la venta no se detiene:** se cobra igual y
-  la boleta queda *pendiente*. El cron (cada 5 minutos) la reintenta con la
-  misma llave de idempotencia, así nunca se emite dos veces. Pasadas 20
-  horas deja de reintentar sola y queda con error para revisarla.
-- Si OpenFactura la **rechaza** (llave revocada, sin folios, datos mal), no
-  se reintenta sola: queda con el motivo a la vista y el botón Reintentar.
-- En **Turno** está la lista de boletas del turno: imprimir de nuevo, ver el
-  PDF, reintentar. Las pendientes y con error salen primero.
-
-### Dónde está en el código
-
-- `cloudflare/functions/boleta.js`: todo lo de boleta. Arriba, la sección
-  **Proveedor** (`conectar`, `enviar`, `buscarPorToken`, `pdfDe`) es lo único
-  que habla con OpenFactura: para cambiar a SimpleAPI se reemplaza esa
-  sección y nada más. Abajo: armado del documento (`armarDte`, `lineasDe`,
-  `ventaDelPago`), configuración y emisión (`boletaDelPago`, `reintentar`,
-  `reintentarBoletas` para el cron).
-- `cajaLocal.js`: acción `pagar` (emite tras guardar el pago) y acciones
-  nuevas `boletaConfig` (solo propietario), `boletas`, `boletaVer`,
-  `boletaReintentar`, `boletaPdf`.
-- Datos: `tiendas/{s}/config/privado.boleta` (llave, ambiente, emisor,
-  activo, tarjeta; la llave nunca vuelve al navegador),
-  `tiendas/{s}/boletas/{pedido_pago}` (cada boleta con su folio, timbre y lo
-  enviado), `pedido.boletas[pagoId]` (resumen), `pedido.pagos[].venta` (lo
-  vendido en ese pago) y `boletas_pendientes/{tienda__boleta}` (cola del
-  cron). No hay que tocar reglas ni índices de Firestore.
-- `local-util.js`: `docBoleta` (ticket con lo que exige el SII) y las líneas
-  de imagen (`{ img }`) para el timbre: en impresión del sistema va como
-  imagen; en impresión directa (RawBT) se convierte a puntos con
-  `DL.print.preparar`.
-- `caja.html`: bloque "Boleta electrónica".
-
-### API de OpenFactura que se usa
-
-`https://api.haulmer.com/v2/dte` (pruebas: `https://dev-api.haulmer.com/v2/dte`),
-cabecera `apikey`. `GET /organization` y `GET /organization/document`
-(datos y folios), `POST /document` con `Idempotency-Key` y
-`response: ["FOLIO","TIMBRE","RESOLUCION","80MM"]` (sin PDF, que es lo lento),
-`GET /document/{token}/json` (recuperar una ya emitida, error `OF-06`) y
-`GET /document/{token}/pdf`. Límite: 3 llamadas por segundo.
-
-### Pendiente
-
-- **Probar contra OpenFactura real.** Desde el entorno donde se programó no
-  hay salida a sus servidores: se probó contra un OpenFactura simulado que
-  responde como su documentación. Primera prueba: "Probar con boletas de
-  prueba", cobrar en efectivo y revisar folio, timbre impreso y PDF.
-- **Timbre en impresora térmica directa (RawBT):** el formato de los bytes
-  está probado, falta verlo en papel y leerlo con un lector.
-- Anular una boleta (nota de crédito) se hace por ahora en OpenFactura.
-- Boleta para los pedidos de la tienda online.
+- **Proveedor candidato: OpenFactura (Haulmer).** Precio público: plan Pyme
+  $360.000 + IVA al año por razón social. Con el **programa de partners**,
+  una empresa con ventas bajo $100 millones al mes paga **$60.000 + IVA al
+  año (≈ $5.000 al mes)**, con emisión ilimitada, API, habilitación y
+  certificación ante el SII incluidas. Firma electrónica del dueño aparte
+  (≈ $12.000 al año). Es el precio "por negocio al mes" que se recordaba.
+- **Alternativa: SimpleAPI.** Una sola cuenta para todos los negocios
+  (multi-RUT): Básico 5 UF al año (10.000 llamadas al mes), Estándar 9 UF
+  (50.000), Premium 12 UF (150.000). En cuotas es más barato que OpenFactura
+  desde unos 4 negocios Pro. Pero solo genera, timbra, firma y envía: cada
+  negocio tiene que certificarse ante el SII con el software de DerLabs (set
+  de pruebas), pedir y cargar sus folios (CAF), y DerLabs tiene que guardar
+  los XML 6 años. Una integración directa así suele tomar 4 a 10 semanas.
+- **Recomendación:** partir con OpenFactura (se cobra al negocio dentro del
+  plan Pro) y dejar el emisor detrás de una sola función, para poder pasar a
+  SimpleAPI cuando haya suficientes negocios como para que convenga.
+- **API de OpenFactura:** `POST https://api.haulmer.com/v2/dte/document`
+  (pruebas: `https://dev-api.haulmer.com`), cabeceras `apikey` (una por
+  negocio) e `Idempotency-Key`; cuerpo `{ response: ["FOLIO","TIMBRE","PDF",
+  "80MM"…], dte: { Encabezado, Detalle } }`; boleta = `TipoDTE 39`.
+  Límite: 3 llamadas por segundo. No se probó desde aquí.
+- **Plan de trabajo (por aprobar):** datos tributarios por tienda en
+  `config/privado` (RUT, razón social, giro, dirección, API key, ambiente);
+  al cobrar, emitir boleta por lo pagado en efectivo o transferencia (el
+  comprobante de tarjeta ya vale como boleta), sin propina; guardar folio y
+  timbre en el pedido e imprimirlos en el ticket; si el proveedor falla, la
+  venta no se detiene: la boleta queda pendiente y se reintenta.
 
 ## 23. Carrusel de destacados que no tapa la etiqueta (P38) — ✅ hecho
 

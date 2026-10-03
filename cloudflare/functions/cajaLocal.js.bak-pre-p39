@@ -10,7 +10,6 @@
    (cuenta de servicio): no hace falta tocar las reglas de Firestore. */
 import { getDb, corsHeaders, admin, uidDesdeToken, authRest, calcularExtras } from "./_firebase.js";
 import { planDe } from "./planTienda.js";
-import { cfgBoleta, vistaCfg, guardarCfg, conectarTienda, llevaBoleta, ventaDelPago, boletaDelPago, vistaBoleta, reintentar, pdfDe } from "./boleta.js";
 
 /* Personal del local (fase 2): cuentas con usuario y clave, SIN rol en
    usuarios/{uid}.roles (las reglas de Firestore no les abren nada).
@@ -21,7 +20,6 @@ import { cfgBoleta, vistaCfg, guardarCfg, conectarTienda, llevaBoleta, ventaDelP
 export function emailPersonal(usuario, storeId){ return usuario + "--" + storeId + "@personal.derlabs.cl"; }
 const PERMISOS = {
   cajero: ["estado", "pedidos", "abrirTurno", "movimiento", "crearPedido", "agregarItems", "anularItem", "ajustes", "pagar", "estadoLlevar", "moverMesa", "cerrarTurno", "turnos", "cocinaListo", "estadoOnline",
-           "boletas", "boletaVer", "boletaReintentar", "boletaPdf",
            "datosMesa", "pedirCuenta", "asignarComensal", "moverItems", "juntarMesas", "separarMesas"],
   garzon: ["estado", "pedidos", "crearPedido", "agregarItems", "moverMesa", "datosMesa", "pedirCuenta", "asignarComensal", "moverItems", "juntarMesas", "separarMesas"],
   cocina: ["estado", "pedidos", "cocinaListo"]
@@ -37,7 +35,7 @@ function pedidoVista(id, p){
   return { _docId: id, id: p.id || id, canal: p.canal || "web", tipo: p.tipo || "", estado: p.estado || "nuevo", fecha: p.fecha || "",
     mesa: p.mesa || null, cliente: { nombre: c.nombre || "", telefono: p.canal === "local" ? (c.telefono || "") : "", direccion: c.direccion || "", notas: c.notas || "" },
     items: p.items || [], subtotal: p.subtotal || 0, descuentoLocal: p.descuentoLocal || 0, propina: p.propina || 0, total: p.total || 0,
-    pagos: (p.pagos || []).map(x => ({ id: x.id || "", metodo: x.metodo, monto: x.monto, com: x.com == null ? null : x.com, propina: x.propina || 0 })), pagado: !!p.pagado, boletas: p.boletas || {},
+    pagos: (p.pagos || []).map(x => ({ metodo: x.metodo, monto: x.monto, com: x.com == null ? null : x.com, propina: x.propina || 0 })), pagado: !!p.pagado,
     garzon: p.garzon || "", personas: p.personas || 0, mesasUnidas: p.mesasUnidas || [], cuentaPedida: !!p.cuentaPedida, cerrado: !!p.cerrado, entregado: !!p.entregado,
     rondas: p.rondas || 1, rondasListas: p.rondasListas || [], estListas: p.estListas || {}, cocinaListo: !!p.cocinaListo, metodoPago: p.metodoPago || "",
     envio: p.envio ? { metodo: p.envio.metodo || "" } : null, estadoTimeline: p.estadoTimeline || {} };
@@ -240,9 +238,7 @@ export async function cajaLocal(request, env){
     switch (b.accion){
       case "estado": {
         const t = await turnoAbierto(db, storeId);
-        const vb = vistaCfg(await cfgBoleta(db, storeId).catch(() => null));
         return json({ ok: true, rol, quien, turno: t ? Object.assign({ id: t.id }, t.t) : null,
-                      boleta: { conectado: vb.conectado, activo: vb.activo, ambiente: vb.ambiente || "", tarjeta: !!vb.tarjeta },
                       resumen: t ? await resumenTurno(db, storeId, t.id, t.t) : null, mesas: cfg.cajaMesas || null,
                       barra: Array.isArray(cfg.cajaBarra) ? cfg.cajaBarra : [], nombre: cfg.nombre || "", equipo: await equipoLocal() });
       }
@@ -440,14 +436,12 @@ export async function cajaLocal(request, env){
         const monto = Math.min(Math.max(0, num(b.monto)), falta);
         if (!monto) return json({ ok: false, error: "Monto inválido" }, 400);
         const recibido = metodo === "efectivo" ? Math.max(monto, num(b.recibido) || monto) : monto;
-        const pago = { id: token().slice(0, 10), metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: limpio(b.nota, 60) };
+        const pago = { metodo, monto, recibido, vuelto: recibido - monto, fecha: ahora, por: quien, nota: limpio(b.nota, 60) };
         if (b.com != null && b.com !== "") pago.com = comOk(b.com);
         if (extra) pago.propina = propina - (a.p.propina || 0);
         const pagos = (a.p.pagos || []).concat([pago]);
         const pagadoTotal = pagos.reduce((x, p) => x + p.monto, 0);
         const completo = pagadoTotal >= totalAPagar(pv);
-        /* venta = lo que este pago tiene de consumo (sin propina): es lo que va en la boleta */
-        pago.venta = ventaDelPago(pv, pago, a.p.pagos || [], completo, propina);
         const metodos = Array.from(new Set(pagos.map(p => p.metodo)));
         const cambios = { pagos, turnoId: t.id, metodoPago: metodos.length > 1 ? "mixto" : metodos[0] };
         if (extra) cambios.propina = propina;
@@ -460,13 +454,7 @@ export async function cajaLocal(request, env){
           } else if (a.p.estado === "listo" && a.p.entregado){ cambios.cerrado = true; }
         }
         await a.ref.set(cambios, { merge: true });
-        /* Boleta electrónica: si falla o demora, el cobro ya quedó hecho y la boleta se reintenta sola */
-        let boleta = null;
-        const cfgB = pago.venta > 0 ? await cfgBoleta(db, storeId).catch(() => null) : null;
-        if (llevaBoleta(cfgB, metodo))
-          boleta = await boletaDelPago(db, storeId, cfgB, { pedidoId: idOk(b.pedidoId), p: Object.assign({}, a.p, cambios), pago, monto: pago.venta,
-            unico: completo && !(a.p.pagos || []).length, lugar: a.p.mesa ? a.p.mesa.nombre : "Para llevar", turnoId: t.id, quien, ahora });
-        return json({ ok: true, completo, falta: Math.max(0, totalAPagar(pv) - pagadoTotal), vuelto: recibido - monto, propina, boleta });
+        return json({ ok: true, completo, falta: Math.max(0, totalAPagar(pv) - pagadoTotal), vuelto: recibido - monto, propina });
       }
       case "estadoLlevar": {  /* para llevar: listo / entregado */
         const a = await pedidoLocal(b.pedidoId);
@@ -602,44 +590,6 @@ export async function cajaLocal(request, env){
         if (!a.p.mesa || a.p.cerrado) return json({ ok: false, error: "No corresponde" }, 400);
         await a.ref.set({ mesasUnidas: [] }, { merge: true });
         return json({ ok: true });
-      }
-      case "boletaConfig": {  /* conectar OpenFactura y elegir cuándo se emite (solo el propietario) */
-        if (rol !== "propietario") return json({ ok: false, error: "Solo el propietario configura la boleta" }, 403);
-        try {
-          const actual = await cfgBoleta(db, storeId);
-          if (b.op === "conectar") return json({ ok: true, boleta: vistaCfg(await conectarTienda(db, storeId, b.llave, b.demo === true, ahora)) });
-          if (b.op === "desconectar"){ await guardarCfg(db, storeId, null); return json({ ok: true, boleta: vistaCfg(null) }); }
-          if (b.op === "guardar"){
-            if (!actual) return json({ ok: false, error: "Primero conecta tu OpenFactura" }, 409);
-            const n = Object.assign({}, actual, { activo: b.activo !== false, tarjeta: b.tarjeta === true });
-            await guardarCfg(db, storeId, n);
-            return json({ ok: true, boleta: vistaCfg(n) });
-          }
-          return json({ ok: true, boleta: vistaCfg(actual) });
-        } catch(e){ return json({ ok: false, error: e.message }, e.st || 400); }
-      }
-      case "boletas": {  /* boletas del turno (o de las últimas 36 horas si no hay turno abierto) */
-        const t = b.turnoId ? { id: idOk(b.turnoId) } : await turnoAbierto(db, storeId);
-        const colB = db.collection("tiendas/" + storeId + "/boletas");
-        const s = t ? await colB.where("turnoId", "==", t.id).get()
-                    : await colB.where("fecha", ">=", new Date(Date.now() - 36 * 3600 * 1000).toISOString()).get();
-        const lista = s.docs.map(d => vistaBoleta(d.data(), false)).sort((x, y) => (x.fecha < y.fecha ? 1 : -1)).slice(0, 300);
-        return json({ ok: true, boletas: lista });
-      }
-      case "boletaVer": case "boletaReintentar": case "boletaPdf": {
-        const id = idOk(b.boletaId);
-        const d = id ? await db.doc("tiendas/" + storeId + "/boletas/" + id).get() : null;
-        if (!d || !d.exists) return json({ ok: false, error: "Boleta no encontrada" }, 404);
-        if (b.accion === "boletaVer") return json({ ok: true, boleta: vistaBoleta(d.data(), true) });
-        const cfgB = await cfgBoleta(db, storeId);
-        if (!cfgB) return json({ ok: false, error: "Conecta tu OpenFactura para seguir" }, 409);
-        try {
-          if (b.accion === "boletaPdf"){
-            if (!d.data().token) return json({ ok: false, error: "Esta boleta todavía no se emite" }, 409);
-            return json({ ok: true, pdf: await pdfDe(cfgB, d.data().token), folio: d.data().folio || null });
-          }
-          return json({ ok: true, boleta: await reintentar(db, storeId, cfgB, id) });
-        } catch(e){ return json({ ok: false, error: e.message }, e.st || 502); }
       }
       case "cerrarTurno": {
         const t = await turnoAbierto(db, storeId);
