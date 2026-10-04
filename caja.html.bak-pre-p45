@@ -198,20 +198,6 @@ table.t td{padding:8px 4px;border-bottom:1px solid var(--line)}
 table.t td:last-child{text-align:right;font-weight:800}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--inv);color:var(--inv-t);padding:12px 18px;border-radius:12px;font-weight:800;z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
 #toast.on{opacity:1}
-
-/* ── P45 · Escritorio: Para llevar y Online en grilla, Turno en dos columnas ── */
-@media (min-width:1000px){
-  #listaLlevar,#listaOnline{grid-template-columns:repeat(auto-fill,minmax(380px,1fr));align-items:start}
-  #listaOnline > .sec-t,#listaOnline > .vacio,#listaLlevar > .vacio{grid-column:1 / -1}
-  #listaLlevar .card,#listaOnline .card{grid-template-columns:1fr auto;align-content:start}
-  #listaLlevar .card > *,#listaOnline .card > *{grid-column:1 / -1;min-width:0}
-  #listaOnline .card > .acciones{grid-column:auto;margin-top:4px}
-  #listaOnline .card > .acciones + .acciones{justify-content:flex-end}
-  #btnNuevoLlevar{width:auto!important;min-width:340px}
-  #turnoBody{max-width:1320px}
-  #turnoBody .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .t-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 28px;align-items:start}
-}
 </style>
 </head>
 <body>
@@ -1416,13 +1402,13 @@ function renderTurno(){
   const R = r || { ventas: 0, pedidos: 0, propinas: 0, ticketPromedio: 0, porMetodo: {}, esperado: {}, top: [] };
   b.innerHTML = '<div class="card-top" style="margin-bottom:12px"><div><b style="font-size:18px">🟢 Turno abierto</b><div class="muted small">Desde ' + new Date(t.abiertoEn).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" }) + ' · ' + esc(t.abiertoPor || "") + '</div></div><button class="btn btn-sm" id="tRef">🔄</button></div>' +
     '<div class="kpis"><div class="kpi"><small>Ventas</small><b>' + $$(R.ventas) + '</b></div><div class="kpi"><small>Cuentas cobradas</small><b>' + R.pedidos + '</b></div><div class="kpi"><small>Ticket promedio</small><b>' + $$(R.ticketPromedio) + '</b></div><div class="kpi"><small>Propinas</small><b>' + $$(R.propinas) + '</b></div></div>' +
-    '<div class="t-cols"><div class="t-col"><div class="sec-t">Por medio de pago</div><table class="t"><tr><td>💵 Efectivo</td><td>' + $$(R.porMetodo.efectivo) + '</td></tr><tr><td>💳 Tarjeta</td><td>' + $$(R.porMetodo.tarjeta) + '</td></tr><tr><td>🏦 Transferencia</td><td>' + $$(R.porMetodo.transferencia) + '</td></tr>' +
+    '<div class="sec-t">Por medio de pago</div><table class="t"><tr><td>💵 Efectivo</td><td>' + $$(R.porMetodo.efectivo) + '</td></tr><tr><td>💳 Tarjeta</td><td>' + $$(R.porMetodo.tarjeta) + '</td></tr><tr><td>🏦 Transferencia</td><td>' + $$(R.porMetodo.transferencia) + '</td></tr>' +
     '<tr><td><b>Efectivo esperado en caja</b><br><span class="muted small">inicial ' + $$(t.montoInicial) + ' + ventas + ingresos − retiros</span></td><td>' + $$(R.esperado.efectivo) + '</td></tr></table>' +
     '<div class="sec-t">Movimientos de efectivo</div><div class="fila2"><button class="btn" data-mov="ingreso">＋ Ingreso</button><button class="btn" data-mov="retiro">− Retiro</button></div>' +
     '<table class="t" style="margin-top:8px">' + ((t.movimientos || []).map(m => '<tr><td>' + (m.tipo === "ingreso" ? "＋ " : "− ") + esc(m.nota || m.tipo) + '<br><span class="muted small">' + new Date(m.fecha).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) + '</span></td><td>' + (m.tipo === "retiro" ? "−" : "") + $$(m.monto) + '</td></tr>').join("") || '<tr><td class="muted small">Sin movimientos</td><td></td></tr>') + '</table>' +
-    '</div><div class="t-col">' + (R.top && R.top.length ? '<div class="sec-t">Más vendidos del turno</div><table class="t">' + R.top.map(x => '<tr><td>' + esc(x.nombre) + '</td><td>' + x.cantidad + '</td></tr>').join("") + '</table>' : '') +
+    (R.top && R.top.length ? '<div class="sec-t">Más vendidos del turno</div><table class="t">' + R.top.map(x => '<tr><td>' + esc(x.nombre) + '</td><td>' + x.cantidad + '</td></tr>').join("") + '</table>' : '') +
     seccionInsumos() + seccionBoleta() + '<button class="btn btn-acc" id="tCerrar" style="width:100%;margin-top:18px">Cerrar turno y hacer arqueo</button>' +
-    '<div class="sec-t">Turnos anteriores</div><div class="lista" id="tHist"><div class="muted small">Cargando…</div></div></div></div>';
+    '<div class="sec-t">Turnos anteriores</div><div class="lista" id="tHist"><div class="muted small">Cargando…</div></div>';
   cargarHistorial(); cargarBoletas();
 }
 qs("#turnoBody").addEventListener("click", async e => {

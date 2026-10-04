@@ -1792,8 +1792,6 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
   .zona-del:hover{opacity:1}
 }
 </style>
-<!-- P45: versión de escritorio (solo se aplica desde 1024 px de ancho) -->
-<link rel="stylesheet" href="/tienda-escritorio.css?v=45" media="(min-width:1024px)" data-p45>
 </head>
 <body data-page="inicio">
 

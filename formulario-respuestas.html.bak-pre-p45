@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111111">
-<meta name="color-scheme" content="dark light">
+<meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex, nofollow">
 <title>Respuestas del formulario</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,9 +14,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-<!-- P45: modo claro / oscuro (se guarda en este equipo) -->
-<link rel="stylesheet" href="/tema.css?v=45">
-<script src="/tema.js?v=45" data-clave="dl_tema_admin"></script>
 <style>
 :root{
   color-scheme: dark;
@@ -73,7 +70,7 @@ a{color:inherit;text-decoration:none}
   padding:13px 14px;font-size:15px;color:var(--txt);transition:border-color .2s;
 }
 .login-field input:focus{border-color:var(--rojo)}
-.login-err{font-size:13px;color:var(--t-rojo,#EF5350);font-weight:700;text-align:center;margin-bottom:12px;min-height:18px}
+.login-err{font-size:13px;color:#EF5350;font-weight:700;text-align:center;margin-bottom:12px;min-height:18px}
 .btn-login{
   width:100%;padding:15px;border-radius:12px;background:var(--rojo);color:#fff;
   font-size:16px;font-weight:800;letter-spacing:.5px;transition:opacity .15s,transform .1s;

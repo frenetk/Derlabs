@@ -1,0 +1,31 @@
+/* ════════════════════════════════════════════════════════════════
+   P45 — MODO CLARO compartido (cocina, delivery, administración)
+   Las páginas ya usan estas variables para su tema oscuro; aquí solo
+   se redefinen cuando <html data-tema="claro">. Va junto con /tema.js.
+   ════════════════════════════════════════════════════════════════ */
+:root{
+  /* textos de color que deben leerse sobre fondo oscuro */
+  --t-azul:#90CAF9;--t-verde:#81C784;--t-ambar:#FFB74D;--t-rojo:#EF5350;
+}
+html[data-tema="claro"]{
+  color-scheme:light;
+  --bg:#F4F2F0;--bg2:#FFFFFF;--bg3:#ECE8E4;--card:#FFFFFF;
+  --borde:rgba(0,0,0,.12);--line:rgba(0,0,0,.12);
+  --txt:#1A1A1A;--txt2:#5E5954;--txt3:#6F6862;
+  --shadow:0 4px 20px rgba(0,0,0,.12);
+  /* los mismos textos de color, oscurecidos para fondo claro */
+  --t-azul:#1558A6;--t-verde:#1B6B2A;--t-ambar:#8A4B00;--t-rojo:#B3261E;
+}
+html[data-tema="claro"] input,
+html[data-tema="claro"] select,
+html[data-tema="claro"] textarea{color-scheme:light}
+
+[data-tema-btn] svg{display:block;width:20px;height:20px;flex:none}
+.tema-flot{
+  position:fixed;right:16px;bottom:16px;z-index:900;
+  width:46px;height:46px;padding:0;border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--borde, rgba(128,128,128,.3));
+  background:var(--bg2, #181818);color:var(--txt, #F5F5F5);
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+}

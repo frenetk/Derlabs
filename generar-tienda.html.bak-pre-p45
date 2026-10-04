@@ -4,15 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111111">
-<meta name="color-scheme" content="dark light">
+<meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex, nofollow">
 <title>Generar tienda nueva</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 
-<!-- P45: modo claro / oscuro (se guarda en este equipo) -->
-<link rel="stylesheet" href="/tema.css?v=45">
-<script src="/tema.js?v=45" data-clave="dl_tema_admin"></script>
 <style>
 /* ══════════════════════════════════════
    TOKENS — misma paleta base que pedidos.html, para que se sienta
@@ -158,8 +155,8 @@ header p{color:var(--txt2);font-size:14px}
 .btn-crear.exito{background:var(--verde)}
 
 .estado-msg{margin-top:14px;font-size:14px;padding:12px 14px;border-radius:10px;display:none}
-.estado-msg.ok{display:block;background:rgba(46,125,50,.15);color:var(--t-verde,#66BB6A);border:1px solid rgba(46,125,50,.3)}
-.estado-msg.error{display:block;background:rgba(229,57,53,.15);color:var(--t-rojo,#EF5350);border:1px solid rgba(229,57,53,.3)}
+.estado-msg.ok{display:block;background:rgba(46,125,50,.15);color:#66BB6A;border:1px solid rgba(46,125,50,.3)}
+.estado-msg.error{display:block;background:rgba(229,57,53,.15);color:#EF5350;border:1px solid rgba(229,57,53,.3)}
 
 .resultado-box{
   margin-top:18px;padding:16px;border-radius:12px;background:var(--bg2);
@@ -175,14 +172,9 @@ header p{color:var(--txt2);font-size:14px}
 }
 .opcional-bloque{display:none}
 .opcional-bloque.abierto{display:block}
-/* P45 · escritorio */
-@media (min-width:1024px){
-  .wrapper{max-width:920px;padding:36px 28px 80px}
-  .rubro-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-}
 </style>
 <style id="p20-dom">
-.modo-dom{flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1px solid var(--borde);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
+.modo-dom{flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
 .modo-dom.activo{background:#6C5CE7;border-color:#6C5CE7;color:#fff}
 </style>
 <style id="p28-planes">
@@ -196,15 +188,15 @@ header p{color:var(--txt2);font-size:14px}
 #btnFotosLimpiar:disabled{opacity:.5}
 #btnFotos{padding:12px 18px;border-radius:12px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-weight:800;cursor:pointer}
 #btnFotos:disabled{opacity:.5}
-#fotosMsg.error{color:var(--t-rojo,#FF8A80)}
-#planesMsg.error{color:var(--t-rojo,#FF8A80)}
+#fotosMsg.error{color:#FF8A80}
+#planesMsg.error{color:#FF8A80}
 .pl-fila{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:14px;background:var(--card);border:1px solid var(--borde)}
 .pl-txt{flex:1;min-width:0}
 .pl-txt b{display:block;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pl-txt small{display:block;font-size:12px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pl-seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--bg2);flex:none}
 .pl-seg button{min-height:40px;padding:0 13px;border-radius:9px;border:0;background:transparent;color:var(--txt2);font:inherit;font-size:13px;font-weight:800;cursor:pointer}
-.pl-seg button.activo{background:var(--txt);color:var(--bg)}
+.pl-seg button.activo{background:#F5F5F5;color:#111}
 .pl-seg button:disabled{opacity:.5;cursor:default}
 .pl-nota{font-size:12px;color:var(--txt3);flex:none}
 .pl-fila{flex-wrap:wrap}
@@ -212,13 +204,13 @@ header p{color:var(--txt2);font-size:14px}
 .pl-bol-txt{flex:1;min-width:160px;color:var(--txt2);line-height:1.4}
 .pl-bol-txt b{color:var(--txt);font-size:13px;display:inline}
 .pl-bol button{min-height:40px;padding:0 13px;border-radius:10px;border:1px solid var(--borde);background:var(--bg3);color:var(--txt);font:inherit;font-size:13px;font-weight:800;cursor:pointer}
-.pl-bol button.principal{background:var(--txt);color:var(--bg);border-color:var(--txt)}
+.pl-bol button.principal{background:#F5F5F5;color:#111;border-color:#F5F5F5}
 .pl-bol button:disabled{opacity:.5}
 .pl-bol-form{flex-basis:100%;display:grid;gap:8px}
 .pl-bol-form input{width:100%;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--borde);background:var(--bg2);color:var(--txt);font:inherit;font-size:14px;box-sizing:border-box}
 .pl-bol-form .fila{display:flex;gap:8px;flex-wrap:wrap}
-.pl-bol-err{color:var(--t-rojo,#FF8A80);min-height:0}
-.pl-bol-ok{color:var(--t-verde,#7CE0A3)}.pl-bol-prueba{color:var(--t-ambar,#FFD37A)}
+.pl-bol-err{color:#FF8A80;min-height:0}
+.pl-bol-ok{color:#7CE0A3}.pl-bol-prueba{color:#FFD37A}
 </style>
 </head>
 <body>
@@ -276,6 +268,9 @@ header p{color:var(--txt2);font-size:14px}
       </div>
       <input type="file" id="fLogo" accept="image/*" style="display:none">
       <div class="ayuda">Se muestra en el header de la tienda, como favicon en el navegador, y como ícono del acceso directo. Si no lo subes ahora, la tienda muestra el nombre en texto.</div>
+    </div>
+      <input type="file" id="fSplash" accept="image/*" style="display:none">
+      <div class="ayuda">Se muestra a pantalla completa mientras carga la tienda. Una foto del local, del producto, o el logo en grande funcionan bien. Si no la subes, la tienda usa un ícono genérico del rubro mientras carga.</div>
     </div>
 
     <div class="campo">

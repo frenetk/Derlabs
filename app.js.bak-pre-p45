@@ -8043,7 +8043,6 @@ function _v24Css(){
     ".vt-segs2 span{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.4)}",
     ".vt-segs2 span.on{background:rgba(255,255,255,.95)}",
     "body.v-app .vt-clasico-sec{display:none!important}",
-    "body:not(.v-app) #v24Cont{display:none!important}", /* P45: al pasar a Clásico no queda el menú del estilo App encima */
     ".v24-dev{display:none;border:0;background:var(--crema,#FBF7F5);color:var(--rojo);font:inherit;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:999px;cursor:pointer}",
     "body.dev-on:not(.preview-cliente) .v24-dev{display:inline-flex}",
     ".v24-sec{padding:22px 16px 0}",
@@ -8947,44 +8946,3 @@ function v30PintarPagos(){
 function v30PintarApariencia(){
   var d = qs("#pDominioTxt"); if (d) d.textContent = location.hostname;
 }
-
-
-/* ════════════════════════════════════════════════════════════════
-   P45 — ESCRITORIO (tienda de comida)
-   Desde 1024 px de ancho la barra de pestañas de abajo pasa a ser el
-   menú de la cabecera (mismos botones, mismos eventos). El diseño va
-   en /tienda-escritorio.css. Solo corre en las páginas que enlazan
-   ese archivo: retail y boutique no cambian.
-   ════════════════════════════════════════════════════════════════ */
-(function(){
-  if (!window.matchMedia) return;
-  var mq = window.matchMedia("(min-width:1024px)");
-  function acomodar(){
-    try {
-      if (!document.querySelector("link[data-p45]") || window.DERLABS_SKIN) return;
-      var tb = document.getElementById("tabbar"), nav = document.querySelector(".navbar"), cart = document.getElementById("btnCart");
-      if (!tb || !nav || !cart) return;
-      if (mq.matches){
-        if (tb.parentNode !== nav){ tb._p45Padre = tb.parentNode; tb._p45Sig = tb.nextSibling; nav.insertBefore(tb, cart); }
-        document.body.classList.add("dk-nav");
-      } else {
-        if (tb.parentNode === nav && tb._p45Padre) tb._p45Padre.insertBefore(tb, tb._p45Sig && tb._p45Sig.parentNode === tb._p45Padre ? tb._p45Sig : null);
-        document.body.classList.remove("dk-nav");
-      }
-      /* barra "cantidad + Agregar" de la página de producto: dentro de la columna derecha en escritorio */
-      var bar = document.getElementById("pdBar"), col = document.querySelector("#page-producto > div:last-of-type");
-      if (bar && col){
-        if (mq.matches){ if (bar.parentNode !== col) col.appendChild(bar); }
-        else if (bar.parentNode !== document.body) document.body.appendChild(bar);
-      }
-    } catch(e){ console.warn("p45 escritorio:", e); }
-  }
-  window.addEventListener("hashchange", acomodar);
-  if (typeof window.v25Abrir === "function"){
-    var _abrir = window.v25Abrir;
-    window.v25Abrir = function(){ var r = _abrir.apply(this, arguments); acomodar(); return r; };
-  }
-  if (mq.addEventListener) mq.addEventListener("change", acomodar); else if (mq.addListener) mq.addListener(acomodar);
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", acomodar); else acomodar();
-  window.p45Acomodar = acomodar;
-})();
