@@ -1054,22 +1054,3 @@ sin margen.
 **Sin probar en producción.** Se revisó con capturas a 1440 y 1024 px, y se
 comparó el celular píxel a píxel contra la versión anterior en la tienda.
 formulario-respuestas solo recibió el modo claro (su ancho no cambió).
-
-## 28. Marca DerLabs en accesos y paneles (P46) — ✅ hecho
-
-**Qué cambia.** El logo de DerLabs aparece en las pantallas de acceso del
-gestor de pedidos, la caja, la cocina, delivery y la administración de la
-tienda de comida (debajo del botón Entrar, 114 × 22 px). Dentro de cada panel
-va una versión chica y translúcida (73 × 14 px) al final del contenido o en
-la esquina inferior derecha: no tapa nada ni se puede tocar.
-
-- Dos archivos: `derlabs-logo-oscuro.png` (letra blanca, para fondo oscuro) y
-  `derlabs-logo-claro.png` (letra negra, para fondo claro). Cada pantalla usa
-  el que corresponde a su tema y lo cambia sola al pasar de claro a oscuro.
-- Es un `div.marca-dl` con la imagen de fondo; dentro del panel lleva además
-  `sutil` y el id `marcaDL`. En el gestor, `renderLista()` y
-  `renderTablero()` lo conservan y lo dejan siempre al final.
-- En el panel de administración lo agrega `v26PanelHome()` al pie del inicio,
-  solo en la tienda de comida. Retail y boutique no se tocaron.
-- **P47:** en el acceso de delivery, el emoji de la moto se cambió por una
-  moto dibujada (SVG dentro de `delivery.html`, toma el color del tema).

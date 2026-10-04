@@ -64,15 +64,6 @@ header b{font-size:18px;margin-right:auto}
 html[data-tema="claro"]{--ok:#178A58;--warn:#B45309;--bad:#C62828;--info:#1D4ED8;--t-nota:#8A4B00}
 html[data-tema="claro"] .tk{border-left:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
 html[data-tema="claro"] .listos span{border:1px solid var(--line)}
-/* P46 · marca DerLabs: visible en el acceso, discreta dentro del panel */
-.marca-dl{display:block;flex:none;width:114px;height:22px;background:url(/derlabs-logo-oscuro.png) center/contain no-repeat}
-html[data-tema="claro"] .marca-dl{background-image:url(/derlabs-logo-claro.png)}
-.marca-dl.sutil{width:73px;height:14px;opacity:.7}
-html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
-.lbox .marca-dl{margin:10px auto 0}
-#app{min-height:100%;display:flex;flex-direction:column}
-#app > #marcaDL{margin:auto 16px 14px auto}
-.listos{padding-bottom:26px}
 </style>
 </head>
 <body>
@@ -84,7 +75,6 @@ html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
     <input id="lPass" type="password" placeholder="Clave" autocomplete="current-password">
     <button class="btn btn-ok" id="lBtn">Entrar</button>
     <p id="lErr"></p>
-    <div class="marca-dl" role="img" aria-label="DerLabs"></div>
   </div>
 </div>
 <div id="app" class="oculto">
@@ -101,7 +91,6 @@ html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
   </header>
   <div id="tablero"></div>
   <div class="listos" id="listos"></div>
-  <div class="marca-dl sutil" id="marcaDL" role="img" aria-label="DerLabs"></div>
 </div>
 <div id="toast"></div>
 <script src="/local-util.js"></script>

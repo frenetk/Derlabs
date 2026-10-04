@@ -212,15 +212,6 @@ table.t td:last-child{text-align:right;font-weight:800}
   #turnoBody .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
   .t-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 28px;align-items:start}
 }
-/* P46 · marca DerLabs: visible en el acceso, discreta dentro del panel */
-.marca-dl{display:block;flex:none;width:114px;height:22px;background:url(/derlabs-logo-claro.png) center/contain no-repeat}
-body[data-tema="oscuro"] .marca-dl{background-image:url(/derlabs-logo-oscuro.png)}
-.marca-dl.sutil{width:73px;height:14px;opacity:.5}
-body[data-tema="oscuro"] .marca-dl.sutil{opacity:.7}
-.login-box .marca-dl{margin:14px auto 0}
-#vistas{display:flex;flex-direction:column}
-#vistas > section{flex:none;padding-bottom:22px}
-#vistas > #marcaDL{margin:auto 2px 2px auto}
 </style>
 </head>
 <body>
@@ -251,7 +242,6 @@ body[data-tema="oscuro"] .marca-dl.sutil{opacity:.7}
     <input id="lPass" type="password" placeholder="Contraseña" autocomplete="current-password">
     <button class="btn btn-acc" id="lBtn">Entrar</button>
     <p id="loginErr"></p>
-    <div class="marca-dl" role="img" aria-label="DerLabs"></div>
   </div>
 </div>
 
@@ -290,7 +280,6 @@ body[data-tema="oscuro"] .marca-dl.sutil{opacity:.7}
         <div class="lista" id="listaOnline"></div>
       </section>
       <section id="v-turno" class="oculto"><div id="turnoBody"></div></section>
-      <div class="marca-dl sutil" id="marcaDL" role="img" aria-label="DerLabs"></div>
     </div>
     <aside id="cuenta" class="oculto"></aside>
   </main>

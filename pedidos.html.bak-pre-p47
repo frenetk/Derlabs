@@ -836,17 +836,6 @@ html[data-tema="claro"] #mapaCanvas{background:#E8E4E0}
   .btn-settings.con-txt{width:auto;padding:0 14px;gap:8px;font-size:13px;font-weight:800;color:var(--txt)}
 }
 @keyframes slideIzq{from{transform:translateX(100%)}to{transform:translateX(0)}}
-/* P46 · marca DerLabs: visible en el acceso, discreta dentro del panel */
-.marca-dl{display:block;flex:none;width:114px;height:22px;background:url(/derlabs-logo-oscuro.png) center/contain no-repeat}
-html[data-tema="claro"] .marca-dl{background-image:url(/derlabs-logo-claro.png)}
-.marca-dl.sutil{width:73px;height:14px;opacity:.7}
-html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
-.login-box .marca-dl{margin:24px auto 0}
-#listWrap > #marcaDL{margin:auto auto 0}
-@media (min-width:1024px){
-  #listWrap{grid-template-rows:minmax(0,1fr) auto;row-gap:10px;padding-bottom:10px}
-  #listWrap > #marcaDL{grid-column:1 / -1;justify-self:end;margin:0;padding:0}
-}
 </style>
 </head>
 <body>
@@ -875,7 +864,6 @@ html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
     </div>
     <button class="btn-login" id="btnLogin">Entrar</button>
     <button type="button" id="btnOlvido" style="display:block;margin:14px auto 0;background:none;border:0;color:var(--txt2);font-size:14px;text-decoration:underline">¿Olvidaste tu contraseña?</button>
-    <div class="marca-dl" role="img" aria-label="DerLabs"></div>
   </div>
 </div>
 
@@ -935,7 +923,6 @@ html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
       <div class="empty-tit">Sin pedidos aquí</div>
       <div class="empty-sub">Cuando lleguen nuevos pedidos aparecerán acá</div>
     </div>
-    <div class="marca-dl sutil" id="marcaDL" role="img" aria-label="DerLabs"></div>
   </div>
 
 </div><!-- /app -->
@@ -1737,7 +1724,7 @@ function renderLista(){
   if(!lista.length){
     // Limpiar cards existentes (no el emptyState)
     Array.from(wrap.children).forEach(function(el){
-      if(el.id !== "emptyState" && el.id !== "marcaDL") el.remove();
+      if(el.id !== "emptyState") el.remove();
     });
     empty.classList.remove("oculto");
     return;
@@ -1763,10 +1750,9 @@ function renderLista(){
 
   // Limpiar cards existentes (no el emptyState) y volcar el fragmento ya completo de una sola vez
   Array.from(wrap.children).forEach(function(el){
-    if(el.id !== "emptyState" && el.id !== "marcaDL") el.remove();
+    if(el.id !== "emptyState") el.remove();
   });
   wrap.appendChild(frag);
-  if(qs("#marcaDL")) wrap.appendChild(qs("#marcaDL")); /* la marca siempre al final */
   aplicarIconosGlobal(wrap); // solo sobre lo que se acaba de insertar, no toda la página
 }
 
@@ -2791,10 +2777,9 @@ function renderTablero(){
     col.appendChild(body);
     frag.appendChild(col);
   });
-  Array.from(wrap.children).forEach(function(el){ if(el.id !== "emptyState" && el.id !== "marcaDL") el.remove(); });
+  Array.from(wrap.children).forEach(function(el){ if(el.id !== "emptyState") el.remove(); });
   qs("#emptyState").classList.add("oculto");
   wrap.appendChild(frag);
-  if(qs("#marcaDL")) wrap.appendChild(qs("#marcaDL")); /* la marca siempre al final */
   Array.from(wrap.querySelectorAll(".col-body")).forEach(function(b){ if(scroll[b.dataset.col]) b.scrollTop = scroll[b.dataset.col]; });
   aplicarIconosGlobal(wrap);
 }

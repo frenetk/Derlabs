@@ -120,33 +120,19 @@ header .tit small{color:var(--txt2);font-size:12.5px;font-weight:700}
 html[data-tema="claro"] #rutaMapa{background:#E8E4E0}
 html[data-tema="claro"] #turno .stat{background:rgba(255,255,255,.75)}
 html[data-tema="claro"] .card{box-shadow:0 1px 2px rgba(0,0,0,.05)}
-/* P46 · marca DerLabs: visible en el acceso, discreta dentro del panel */
-.marca-dl{display:block;flex:none;width:114px;height:22px;background:url(/derlabs-logo-oscuro.png) center/contain no-repeat}
-html[data-tema="claro"] .marca-dl{background-image:url(/derlabs-logo-claro.png)}
-.marca-dl.sutil{width:73px;height:14px;opacity:.7}
-html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
-.login-box .marca-dl{margin:22px auto 0}
-#app{display:flex;flex-direction:column}
-#app > #lista{margin-bottom:28px}
-#app > #marcaDL{margin:auto auto 0}
-/* P47 · moto dibujada en el acceso (reemplaza al emoji) */
-.login-box .ico.moto{width:88px;height:88px;margin:0 auto 14px;border-radius:26px;display:flex;align-items:center;justify-content:center;background:rgba(21,101,192,.22);color:var(--t-azul,#90CAF9)}
-.login-box .ico.moto svg{display:block}
-html[data-tema="claro"] .login-box .ico.moto{background:rgba(21,101,192,.12)}
 </style>
 </head>
 <body>
 
 <div id="login">
   <form class="login-box" id="loginForm" autocomplete="on">
-    <div class="ico moto"><svg viewBox="-2.5 3 64 64" width="58" height="58" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="14.5" width="17" height="13.5" rx="3.2" fill="currentColor" fill-opacity=".22"/><path d="M12 19.5h7"/><path d="M9 32.5h13"/><path d="M28 45c0-7.2-3.4-12.5-9-12.5h-9A4 4 0 0 0 6 36.5V45h2.2"/><path d="M28 45h10.5c1.1-7.4 4-13.800 8.600-19.200"/><path d="M39.500 18.500h6.800L50 48"/><path d="M47.400 25.500h3.400"/><path d="M42.200 43.200a9.500 9.500 0 0 1 14.600-1.700"/><circle cx="15.500" cy="48" r="6.800"/><circle cx="50" cy="48" r="6.800"/><circle cx="15.500" cy="48" r="1.500" fill="currentColor" stroke="none"/><circle cx="50" cy="48" r="1.500" fill="currentColor" stroke="none"/><path d="M2.500 22h2.500M1.500 27.500h3" stroke-opacity=".55"/></svg></div>
+    <div class="ico">🛵</div>
     <h1 class="bc" id="loginTienda">Delivery</h1>
     <p>Entra con el usuario y la clave que te dio el local.</p>
     <input id="lUsuario" placeholder="Usuario" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
     <input id="lClave" type="password" placeholder="Clave" autocomplete="current-password">
     <button class="btn btn-marca" id="lBtn" type="submit">Entrar</button>
     <div class="err" id="lErr"></div>
-    <div class="marca-dl" role="img" aria-label="DerLabs"></div>
   </form>
 </div>
 
@@ -174,7 +160,6 @@ html[data-tema="claro"] .login-box .ico.moto{background:rgba(21,101,192,.12)}
     </div>
   </div>
   <div id="lista"></div>
-  <div class="marca-dl sutil" id="marcaDL" role="img" aria-label="DerLabs"></div>
 </div>
 
 <div class="hoja oculto" id="hojaCobro">

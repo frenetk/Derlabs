@@ -8504,9 +8504,7 @@ function v26PanelHome(){
       }).join("");
       if (g.t === "Ventas") filas += v28FilaCaja();
       return filas ? '<div class="pv-grupo"><h5>' + g.t + '</h5>' + filas + '</div>' : "";
-    }).join("") +
-    /* P46: marca DerLabs al pie, solo en la tienda de comida (retail y boutique no cambian) */
-    (window.DERLABS_SKIN ? "" : '<div class="marca-dl sutil" role="img" aria-label="DerLabs"></div>');
+    }).join("");
   p.classList.add("en-home");
   var b = qs("#adminPanel .panel-body"); if (b) b.scrollTop = 0;
   if (typeof aplicarIconosGlobal === "function") try { aplicarIconosGlobal(); } catch(e){}
