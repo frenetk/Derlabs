@@ -626,105 +626,6 @@ function aplicarColor(){
   document.documentElement.style.setProperty("--rojo-texto", textoSobreColor);
   const r = parseInt(c.slice(1,3),16), g = parseInt(c.slice(3,5),16), b = parseInt(c.slice(5,7),16);
   if (!isNaN(r)) document.documentElement.style.setProperty("--sombra", "rgba(" + r + "," + g + "," + b + ",0.15)");
-  aplicarTemaTienda();
-}
-
-/* ══════════════════════════════════════════════════════════════
-   P48 — MODO OSCURO de la tienda (solo plantilla de comida)
-   config.temaComida = "oscuro" | "claro" (por defecto claro). Se elige
-   en el panel → Diseño de la tienda. Es solo un cambio de colores: los
-   estilos están en /tienda-oscuro.css y aquí se calcula el color de
-   los botones rellenos sobre fondo negro:
-   · --osc-marca: el color de la tienda, salvo que sea tan oscuro que se
-     pierda sobre negro: ahí se aclara (o pasa a blanco si es negro/gris).
-   · --osc-marca-sobre: el color de la letra encima de ese relleno.
-   Los textos, íconos y bordes de color van en dorado (--o-marca, fijo en
-   la hoja).
-   ══════════════════════════════════════════════════════════════ */
-var OSC_FONDO = "#0D0D0D";
-function _oscAclararHasta(hex, sobre, minimo){
-  try {
-    if (razonContrasteWCAG(hex, sobre) >= minimo) return hex;
-    var c = hexARgb(hex), hsl = rgbAHsl(c.r, c.g, c.b), l = hsl.l, out = hex;
-    while (l < 96){
-      l += 2;
-      var q = hslARgb(hsl.h, hsl.s, l); out = rgbAHex(q.r, q.g, q.b);
-      if (razonContrasteWCAG(out, sobre) >= minimo) break;
-    }
-    return out;
-  } catch(e){ return hex; }
-}
-/* El logo de la tienda sobre fondo negro. Un logo oscuro con fondo transparente no se vería: a ese se le
-   pone una placa blanca detrás (es lo que pasa por defecto). Si el logo es claro o trae su propio fondo,
-   va "libre", sin placa. Se mira la imagen una sola vez y se recuerda en este equipo. */
-var _oscLogoK = "";
-function _oscLogo(){
-  try {
-    var logo = (state.config && state.config.logoBase64) || "";
-    var raiz = document.documentElement;
-    if (!logo){ raiz.removeAttribute("data-logo"); return; }
-    var k = String(logo.length) + ":" + logo.slice(-24);
-    if (_oscLogoK === k) return;
-    _oscLogoK = k;
-    var guardado = ""; try { guardado = localStorage.getItem("dl_logo_osc") || ""; } catch(e){}
-    var poner = function(libre){
-      if (_oscLogoK !== k) return;
-      if (libre) raiz.setAttribute("data-logo", "libre"); else raiz.removeAttribute("data-logo");
-      if (!DEMO && !snapshotData){ try { localStorage.setItem("dl_logo_osc", k + "|" + (libre ? "libre" : "placa")); } catch(e){} }
-    };
-    if (guardado.indexOf(k + "|") === 0){ poner(guardado.slice(k.length + 1) === "libre"); return; }
-    var im = new Image();
-    im.onload = function(){
-      try {
-        var n = 40, cv = document.createElement("canvas"); cv.width = n; cv.height = n;
-        var cx = cv.getContext("2d"); cx.drawImage(im, 0, 0, n, n);
-        var d = cx.getImageData(0, 0, n, n).data, transp = 0, vis = 0, luz = 0;
-        for (var i = 0; i < d.length; i += 4){
-          if (d[i + 3] < 40){ transp++; continue; }
-          vis++; luz += luminanciaRelativa(d[i], d[i + 1], d[i + 2]);
-        }
-        var opaco = transp / (n * n) < 0.03;
-        poner(opaco || (vis > 0 && luz / vis > 0.55));
-      } catch(e){ poner(false); }
-    };
-    im.onerror = function(){ poner(false); };
-    im.src = logo;
-  } catch(e){}
-}
-function _temaTienda(){ return (state.config && state.config.temaComida) === "oscuro" ? "oscuro" : "claro"; }
-function aplicarTemaTienda(){
-  try {
-    var lk = document.querySelector("link[data-p48]");
-    if (!lk || window.DERLABS_SKIN) return;
-    var raiz = document.documentElement;
-    var c = state.config.colorPrimario || "#9B1B30";
-    /* relleno de botones: el color de la tienda. Si es tan oscuro que se pierde sobre negro,
-       un color con tono se aclara; un negro o gris oscuro pasa a blanco (botón blanco, letra negra). */
-    var relleno = c;
-    if (razonContrasteWCAG(c, OSC_FONDO) < 2.2){
-      var q0 = hexARgb(c);
-      relleno = rgbAHsl(q0.r, q0.g, q0.b).s < 18 ? "#EDEDED" : _oscAclararHasta(c, OSC_FONDO, 2.6);
-    }
-    raiz.style.setProperty("--osc-marca", relleno);
-    raiz.style.setProperty("--osc-marca-h", colorHover(relleno));
-    raiz.style.setProperty("--osc-marca-sobre", textoLegibleSobre(relleno));
-    /* Mientras no lleguen los datos reales de la tienda no se toca el tema:
-       queda el que dejó puesto la propia página al abrir. */
-    var real = DEMO || !!snapshotData || !!window._dlDesdeCache || _cargaFirebaseLista;
-    if (!real) return;
-    var osc = _temaTienda() === "oscuro";
-    if (osc){ lk.media = "all"; raiz.setAttribute("data-tema", "oscuro"); }
-    else if (raiz.getAttribute("data-tema") === "oscuro") raiz.removeAttribute("data-tema");
-    var m = document.querySelector('meta[name="theme-color"]');
-    if (m){
-      if (osc){ if (m.getAttribute("content") !== OSC_FONDO){ m.setAttribute("data-claro", m.getAttribute("content") || ""); m.setAttribute("content", OSC_FONDO); } }
-      else if (m.hasAttribute("data-claro")){ m.setAttribute("content", m.getAttribute("data-claro") || "#9B1B30"); m.removeAttribute("data-claro"); }
-    }
-    if (!DEMO && !snapshotData){ try { localStorage.setItem("dl_tema_tienda", osc ? "oscuro" : "claro"); } catch(e){} }
-    if (osc) _oscLogo();
-    var bs = document.querySelectorAll("#vtPanelEstilo [data-vttema]");
-    for (var i = 0; i < bs.length; i++){ var on = bs[i].getAttribute("data-vttema") === _temaTienda(); bs[i].classList.toggle("on", on); bs[i].setAttribute("aria-pressed", on ? "true" : "false"); }
-  } catch(e){ console.warn("tema:", e); }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -5908,7 +5809,6 @@ function initPanel(){
     document.documentElement.style.setProperty("--rojo-h", hex);
     const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
     if (!isNaN(r)) document.documentElement.style.setProperty("--sombra","rgba("+r+","+g+","+b+",0.15)");
-    aplicarTemaTienda();
     saveConfig("colorPrimario", hex);
   }
 
@@ -7643,25 +7543,14 @@ function instalarPanelVitrina(){
     var box = document.createElement("div"); box.id = "vtPanelEstilo"; box.className = "pcard";
     var miniApp = '<span class="mini"><i style="height:36px;background:var(--rojo)"></i><i style="width:28px;height:28px;border-radius:9px;background:#1A1A1A;border:2px solid #fff;margin:-15px 0 0 8px"></i><i style="height:5px;width:60%;border-radius:3px;background:#D9D4D0;margin:6px 0 0 8px"></i><i style="height:5px;width:40%;border-radius:3px;background:#E6E1DD;margin:5px 0 0 8px"></i></span>';
     var miniCla = '<span class="mini" style="align-items:center"><i style="height:7px;width:46%;border-radius:4px;background:var(--rojo);margin-top:9px"></i><i style="height:40px;width:84%;border-radius:8px;background:#EDE8E4;margin-top:9px"></i><i style="height:5px;width:50%;border-radius:3px;background:#D9D4D0;margin-top:7px"></i></span>';
-    var _mini = function(fondo, tarj, linea, txt){ return '<span class="mini" style="background:' + fondo + ';border-color:' + linea + ';padding:8px;gap:6px"><i style="height:6px;width:44%;border-radius:3px;background:' + txt + '"></i><i style="height:26px;border-radius:7px;background:' + tarj + ';border:1px solid ' + linea + '"></i><i style="height:14px;width:58%;border-radius:999px;background:var(--rojo);align-self:flex-end"></i></span>'; };
-    var miniLuz = _mini("#FFFFFF", "#F6F3F0", "#E6E1DD", "#1A1A1A"), miniOsc = _mini("#0D0D0D", "#1E1E1E", "#333333", "#F5F5F5");
     box.innerHTML = '<b class="pcard-t">Diseño de la tienda</b><p class="pnota" style="font-size:12.5px;margin:2px 0 0">Elige cómo se ven la portada y el menú.</p>' +
       '<div class="pest"><button type="button" data-vtest="app">' + miniApp + '<b>App</b><small>Ícono sobre la portada</small></button>' +
       '<button type="button" data-vtest="clasico">' + miniCla + '<b>Clásico</b><small>El diseño anterior</small></button></div>' +
-      '<p class="pnota" style="font-size:12.5px;margin:14px 0 0"><b style="font-size:14px;color:#1A1A1A">Colores</b><br>Claro u oscuro. Lo ven todos tus clientes.</p>' +
-      '<div class="pest"><button type="button" data-vttema="claro">' + miniLuz + '<b>Claro</b><small>Fondo blanco</small></button>' +
-      '<button type="button" data-vttema="oscuro">' + miniOsc + '<b>Oscuro</b><small>Fondo negro</small></button></div>' +
-      '<button type="button" class="pill pill-outline pill-sm panel-full" id="vtBtnPortada" style="margin-top:12px">Cambiar foto de portada</button>';
+      '<button type="button" class="pill pill-outline pill-sm panel-full" id="vtBtnPortada">Cambiar foto de portada</button>';
     var slot = qs("#pEstiloSlot"), ref = qs("#btnMiDominio");
     if (slot) slot.appendChild(box); else cfgTab.insertBefore(box, ref ? ref.nextSibling : cfgTab.firstChild);
     function pintar(){ qsa("#vtPanelEstilo [data-vtest]").forEach(function(b){ var on = b.dataset.vtest === _vtEstilo(); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); }); }
     pintar();
-    function pintarTema(){ qsa("#vtPanelEstilo [data-vttema]").forEach(function(b){ var on = b.dataset.vttema === _temaTienda(); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); }); }
-    pintarTema();
-    qsa("#vtPanelEstilo [data-vttema]").forEach(function(b){ b.addEventListener("click", async function(){
-      state.config.temaComida = b.dataset.vttema; pintarTema(); aplicarTemaTienda();
-      try { await saveConfig("temaComida", b.dataset.vttema); if (typeof toast === "function") toast(b.dataset.vttema === "oscuro" ? "✅ Modo oscuro activado" : "✅ Modo claro activado"); } catch(e){ if (typeof toast === "function") toast("⚠️ No se pudo guardar"); }
-    }); });
     qsa("#vtPanelEstilo [data-vtest]").forEach(function(b){ b.addEventListener("click", async function(){
       state.config.estiloComida = b.dataset.vtest; pintar(); vitrinaApp();
       try { await saveConfig("estiloComida", b.dataset.vtest); if (typeof toast === "function") toast("✅ Estilo guardado"); } catch(e){ if (typeof toast === "function") toast("⚠️ No se pudo guardar"); }

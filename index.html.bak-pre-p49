@@ -1794,33 +1794,11 @@ body.dev-on:not(.preview-cliente) p.prod-desc.sub-vacia{display:block;opacity:.4
 /* P46 · marca DerLabs en el acceso de administración */
 .marca-dl{display:block;width:114px;height:22px;margin:20px auto 0;background:url(/derlabs-logo-claro.png) center/contain no-repeat}
 .marca-dl.sutil{width:73px;height:14px;opacity:.5;margin:22px auto 8px}
-/* P48: modo oscuro. Aquí solo lo que evita el destello blanco al abrir; el resto está en /tienda-oscuro.css */
-html[data-tema="oscuro"] body{background:#0D0D0D}
-html[data-tema="oscuro"] #splashScreen:not(.sobre-tienda){background-color:#0D0D0D}
-html[data-tema="oscuro"] #splashScreen .splash-titulo,html[data-tema="oscuro"] #splashScreen .splash-subtitulo{color:#F5F5F5}
-html[data-tema="oscuro"] #splashScreen .splash-dots span{background:#F5F5F5}
-html[data-tema="oscuro"] #splashScreen:not(.con-logo) .splash-content{background:#0D0D0D;padding:30px 30px 0;margin:-30px -30px 0}
-html[data-tema="oscuro"] #splashScreen:not(.con-logo) .splash-icon{filter:invert(1);mix-blend-mode:screen}
-html[data-tema="oscuro"]:not([data-logo="libre"]) #splashScreen.con-logo .splash-icon{background:#fff;padding:16px;box-sizing:border-box;border-radius:22px}
 </style>
 <!-- P45: versión de escritorio (solo se aplica desde 1024 px de ancho) -->
 <link rel="stylesheet" href="/tienda-escritorio.css?v=45" media="(min-width:1024px)" data-p45>
-<!-- P48: modo oscuro. No se aplica (ni frena la carga) salvo que la tienda lo tenga activado -->
-<link rel="stylesheet" href="/tienda-oscuro.css?v=48" media="not all" data-p48>
 </head>
 <body data-page="inicio">
-<script>
-/* P48: si la tienda eligió el modo oscuro, se activa antes de pintar nada.
-   Lo sabe por los datos que vienen dentro de la página o por la última visita. */
-(function(){try{
-  var t="",d=document.getElementById("dl-datos"),m=d&&/"temaComida":"(oscuro|claro)"/.exec(d.textContent);
-  if(m)t=m[1];else{try{t=localStorage.getItem("dl_tema_tienda")||""}catch(e){}}
-  if(t==="oscuro"){document.documentElement.setAttribute("data-tema","oscuro");
-    var l=document.querySelector("link[data-p48]");if(l)l.media="all";
-    var c=document.querySelector('meta[name="theme-color"]');if(c){c.setAttribute("data-claro",c.getAttribute("content")||"");c.setAttribute("content","#0D0D0D")}
-    try{if(/\|libre$/.test(localStorage.getItem("dl_logo_osc")||""))document.documentElement.setAttribute("data-logo","libre")}catch(e){}}
-}catch(e){}})();
-</script>
 
 <!-- ══════════════ DEVMODE: barra superior ══════════════ -->
 <div id="devBar">

@@ -1,0 +1,22 @@
+MODO OSCURO DE LA TIENDA DE COMIDA (P48)
+========================================
+
+/tienda-oscuro.css NO se escribe a mano: lo arma generar.js.
+
+  cabecera.css   los colores del modo oscuro (variables --o-*) y la lista de las partes que ve el cliente
+  manual.css     retoques a mano (van al final y ganan)
+  reglas.json    todas las reglas de color de la tienda, tal como las usa el navegador
+  generar.js     reglas.json + cabecera + manual  ->  ../../tienda-oscuro.css        (solo Node)
+  volcar.js      vuelve a sacar reglas.json desde la tienda en marcha                (Node + Playwright)
+
+Cambiar un color del modo oscuro o agregar un retoque:
+  1. editar cabecera.css o manual.css
+  2. node generar.js
+
+Si se cambian colores, fondos o bordes en index.html, tienda-escritorio.css o en los estilos que arma app.js:
+  1. servir la carpeta del proyecto en modo demo (apiKey "PEGAR_AQUÍ" en app.js)
+  2. node volcar.js http://localhost:8787
+  3. node generar.js
+  Sin este paso la tienda clara sigue perfecta; en oscuro, la regla nueva se vería con su color claro.
+
+Esta carpeta no se publica (está en .assetsignore).
