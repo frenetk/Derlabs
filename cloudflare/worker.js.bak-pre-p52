@@ -42,7 +42,6 @@ import { alta } from "./functions/altas.js";
 import { reintentarBoletas } from "./functions/boleta.js";
 import { imagen, servirImagen } from "./functions/imagenes.js";
 import { inventario } from "./functions/inventario.js";
-import { video, servirVideo } from "./functions/video.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -77,8 +76,7 @@ const FUNCIONES = {
   aceptarContrato,
   alta,
   imagen,
-  inventario,
-  video
+  inventario
 };
 
 
@@ -390,8 +388,6 @@ export default {
     if (url.pathname.startsWith("/timg/")) return servirImagenTienda(request, url, env, ctx);
     /* fotos guardadas en el almacén (functions/imagenes.js); /timg/ queda para las que siguen dentro de Firestore */
     if (url.pathname.startsWith("/img/")) return servirImagen(request, url, env, ctx);
-    /* P52: el video de la historia de la tienda, entregado por tramos */
-    if (url.pathname.startsWith("/vid/")) return servirVideo(request, url, env);
 
     /* ── Logo de la tienda para el splash (se cachea 1 día en el navegador) ── */
     if (url.pathname === "/splash-logo") {
