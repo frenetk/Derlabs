@@ -8525,8 +8525,6 @@ function v25Restaurar(){
      config.historiaTitulo   título (por defecto "Nuestra historia")
      config.historiaTexto    el texto; los párrafos se separan con una línea en blanco
      config.historiaVideo    { url, poster, w, h, peso } o null
-     config.historiaActiva   false = oculta (P53). El dueño la muestra u oculta con el
-                             interruptor de la tarjeta o con los botones de la propia sección.
    El video se sube por partes a /api/video (cloudflare/functions/video.js)
    y se publica tal cual, sin recomprimir. La portada es un cuadro del
    propio video, guardado como una foto más.
@@ -8553,9 +8551,6 @@ function hsCss(){
     ".hs-vacio{margin:0;padding:16px;border:1.5px dashed var(--borde);border-radius:14px;font-size:13.5px;line-height:1.5;color:var(--muted);font-weight:600}",
     ".hs-dev{display:none;border:0;background:var(--crema,#FBF7F5);color:var(--rojo);font:inherit;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:999px;cursor:pointer;flex:none}",
     "body.dev-on:not(.preview-cliente) .hs-dev{display:inline-flex}",
-    ".hs-devs{display:flex;gap:6px;flex:none}",
-    ".hs-oculta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1.5px dashed var(--borde);border-radius:14px;font-size:13.5px;line-height:1.4;color:var(--muted);font-weight:600}",
-    ".hs-oculta b{color:var(--texto);font-weight:800}",
     ".hs.hs-solo-dev{display:none}",
     "body.dev-on:not(.preview-cliente) .hs.hs-solo-dev{display:block}",
     "@media (min-width:1024px){",
@@ -8584,8 +8579,7 @@ function hsCss(){
 function _hsDatos(){
   var c = state.config || {}, v = c.historiaVideo;
   return { tit: String(c.historiaTitulo || "").trim().slice(0, 60), txt: String(c.historiaTexto || "").trim().slice(0, 900),
-           vid: v && typeof v === "object" && typeof v.url === "string" && v.url ? v : null,
-           activa: c.historiaActiva !== false };
+           vid: v && typeof v === "object" && typeof v.url === "string" && v.url ? v : null };
 }
 function _hsParrafos(t){
   return String(t).split(/\n\s*\n/).map(function(p){ return p.trim(); }).filter(Boolean)
@@ -8596,8 +8590,7 @@ function hsRender(){
   var ini = qs("#page-inicio"); if (!ini) return;
   var d = _hsDatos(), dev = document.body.classList.contains("dev-on");
   var hay = !!(d.txt || d.vid), sec = qs("#dlHistoria");
-  /* el cliente la ve si está activada y tiene algo; el dueño, en modo edición, la ve siempre (oculta = una sola línea) */
-  if ((!hay || !d.activa) && !dev){ if (sec) sec.remove(); _hs.k = ""; return; }
+  if (!hay && !dev){ if (sec) sec.remove(); _hs.k = ""; return; }
   hsCss();
   if (!sec){ sec = document.createElement("section"); sec.id = "dlHistoria"; sec.className = "hs"; _hs.k = ""; }
   /* lugar: estilo App → entre los destacados y las promociones; Clásico → bajo el destacado.
@@ -8608,19 +8601,15 @@ function hsRender(){
   else if (hero){ if (sec.previousElementSibling !== hero) ini.insertBefore(sec, hero.nextSibling); }
   else if (!sec.parentNode) ini.appendChild(sec);
   /* sin contenido solo la ve el dueño en modo edición (no en la vista previa de cliente) */
-  sec.classList.toggle("hs-solo-dev", !hay || !d.activa);
-  var k = JSON.stringify([d.tit, d.txt, d.vid, hay, d.activa]);
+  sec.classList.toggle("hs-solo-dev", !hay);
+  var k = JSON.stringify([d.tit, d.txt, d.vid, hay]);
   if (_hs.k === k) return;
   _hs.k = k; _hs.abierto = false;
-  if (!d.activa){
-    sec.innerHTML = '<div class="hs-oculta"><span><b>Tu historia está oculta.</b> Tus clientes no la ven.</span><button type="button" class="hs-dev" id="hsMostrar">Mostrar</button></div>';
-    return;
-  }
   var v = d.vid, w = v ? Number(v.w) || 0 : 0, h = v ? Number(v.h) || 0 : 0, vertical = w > 0 && h > w;
   var largo = d.txt.length > 420 || d.txt.split("\n").length > 8;
   var html = '<div class="hs-in' + (v && d.txt ? " hs-doble" : "") + (vertical ? " hs-vertical" : "") + '">';
   html += '<div class="hs-col"><div class="hs-cab"><h2 class="hs-tit">' + esc(d.tit || "Nuestra historia") + '</h2>' +
-    '<span class="hs-devs"><button type="button" class="hs-dev" id="hsDev">✏️ Editar</button><button type="button" class="hs-dev" id="hsOcultar">Ocultar</button></span></div>';
+    '<button type="button" class="hs-dev" id="hsDev">✏️ Editar historia</button></div>';
   if (d.txt) html += '<div class="hs-txt' + (largo ? " hs-corta" : "") + '" id="hsTxtV">' + _hsParrafos(d.txt) + '</div>' +
     (largo ? '<button type="button" class="hs-mas" id="hsMas" aria-expanded="false">Leer más</button>' : "");
   else if (!v) html += '<p class="hs-vacio">Aquí va la historia de tu negocio: cómo preparan sus productos, de dónde vienen, qué los hace distintos. También puedes subir un video. Tus clientes solo ven esta parte cuando escribes algo.</p>';
@@ -8638,9 +8627,8 @@ function hsRender(){
   if (tx && mas && tx.clientHeight > 0 && tx.scrollHeight <= tx.clientHeight + 4){ tx.classList.remove("hs-corta"); mas.remove(); }
 }
 document.addEventListener("click", function(e){
-  var t = e.target && e.target.closest ? e.target.closest("#hsMas, #hsDev, #hsOcultar, #hsMostrar") : null;
+  var t = e.target && e.target.closest ? e.target.closest("#hsMas, #hsDev") : null;
   if (!t) return;
-  if (t.id === "hsOcultar" || t.id === "hsMostrar"){ hsActivar(t.id === "hsMostrar"); return; }
   if (t.id === "hsMas"){
     _hs.abierto = !_hs.abierto;
     var x = qs("#hsTxtV"); if (x) x.classList.toggle("hs-corta", !_hs.abierto);
@@ -8652,13 +8640,6 @@ document.addEventListener("click", function(e){
   if (typeof v26PanelIr === "function") v26PanelIr("config");
   setTimeout(function(){ var c = qs("#hsPanel"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start" }); }, 260);
 });
-
-/* Mostrar u ocultar la sección completa (texto y video). No borra nada: al volver a mostrarla está todo igual. */
-async function hsActivar(si){
-  var okg = await saveConfig("historiaActiva", !!si);
-  if (okg !== false && typeof toast === "function") toast(si ? "✅ Tu historia se muestra en la tienda" : "Tu historia quedó oculta");
-  hsRender(); hsPanelPintar();
-}
 
 /* Al entrar o salir del modo edición aparece o se va la invitación a escribir la historia */
 (function(){
@@ -8742,9 +8723,8 @@ function hsPanel(){
     var ref = qs("#vtPanelEstilo"); if (!ref || !ref.parentNode) return;
     hsCss();
     var box = document.createElement("div"); box.id = "hsPanel"; box.className = "pcard";
-    box.innerHTML = '<div class="pcard-h"><div><b>Tu historia</b><small id="hsEstado"></small></div>' +
-      '<label class="switch"><input type="checkbox" id="hsActiva" aria-label="Mostrar tu historia en la tienda"><span class="slider"></span></label></div>' +
-      '<p class="pnota" style="font-size:12.5px;margin:8px 0 0">Aparece en el inicio, entre los destacados y las promociones. Cuenta cómo preparas tus productos o cómo partió tu negocio: le da valor a tu marca.</p>' +
+    box.innerHTML = '<b class="pcard-t">Tu historia</b>' +
+      '<p class="pnota" style="font-size:12.5px;margin:2px 0 0">Aparece en el inicio, entre los destacados y las promociones. Cuenta cómo preparas tus productos o cómo partió tu negocio: le da valor a tu marca.</p>' +
       '<label class="plabel" for="hsTit">Título</label><input class="field" id="hsTit" type="text" maxlength="60" placeholder="Nuestra historia">' +
       '<label class="plabel" for="hsTxt">Texto</label><textarea class="field" id="hsTxt" maxlength="900" placeholder="Ej: Amasamos el pan cada mañana y ahumamos la carne 12 horas en leña de manzano…"></textarea>' +
       '<div class="hs-cuenta" id="hsCuenta">0 / 900</div>' +
@@ -8767,7 +8747,6 @@ function hsPanel(){
         hsRender();
       } finally { b.disabled = false; }
     });
-    qs("#hsActiva").addEventListener("change", function(){ hsActivar(this.checked); });
     qs("#hsSubir").addEventListener("click", function(){ if (!_hs.subiendo) qs("#hsFile").click(); });
     qs("#hsFile").addEventListener("change", async function(){
       var f = this.files && this.files[0]; this.value = "";
@@ -8802,9 +8781,6 @@ function hsPanelPintar(conTextos){
     tit.value = d.tit; txt.value = d.txt; qs("#hsCuenta").textContent = txt.value.length + " / 900";
   }
   if (!tit._oye){ tit._oye = txt._oye = true; [tit, txt].forEach(function(x){ x.addEventListener("input", function(){ x._tocado = true; }); }); qs("#hsGuardar").addEventListener("click", function(){ tit._tocado = txt._tocado = false; }); }
-  var sw = qs("#hsActiva"), est = qs("#hsEstado");
-  if (sw) sw.checked = d.activa;
-  if (est) est.textContent = !d.activa ? "Oculta: tus clientes no la ven." : (d.txt || d.vid) ? "Visible en tu tienda." : "Se verá cuando escribas el texto o subas un video.";
   var v = d.vid;
   pv.style.display = v ? "" : "none";
   if (v) pv.innerHTML = '<span class="hs-pv-img"' + (v.poster ? ' style="background-image:url(&quot;' + esc(v.poster) + '&quot;)"' : "") + '></span><span><b>Video publicado</b><small>' +

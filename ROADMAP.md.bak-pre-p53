@@ -1154,11 +1154,6 @@ dueño cuente cómo prepara sus productos o cómo partió su negocio.
   sección trae el botón **✏️ Editar historia**, que lleva directo a esa tarjeta.
 - **El cliente solo la ve si hay texto o video.** Vacía, solo la ve el dueño
   en modo edición, como invitación a escribirla.
-- **Mostrar u ocultar (P53).** Cada dueño decide si la usa. La tarjeta tiene
-  un interruptor, y en modo edición la propia sección trae **Ocultar**; estando
-  oculta queda una línea (solo para el dueño) con el botón **Mostrar**. Ocultar
-  no borra nada: al mostrarla vuelve el mismo texto y el mismo video. Se guarda
-  en `config.historiaActiva` (`false` = oculta; sin valor = visible).
 - Texto largo: se corta a 6 líneas (9 en escritorio) con "Leer más".
 - En escritorio, texto a la izquierda y video a la derecha.
 - Datos: `config.historiaTitulo`, `config.historiaTexto` y
