@@ -1120,24 +1120,3 @@ clara en una tienda oscura. La carpeta `herramientas/` no se publica
 los dos estilos, todas las páginas y hojas, con marca burdeo, negra, amarilla
 y azul, y con una revisión automática de contraste de cada texto.
 
-## 30. Títulos del landing sin "chip" (P50–P51) — ✅ hecho
-
-**Qué cambia.** En derlabs.cl las etiquetas que van sobre cada título
-(`.badge`, moradas y verdes: "EL MOTOR", "CLIENTES", etc.) ya no llevan
-cajita: quedan como texto en mayúsculas espaciadas, sin fondo ni borde.
-
-**Lo demás no se tocó:** los enlaces a las tiendas de muestra, los pasos del
-pago, la marca del pie y los botones siguen como estaban. (P50 también les
-había quitado la píldora; P51 los devolvió a pedido del dueño.)
-
-**Por qué va en dos lugares.** El público recibe la versión publicada desde
-el editor (`derlabs.cl/editar`), que está guardada en el KV con su propia
-copia de los estilos: cambiar `landing.html` no le llega. Por eso el Worker
-le agrega la regla al servirla (`LANDING_ETIQUETAS` y `conAjustesLanding()`
-en `cloudflare/worker.js`), también dentro del editor. La regla va marcada
-`data-ed-ui`, así que el editor no la guarda y no se duplica. `landing.html`
-trae el mismo cambio para cuando se parta de la base. Los textos publicados
-no se tocan.
-
-**Sin probar en producción.** Probado con una copia de la versión anterior
-como si fuera la publicada.

@@ -314,18 +314,8 @@ async function inyectarNombreReal(html, hostname, env, ctx, cfgYaLeida) {
    navegador, sin parpadeo de textos viejos. Si todavía no hay versión
    publicada (o el KV no está conectado), se sirve landing.html.
    ════════════════════════════════════════════════════════════════ */
-/* P50 · Etiquetas de título del landing (.badge) sin cajita: solo el texto.
-   Lo demás (enlaces a las tiendas de muestra, pasos del pago, marca del pie) queda como estaba.
-   La versión publicada (y el borrador) guardan su propia copia de los estilos
-   del landing, así que cambiar landing.html no les llega. Esta regla se agrega
-   al servir la página; lleva data-ed-ui para que el editor no la guarde. */
-const LANDING_ETIQUETAS = '<style data-ed-ui data-p50>.badge,.badge.verde{background:none!important;border:0!important;padding:0!important;border-radius:0!important;box-shadow:none!important}</style>';
-function conAjustesLanding(html){
-  const i = html.indexOf("</head>");
-  return i > -1 ? html.slice(0, i) + LANDING_ETIQUETAS + html.slice(i) : html;
-}
 async function leerLandingPublicada(env){
-  try { const h = env.LANDING ? await env.LANDING.get("publicada", { cacheTtl: 60 }) : null; return h ? conAjustesLanding(h) : null; }
+  try { return env.LANDING ? await env.LANDING.get("publicada", { cacheTtl: 60 }) : null; }
   catch(e){ console.error("KV publicada:", e.message); return null; }
 }
 async function servirEditorLanding(request, env){
@@ -342,7 +332,7 @@ async function servirEditorLanding(request, env){
     html = await (await env.ASSETS.fetch(new Request(u, request))).text();
     origen = "base";
   }
-  const cabeza = '<meta name="robots" content="noindex, nofollow" data-ed-ui>' + LANDING_ETIQUETAS;
+  const cabeza = '<meta name="robots" content="noindex, nofollow" data-ed-ui>';
   const pie = '<script data-ed-ui>window.__ED_ORIGEN=' + JSON.stringify(origen) + ';window.__ED_KV=' + (env.LANDING ? "true" : "false") + ';</script>'
             + '<script src="/landing-editor.js?v=1" data-ed-ui></script>';
   const iH = html.indexOf("</head>");
