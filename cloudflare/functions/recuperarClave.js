@@ -1,9 +1,10 @@
 /* cloudflare/functions/recuperarClave.js
-   "¿Olvidaste tu contraseña?" con correo propio de DerLabs (hola@derlabs.cl,
+   "¿Olvidaste tu contraseña?" con correo propio de DerLabs (hola@ + dominio de _correo.js,
    vía Resend). Firebase genera el link seguro (service account) y nosotros
    mandamos el correo. Responde SIEMPRE lo mismo, exista o no la cuenta, para
    no revelar qué correos están registrados. Máx. 1 correo por email cada 60 s. */
 import { getDb, corsHeaders, authRest } from "./_firebase.js";
+import { remitenteDerlabs } from "./_correo.js";
 
 const esc = t => String(t || "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 
@@ -44,7 +45,7 @@ export async function recuperarClave(request, env){
       '</div><div style="padding:16px 26px;border-top:1px solid #eee;font-size:12px;color:#888">DerLabs · derlabs.cl</div></div></div>';
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: "DerLabs <hola@derlabs.cl>", to: [email], subject: "Crea o recupera tu contraseña de DerLabs", html })
+      body: JSON.stringify({ from: remitenteDerlabs(env, "hola"), to: [email], subject: "Crea o recupera tu contraseña de DerLabs", html })
     });
     if (!r.ok) throw new Error("resend " + r.status + " " + (await r.text()).slice(0, 150));
     return json({ ok:true });

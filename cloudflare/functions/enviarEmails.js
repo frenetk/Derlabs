@@ -3,7 +3,7 @@
    Resend de DerLabs (secreto RESEND_API_KEY en Cloudflare). La tienda solo
    configura "Correo donde recibes los pedidos" (config/privado.emailVendedor).
 
-   - Remitente: "<Nombre de la tienda> <pedidos@derlabs.cl>"; responder-a: la tienda.
+   - Remitente: "<Nombre de la tienda> <pedidos@ + dominio de _correo.js>"; responder-a: la tienda.
    - El correo se arma SIEMPRE desde el pedido guardado en Firestore: nadie
      puede elegir destinatario ni contenido (no sirve para mandar spam).
    - Un pedido se notifica una sola vez (email_logs/{pedidoId}).
@@ -13,6 +13,7 @@
 
 import { Resend } from "resend";
 import { getDb, corsHeaders, fmtPrecio, resumenItems, esc, getStoreConfig, uidDesdeToken } from "./_firebase.js";
+import { correoPedidos } from "./_correo.js";
 
 const EMAIL_LIMITE_DIA = 300;
 const fmtDia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" });
@@ -47,7 +48,7 @@ export async function enviarCorreosPedido(db, env, storeId, ped, origin, opts){
 
     const nombreTienda = nombreLimpio(config.nombreTienda || config.nombre);
     const color = /^#[0-9a-f]{6}$/i.test(config.colorPrimario || "") ? config.colorPrimario : "#111111";
-    const from = propia ? config.emailEmisor : (nombreTienda + " <" + (env.EMAIL_PEDIDOS || "pedidos@derlabs.cl") + ">");
+    const from = propia ? config.emailEmisor : (nombreTienda + " <" + correoPedidos(env) + ">");
     const emailVendedor = String(config.emailVendedor || config.emailNotif || "").trim();
     const cl = ped.cliente || {};
     const resend = new Resend(key);

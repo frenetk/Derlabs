@@ -19,6 +19,7 @@
    Firestore: dominios_conexion/{dominio} (solo servidor). */
 
 import { getDb, uidDesdeToken, autorizarDominio } from "./_firebase.js";
+import { remitenteDerlabs } from "./_correo.js";
 
 const H = { "Content-Type": "application/json", "Cache-Control": "no-store" };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: H });
@@ -134,7 +135,7 @@ async function avisarActivo(env, doc){
       method: "POST",
       headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "DerLabs <pedidos@derlabs.cl>", to: [doc.email],
+        from: remitenteDerlabs(env, "pedidos"), to: [doc.email],
         subject: "✅ Tu tienda ya funciona en " + doc.dominio,
         html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#1A1A1A">' +
           '<h2 style="margin:0 0 10px">Tu dominio ya está conectado</h2>' +

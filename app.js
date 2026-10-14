@@ -1131,6 +1131,7 @@ function renderAll(){
   renderNombre();
   renderInicio();
   try { hsRender(); hsPanelPintar(); } catch(e){ console.warn("historia:", e); }
+  vocAplicar(); vocPanelPintar();
   renderMenu();
   renderCupones();
   renderLocales();
@@ -2062,7 +2063,7 @@ function renderCartSheet(){
       </div>
       <span class="citem-precio">${fmtPrecio(i.precio * i.cantidad)}</span>
     </div>`).join("")
-    : (_sk("cartVacio") ? SKIN.cartVacio() : '<p class="vacio" style="padding:26px 4px">Tu carrito está vacío. Agrega algo rico del menú 🍔</p>');
+    : (_sk("cartVacio") ? SKIN.cartVacio() : '<p class="vacio" style="padding:26px 4px">Tu carrito está vacío. ' + vocVacio() + '</p>');
 
   const sub = subtotalCarrito();
   const del = costoDelivery("delivery");
@@ -7534,7 +7535,7 @@ function _vtMontar(){
     var ancla = qs("#bannerPedidoActivo");
     ini.insertBefore(cab, ancla ? ancla.nextSibling : ini.firstChild);
     var wrap = document.createElement("div"); wrap.id = "vtCarrWrap";
-    wrap.innerHTML = '<div class="vt-tit"><h2>Destacados</h2><button type="button" id="vtVerMenu">Ver menú</button></div>' +
+    wrap.innerHTML = '<div class="vt-tit"><h2>Destacados</h2><button type="button" id="vtVerMenu" style="white-space:nowrap">' + esc(vocVer(false)) + '</button></div>' +
       '<div class="vt-carr"><div class="vt-segs" id="vtSegs"></div><div class="vt-track" id="vtTrack"></div></div><div class="vt-dots" id="vtDots"></div>';
     cab.parentNode.insertBefore(wrap, cab.nextSibling);
     qs("#vtVerMenu").addEventListener("click", function(){ irPagina("menu"); });
@@ -7651,7 +7652,7 @@ function instalarPanelVitrina(){
     var miniCla = '<span class="mini" style="align-items:center"><i style="height:7px;width:46%;border-radius:4px;background:var(--rojo);margin-top:9px"></i><i style="height:40px;width:84%;border-radius:8px;background:#EDE8E4;margin-top:9px"></i><i style="height:5px;width:50%;border-radius:3px;background:#D9D4D0;margin-top:7px"></i></span>';
     var _mini = function(fondo, tarj, linea, txt){ return '<span class="mini" style="background:' + fondo + ';border-color:' + linea + ';padding:8px;gap:6px"><i style="height:6px;width:44%;border-radius:3px;background:' + txt + '"></i><i style="height:26px;border-radius:7px;background:' + tarj + ';border:1px solid ' + linea + '"></i><i style="height:14px;width:58%;border-radius:999px;background:var(--rojo);align-self:flex-end"></i></span>'; };
     var miniLuz = _mini("#FFFFFF", "#F6F3F0", "#E6E1DD", "#1A1A1A"), miniOsc = _mini("#0D0D0D", "#1E1E1E", "#333333", "#F5F5F5");
-    box.innerHTML = '<b class="pcard-t">Diseño de la tienda</b><p class="pnota" style="font-size:12.5px;margin:2px 0 0">Elige cómo se ven la portada y el menú.</p>' +
+    box.innerHTML = '<b class="pcard-t">Diseño de la tienda</b><p class="pnota" style="font-size:12.5px;margin:2px 0 0">Elige cómo se ven la portada y <span id="vocPnota">el menú</span>.</p>' +
       '<div class="pest"><button type="button" data-vtest="app">' + miniApp + '<b>App</b><small>Ícono sobre la portada</small></button>' +
       '<button type="button" data-vtest="clasico">' + miniCla + '<b>Clásico</b><small>El diseño anterior</small></button></div>' +
       '<p class="pnota" style="font-size:12.5px;margin:14px 0 0"><b style="font-size:14px;color:#1A1A1A">Colores</b><br>Claro u oscuro. Lo ven todos tus clientes.</p>' +
@@ -7674,6 +7675,7 @@ function instalarPanelVitrina(){
     }); });
     qs("#vtBtnPortada").addEventListener("click", function(){ if (typeof abrirImgModal === "function") abrirImgModal({ col: "config", doc: "general", field: "portadaImagen" }); });
     hsPanel();
+    vocPanel();
   } catch(e){ console.warn("panel vitrina:", e); }
 }
 
@@ -8307,7 +8309,7 @@ function v24Render(){
       (promos.length ? promos.map(_v24PromoHTML).join("") : '<p class="v24-vacio">Sin promociones. Toca “Elegir promociones” para marcar productos.</p>') + '</section>';
   }
   if (prods.length){
-    html += '<section class="v24-sec" id="v24Menu"><div class="v24-tit"><h2>Menú</h2></div>' +
+    html += '<section class="v24-sec" id="v24Menu"><div class="v24-tit"><h2>' + esc(vocSeccion()) + '</h2></div>' +
       (cats.length > 1 ? '<nav class="v24-tabs" id="v24Tabs" aria-label="Categorías">' + cats.map(function(c, i){ return '<button type="button" data-v24cat="' + i + '"' + (i ? "" : ' class="on"') + '>' + esc(c) + '</button>'; }).join("") + '</nav>' : "") +
       cats.map(function(c, i){
         return '<div class="v24-cat" id="v24cat' + i + '"><h3>' + esc(c) + '</h3>' +
@@ -8811,6 +8813,153 @@ function hsPanelPintar(conTextos){
     (v.w && v.h ? v.w + " × " + v.h + " · " : "") + (v.peso ? (v.peso / 1048576).toFixed(1).replace(".", ",") + " MB" : "") + '</small></span>';
   qs("#hsSubir").textContent = v ? "Cambiar video" : "Subir video";
   qs("#hsQuitar").style.display = v ? "" : "none";
+}
+
+/* ════════════════════════════════════════════════════════════════
+   P54 — VOCABULARIO POR RUBRO (solo tienda de comida)
+   La sección de productos no tiene por qué llamarse "Menú": en una
+   pastelería es "Pasteles", en una cafetería "Carta", en un negocio de
+   reservas "Servicios". La palabra sale sola del subrubro que se eligió
+   al generar la tienda (config.subrubro) y el dueño la puede cambiar en
+   el panel (Apariencia → Nombre de tu sección): config.seccionNombre.
+   Cambia: barra de abajo, menú de la cabecera, título de la sección en
+   el inicio, botones "Ver menú" y el aviso del carrito vacío.
+   Retail y boutique no pasan por acá (otra plantilla).
+   ════════════════════════════════════════════════════════════════ */
+/* Las tablas van dentro de una función: la primera pintada puede ocurrir antes de que el
+   archivo llegue hasta acá, y una "var" todavía estaría vacía (error en renderAll). */
+function _vocT(){
+  if (_vocT.t) return _vocT.t;
+  var dv = "Agrega algo rico del menú 🍔";
+  return (_vocT.t = {
+    vacio: dv,
+    base: {
+      "hamburguesas":  { sec: "Menú",      vacio: dv },
+      "comida-rapida": { sec: "Menú",      vacio: dv },
+      "cafeteria":     { sec: "Carta",     vacio: "Agrega algo rico de la carta ☕" },
+      "pasteleria":    { sec: "Pasteles",  vacio: "Agrega algo dulce a tu pedido 🧁" },
+      "servicios":     { sec: "Servicios", vacio: "Agrega un servicio a tu reserva 📅" }
+    },
+    /* Palabras que se ofrecen en el panel, según el rubro (la primera es la original) */
+    opciones: {
+      "pasteleria": ["Pasteles", "Productos", "Catálogo", "Vitrina", "Carta"],
+      "cafeteria":  ["Carta", "Menú", "Productos", "Catálogo"],
+      "servicios":  ["Servicios", "Catálogo", "Productos"],
+      "_":          ["Menú", "Carta", "Productos", "Catálogo"]
+    },
+    /* Botón corto (carrusel) y largo (portada) según la palabra */
+    ver: {
+      "Menú":      ["Ver menú", "Ver menú completo"],
+      "Carta":     ["Ver carta", "Ver carta completa"],
+      "Pasteles":  ["Ver todo", "Ver todos los pasteles"],
+      "Servicios": ["Ver todo", "Ver todos los servicios"]
+    }
+  });
+}
+function vocActiva(){ return !window.DERLABS_SKIN && typeof v28EsComida === "function" && v28EsComida(); }
+function vocSub(){ var c = state.config || {}; return String(c.subrubro || c.rubro || ""); }
+function vocOriginal(){ var b = _vocT().base[vocSub()]; return b ? b.sec : "Menú"; }
+function vocSeccion(){
+  if (!vocActiva()) return "Menú";
+  var o = String((state.config || {}).seccionNombre || "").replace(/\s+/g, " ").trim().slice(0, 24);
+  return o || vocOriginal();
+}
+function vocVer(largo){ var v = _vocT().ver[vocSeccion()] || ["Ver todo", "Ver todos los productos"]; return v[largo ? 1 : 0]; }
+function vocVacio(){ var t = _vocT(), b = vocActiva() ? t.base[vocSub()] : null; return b ? b.vacio : t.vacio; }
+function vocTexto(btn, txt){
+  if (!btn) return;
+  var nodos = btn.childNodes, ult = null;
+  for (var i = 0; i < nodos.length; i++) if (nodos[i].nodeType === 3 && nodos[i].nodeValue.trim()) ult = nodos[i];
+  if (ult){ if (ult.nodeValue.trim() !== txt) ult.nodeValue = "\n    " + txt; }
+  else btn.appendChild(document.createTextNode(txt));
+}
+/* Pone la palabra en lo que ya está dibujado en la página */
+function vocAplicar(){
+  try {
+    if (!vocActiva()) return;
+    var n = vocSeccion();
+    vocTexto(qs('#tabbar .tab[data-page="menu"]'), n);
+    var m = qs('.mlink[data-go="menu"]'); if (m && m.textContent !== n) m.textContent = n;
+    var v1 = qs("#btnVerMenu"); if (v1 && v1.textContent !== vocVer(true)) v1.textContent = vocVer(true);
+    var v2 = qs("#vtVerMenu"); if (v2 && v2.textContent !== vocVer(false)) v2.textContent = vocVer(false);
+    var pn = qs("#vocPnota"); if (pn) pn.textContent = n === "Menú" ? "el menú" : "tus productos";
+  } catch(e){ console.warn("vocabulario:", e); }
+}
+
+function vocCss(){
+  if (qs("#voc-css")) return;
+  var st = document.createElement("style"); st.id = "voc-css";
+  st.textContent = [
+    ".voc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}",
+    ".voc-chips button{border:1.5px solid #E6E1DD;background:#fff;color:#1A1A1A;border-radius:999px;padding:9px 16px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}",
+    ".voc-chips button.on{border-color:var(--rojo);color:var(--rojo);background:var(--crema,#F7F5F3)}",
+    ".voc-otro{display:flex;gap:8px;margin:10px 0 0;align-items:stretch}",
+    ".voc-otro[hidden]{display:none}",
+    ".voc-otro .field{margin:0;flex:1;min-width:0}",
+    ".voc-otro button{flex:none;margin:0}",
+    ".voc-pv{display:flex;align-items:center;gap:10px;margin:12px 0 0;font-size:12.5px;color:var(--muted,#777)}",
+    ".voc-tab{display:inline-flex;flex-direction:column;align-items:center;gap:2px;padding:6px 16px;border:1px solid #E6E1DD;border-radius:12px;background:#fff;color:var(--rojo);font-size:11px;font-weight:800}",
+    ".voc-tab svg{width:20px;height:20px}",
+    ".voc-tab b{font-weight:800}"
+  ].join("\n");
+  document.head.appendChild(st);
+}
+function vocPanelPintar(){
+  try { _vocPanelPintar(); } catch(e){ console.warn("panel vocabulario:", e); }
+}
+function _vocPanelPintar(){
+  var box = qs("#vocPanel"); if (!box) return;
+  var act = vocSeccion(), sub = vocSub();
+  var t = _vocT(), ops = t.opciones[sub] || t.opciones._;
+  var esLista = ops.indexOf(act) >= 0;
+  box.querySelector("#vocChips").innerHTML = ops.map(function(o){
+    return '<button type="button" data-voc="' + esc(o) + '" aria-pressed="' + (o === act ? "true" : "false") + '"' + (o === act ? ' class="on"' : "") + '>' + esc(o) + '</button>';
+  }).join("") + '<button type="button" data-voc="__otro"' + (!esLista ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>Otro…</button>';
+  var ot = box.querySelector("#vocOtro"), tx = box.querySelector("#vocTxt");
+  if (!esLista){ ot.hidden = false; if (document.activeElement !== tx) tx.value = act; }
+  box.querySelector("#vocPvTxt").textContent = act;
+  var rs = box.querySelector("#vocRest"); rs.hidden = !String((state.config || {}).seccionNombre || "").trim();
+  rs.textContent = "Volver a «" + vocOriginal() + "»";
+}
+async function vocElegir(valor){
+  var guardar = valor === vocOriginal() ? "" : valor;
+  state.config.seccionNombre = guardar;
+  vocAplicar(); vocPanelPintar();
+  try { renderAll(); } catch(e){}
+  try { await saveConfig("seccionNombre", guardar); if (typeof toast === "function") toast("✅ Guardado: " + (valor || vocOriginal())); }
+  catch(e){ if (typeof toast === "function") toast("⚠️ No se pudo guardar"); }
+}
+function vocPanel(){
+  try {
+    if (!_vtEsComida() || qs("#vocPanel")) return;
+    var ref = qs("#vtPanelEstilo"); if (!ref || !ref.parentNode) return;
+    vocCss();
+    var icono = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2v8"/><path d="M4.5 2v5a2.5 2.5 0 0 0 5 0V2"/><path d="M17 22V2c-2.2 1.4-3.5 4-3.5 7 0 2 1 3.2 3.5 3.5"/></svg>';
+    var box = document.createElement("div"); box.id = "vocPanel"; box.className = "pcard";
+    box.innerHTML = '<b class="pcard-t">Nombre de tu sección de productos</b>' +
+      '<p class="pnota" style="font-size:12.5px;margin:2px 0 0">Es la palabra que ven tus clientes en la barra de abajo y en el inicio. Toca la que mejor represente a tu negocio.</p>' +
+      '<div class="voc-chips" id="vocChips"></div>' +
+      '<div class="voc-otro" id="vocOtro" hidden><input class="field" id="vocTxt" type="text" maxlength="24" placeholder="Ej: Tortas" aria-label="Nombre de la sección">' +
+      '<button type="button" class="pill pill-solid pill-sm" id="vocOk">Guardar</button></div>' +
+      '<div class="voc-pv">Así se ve:<span class="voc-tab">' + icono + '<b id="vocPvTxt"></b></span></div>' +
+      '<button type="button" class="pill pill-outline-muted pill-sm panel-full" id="vocRest" style="margin-top:10px" hidden></button>';
+    ref.parentNode.insertBefore(box, ref.nextSibling);
+    box.addEventListener("click", function(e){
+      var b = e.target.closest("[data-voc]");
+      if (b){
+        var v = b.getAttribute("data-voc");
+        if (v === "__otro"){ var ot = qs("#vocOtro"); ot.hidden = false; qs("#vocTxt").value = qs("#vocTxt").value || ""; qs("#vocTxt").focus(); return; }
+        vocElegir(v); return;
+      }
+      if (e.target.closest("#vocOk")){
+        var t = String(qs("#vocTxt").value || "").replace(/\s+/g, " ").trim().slice(0, 24);
+        if (!t){ if (typeof toast === "function") toast("Escribe el nombre de la sección"); return; }
+        vocElegir(t); return;
+      }
+      if (e.target.closest("#vocRest")) vocElegir(vocOriginal());
+    });
+    vocPanelPintar();
+  } catch(e){ console.warn("panel vocabulario:", e); }
 }
 
 /* ════════════════════════════════════════════════════════════════

@@ -11,6 +11,7 @@
 
 import { admin, getDb, corsHeaders, autorizarDominio, authRest } from "./_firebase.js";
 import { fijarPlan } from "./planTienda.js";
+import { remitenteDerlabs } from "./_correo.js";
 
 const RUBROS = {
   "comida": {
@@ -191,7 +192,7 @@ function claveTemporalPropietario(){
   const b = crypto.getRandomValues(new Uint8Array(24));
   return Array.from(b, function(x){ return ("0" + x.toString(16)).slice(-2); }).join("") + "Aa1!";
 }
-/* Bienvenida DerLabs (Resend, hola@derlabs.cl) con link seguro de Firebase
+/* Bienvenida DerLabs (Resend, hola@ + dominio de _correo.js) con link seguro de Firebase
    para crear la clave. Si Resend falla, cae al correo estándar de Firebase. */
 async function enviarBienvenida(email, nombre, dominio, env){
   try {
@@ -212,7 +213,7 @@ async function enviarBienvenida(email, nombre, dominio, env){
       '</div><div style="padding:16px 26px;border-top:1px solid #eee;font-size:12px;color:#888">DerLabs · derlabs.cl · Este correo se envió porque se creó una tienda con tu dirección.</div></div></div>';
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: "DerLabs <hola@derlabs.cl>", to: [email], subject: "🎉 Tu tienda «" + nombre + "» ya está lista", html })
+      body: JSON.stringify({ from: remitenteDerlabs(env, "hola"), to: [email], subject: "🎉 Tu tienda «" + nombre + "» ya está lista", html })
     });
     if (!r.ok) throw new Error("resend " + r.status + " " + (await r.text()).slice(0, 150));
     return true;

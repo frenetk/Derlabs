@@ -1211,3 +1211,59 @@ pruebas no trae el códec H.264): es lo primero que hay que revisar en
 producción. Un video grabado en HEVC por un iPhone puede no verse en algunos
 Android antiguos; lo seguro es exportarlo como MP4 (H.264).
 
+
+
+## 32. Correos desde derlabs.store y vocabulario por rubro (P54) — ✅ hecho
+
+### 32.1 Remitente de los correos en un solo lugar
+
+Tras la filtración de la llave de Resend se creó la llave nueva y se verificó
+`derlabs.store` en Resend. Hasta acá `hola@derlabs.cl` y `pedidos@derlabs.cl`
+estaban escritos a mano en cuatro funciones; ahora salen todos de
+`cloudflare/functions/_correo.js`:
+
+- `remitenteDerlabs(env, "hola")` → `DerLabs <hola@derlabs.store>` (bienvenida,
+  recuperar clave) y `"pedidos"` (aviso de dominio conectado).
+- `correoPedidos(env)` → avisos de pedido al cliente y al local.
+- Variables del Worker (opcionales): `EMAIL_DOMINIO` (dominio verificado en
+  Resend; por defecto `derlabs.store`) y `EMAIL_PEDIDOS` (dirección completa;
+  por defecto `pedidos@<EMAIL_DOMINIO>`). Si traen algo que no es un dominio o
+  un correo válido se ignoran (nada de saltos de línea en las cabeceras).
+- La llave `RESEND_API_KEY` (secreto) debe ser de ese dominio: permiso
+  **Sending access**, limitada a `derlabs.store`.
+- Las tiendas con llave y emisor propios (`config/privado`) no cambian.
+- Cambiar de dominio otra vez = cambiar `EMAIL_DOMINIO` en Cloudflare, sin
+  tocar código ni subir nada.
+
+### 32.2 La sección de productos ya no se llama siempre "Menú"
+
+La palabra sale del subrubro que se eligió al generar la tienda
+(`config.subrubro`) y el dueño la puede cambiar (`config.seccionNombre`):
+
+| Subrubro | Sección | Carrito vacío |
+|---|---|---|
+| Hamburguesas, comida rápida | Menú | Agrega algo rico del menú 🍔 (igual que antes) |
+| Cafetería | Carta | Agrega algo rico de la carta ☕ |
+| Pastelería | Pasteles | Agrega algo dulce a tu pedido 🧁 |
+| Servicios y reservas | Servicios | Agrega un servicio a tu reserva 📅 |
+
+- Cambia: la barra de abajo, el menú de la cabecera, el título de la sección
+  en el inicio, los botones "Ver menú" / "Ver menú completo" (con otra palabra
+  dicen "Ver todo" y "Ver todos los pasteles / productos…") y el aviso del
+  carrito vacío.
+- **Panel (devmode) → Apariencia → "Nombre de tu sección de productos":**
+  botones con las palabras que sirven para ese rubro (pastelería: Pasteles,
+  Productos, Catálogo, Vitrina, Carta) y "Otro…" para escribir la suya (hasta
+  24 letras). Vista previa de la barra, y "Volver a «Pasteles»".
+- Si elige la palabra original se guarda vacío: la tienda sigue al rubro.
+- Las tiendas que ya existen toman la palabra de su subrubro apenas se
+  publique este cambio; las de hamburguesas y comida rápida no cambian nada.
+- Retail y boutique no pasan por este código.
+- Las categorías de adentro (Tortas, Kuchen, Café, Regalos…) siguen siendo la
+  forma de ordenar lo que venda además de la pastelería.
+
+### Pendiente aparte
+
+La **base de clientes** (panel → Ventas → Clientes, con contraseña) quedó a
+medias el 5 de octubre y **no entra en P54**. Se retomará por separado: el
+trabajo a medias está guardado fuera del proyecto.
