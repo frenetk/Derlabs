@@ -94,7 +94,7 @@ const FUNCIONES = {
    ════════════════════════════════════════════════════════════════ */
 async function leerConfigTenant(hostname, env, ctx) {
   try {
-    const cacheKey = new Request("https://cache.local/tenant3/" + hostname);
+    const cacheKey = new Request("https://cache.local/tenant4/" + hostname);
     const cache = caches.default;
     const cached = await cache.match(cacheKey);
     if (cached) return await cached.json();
@@ -121,6 +121,7 @@ async function leerConfigTenant(hostname, env, ctx) {
       faviconBase64: data.faviconBase64 || "",
       rubro: data.rubro || "comida",
       plantilla: data.plantilla || "",
+      subrubro: data.subrubro || "",
       dominioPrincipal: data.dominioPrincipal || "",
       colorPrimario: data.colorPrimario || "",
       dom: dom
@@ -236,6 +237,19 @@ function archivoPlantilla(cfg){
   return (cfg && cfg.rubro === "retail") ? "/index-retail.html" : "/index.html";
 }
 
+/* Texto corto para el link compartido, según el subrubro de una tienda de comida (vacío = no tocar) */
+const DESCRIPCION_SUBRUBRO = {
+  "hamburguesas":  "Hamburguesería — pide online, junta puntos y canjea cupones.",
+  "comida-rapida": "Comida rápida — pide online, junta puntos y canjea cupones.",
+  "cafeteria":     "Cafetería — pide online, junta puntos y canjea cupones.",
+  "pasteleria":    "Pastelería — encarga online, junta puntos y canjea cupones.",
+  "servicios":     "Reserva tus servicios online, junta puntos y canjea cupones."
+};
+function descripcionTienda(cfg) {
+  if (!cfg || cfg.rubro === "retail" || cfg.plantilla === "boutique") return "";
+  return DESCRIPCION_SUBRUBRO[cfg.subrubro] || "Pide online, junta puntos y canjea cupones.";
+}
+
 async function inyectarNombreReal(html, hostname, env, ctx, cfgYaLeida) {
   try {
     const config = cfgYaLeida || await leerConfigTenant(hostname, env, ctx);
@@ -249,6 +263,17 @@ async function inyectarNombreReal(html, hostname, env, ctx, cfgYaLeida) {
     /* Reemplazos */
     /* 1. Título de la pestaña */
     html = html.replace(/<title>[^<]*<\/title>/, "<title>" + nombreSeguro + "</title>");
+
+    /* 1b. Descripción que se ve al compartir el link (WhatsApp, Instagram, Google): según el rubro de la tienda.
+       Antes decía siempre "Hamburguesería". Solo la plantilla de comida; retail y boutique traen la suya. */
+    const desc = descripcionTienda(config);
+    if (desc) {
+      html = html.replace(/(<meta[^>]*name="description"[^>]*content=")[^"]*(")/, "$1" + desc + "$2");
+      if (!/property="og:description"/.test(html)) {
+        html = html.replace(/(<meta[^>]*name="description"[^>]*>)/,
+          "$1<meta property=\"og:description\" content=\"" + desc + "\"><meta property=\"og:title\" content=\"" + nombreSeguro + "\"><meta property=\"og:type\" content=\"website\">");
+      }
+    }
 
     /* 2. Logo (texto por defecto) — solo reemplazamos texto dentro del span #logoTexto */
     html = html.replace(

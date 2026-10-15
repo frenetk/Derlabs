@@ -167,7 +167,7 @@ let ADMIN_SECRET = "";
    secreto guardado en sessionStorage si ya se ingresó en esa pestaña. ── */
 function intentarEntrar(){
   const val = qs("#gateInput").value.trim();
-  if (!val){ qs("#gateErr").textContent = "Ingresá la clave"; return; }
+  if (!val){ qs("#gateErr").textContent = "Ingresa la clave"; return; }
   ADMIN_SECRET = val;
   sessionStorage.setItem("adminSecret", val);
   qs("#gate").style.display = "none";
@@ -274,7 +274,7 @@ async function cargarSuscripciones(){
       </div>
     `).join("");
   } catch (err){
-    errorBox.innerHTML = '<div class="error-carga">Error de red — revisá la conexión e intentá de nuevo.</div>';
+    errorBox.innerHTML = '<div class="error-carga">Error de red — revisa la conexión e intenta de nuevo.</div>';
     listaBox.innerHTML = "";
   }
 }

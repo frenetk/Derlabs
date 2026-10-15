@@ -234,7 +234,7 @@ function render(){
   if (!lista.length){
     $("#lista").innerHTML = `<div class="vacio"><div class="ico">${filtro === "nuevos" ? "✅" : "📭"}</div>
       <h3>${filtro === "nuevos" ? "Estás al día" : "Todavía no hay contactos"}</h3>
-      <p>${filtro === "nuevos" ? "No hay contactos sin revisar. Los revisados están en «Todos»." : "Cuando alguien complete el formulario del landing, aparece acá."}</p></div>`;
+      <p>${filtro === "nuevos" ? "No hay contactos sin revisar. Los revisados están en «Todos»." : "Cuando alguien complete el formulario del landing, aparece aquí."}</p></div>`;
     return;
   }
   $("#lista").innerHTML = lista.map(l => `

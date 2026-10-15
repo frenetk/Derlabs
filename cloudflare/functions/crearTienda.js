@@ -74,7 +74,7 @@ export async function crearTienda(request, env){
     const LIMITE_IMAGENES_COMBINADO = 700 * 1024;
     const pesoImagenes = (logoBase64 ? logoBase64.length : 0) + faviconBase64.length;
     if (pesoImagenes > LIMITE_IMAGENES_COMBINADO) {
-      return new Response(JSON.stringify({ ok: false, error: "Las imágenes combinadas son demasiado grandes — probá con archivos más livianos o de menor resolución." }), { status: 400, headers });
+      return new Response(JSON.stringify({ ok: false, error: "Las imágenes combinadas son demasiado grandes — prueba con archivos más livianos o de menor resolución." }), { status: 400, headers });
     }
 
     const rubroValido = RUBROS[rubro] ? rubro : "comida";

@@ -1330,3 +1330,23 @@ pantallas de acceso y de los paneles (P46) no se tocaron.
 Como cambiaron estilos de la tienda se volvieron a sacar las reglas de
 color (`volcar.js`) y a generar `tienda-oscuro.css`; el administrador sigue
 idéntico pixel a pixel.
+
+## 34. Categorías únicas, estilo de la historia, oscuro con tu color y más (P57) — ✅ hecho
+
+1. **Tu historia**: tarjeta con "Estilo del texto": fuente (Predeterminada, Moderna, Elegante, Clásica,
+   Manuscrita), tamaño (Pequeño/Normal/Grande), alineación y negrita/cursiva, con vista previa. Se guarda al tocar
+   (`historiaFuente|Tam|Alin|Negrita|Cursiva`). Sin elegir nada queda como antes. Las fuentes de Google se piden solo
+   si hacen falta (el cliente: la elegida; el dueño: todas al abrir el panel).
+2. **Una sola lista de categorías**: el selector de cada producto usa solo `config.categorias` (la de
+   "Categorías"); se quitó "Escribir nueva…". Producto nuevo = primera categoría de la lista (ya no "Hamburguesas").
+   `obtenerCategorias()` ahora solo lee: antes guardaba en Firestore al dibujar cualquier pantalla.
+3. **Voseo y ejemplos**: "Elige el sabor" (sin "Elegí elige"), "Escribe aquí", ejemplo de preferencias genérico
+   ("color, talla o un mensaje para la tarjeta"), y otros textos de pedidos, repartidor, generador y formularios.
+4. **Modo oscuro con el color del dueño**: textos, íconos, bordes y el nombre del pie usan el color de la tienda
+   aclarado lo justo para leerse (`--osc-texto`); marca casi negra → gris claro; marca dorada → igual. Ya no son
+   siempre dorados. Cambió `cabecera.css` → `tienda-oscuro.css` regenerado.
+5. **Descripción al compartir el link** según el subrubro (Pastelería, Cafetería…), con og:title/og:description.
+   Worker: `descripcionTienda()`; lee `subrubro` de la config. Retail y boutique no se tocan.
+6. **"Error al guardar — revisa las reglas de Firestore"**: venía de `obtenerCategorias()` (punto 2), que intentaba
+   escribir en cada visita. El aviso ahora lo ve solo quien administra y trae el campo y el código del error.
+7. **Destacados ocultable** (junto a Promociones, Cupones y Locales, en "Secciones de tu tienda").

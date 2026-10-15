@@ -638,8 +638,8 @@ function aplicarColor(){
    · --osc-marca: el color de la tienda, salvo que sea tan oscuro que se
      pierda sobre negro: ahí se aclara (o pasa a blanco si es negro/gris).
    · --osc-marca-sobre: el color de la letra encima de ese relleno.
-   Los textos, íconos y bordes de color van en dorado (--o-marca, fijo en
-   la hoja).
+   · --osc-texto: el mismo color, aclarado hasta leerse bien, para los textos,
+     íconos y bordes de color (--o-marca y --dorado dentro de la tienda).
    ══════════════════════════════════════════════════════════════ */
 var OSC_FONDO = "#0D0D0D";
 function _oscAclararHasta(hex, sobre, minimo){
@@ -705,6 +705,14 @@ function aplicarTemaTienda(){
       var q0 = hexARgb(c);
       relleno = rgbAHsl(q0.r, q0.g, q0.b).s < 18 ? "#EDEDED" : _oscAclararHasta(c, OSC_FONDO, 2.6);
     }
+    /* textos, íconos y bordes de color: el mismo color de la tienda, aclarado solo lo necesario para leerse sobre negro
+       (antes eran siempre dorados, sin importar el color que eligió el dueño) */
+    var texto = c;
+    if (razonContrasteWCAG(c, OSC_FONDO) < 4.5){
+      var q1 = hexARgb(c);
+      texto = rgbAHsl(q1.r, q1.g, q1.b).s < 18 ? "#EDEDED" : _oscAclararHasta(c, OSC_FONDO, 4.5);
+    }
+    raiz.style.setProperty("--osc-texto", texto);
     raiz.style.setProperty("--osc-marca", relleno);
     raiz.style.setProperty("--osc-marca-h", colorHover(relleno));
     raiz.style.setProperty("--osc-marca-sobre", textoLegibleSobre(relleno));
@@ -969,6 +977,15 @@ function applyLocal(colName, docId, field, value){
   if (it) it[field] = value;
 }
 
+/* Aviso de error al guardar: solo lo ve quien administra la tienda (una visita no puede escribir y no puede
+   hacer nada con ese mensaje). Incluye el campo y el código para poder encontrar la causa. */
+function _errorGuardar(e, campo){
+  console.error("Error al guardar [" + campo + "]:", e);
+  const admin = (typeof esPropietario !== "undefined" && esPropietario) || document.body.classList.contains("dev-on");
+  if (!admin) return;
+  const cod = e && e.code ? String(e.code) : "";
+  toast("Error al guardar" + (campo ? " (" + campo + ")" : "") + " — " + (cod === "permission-denied" || !cod ? "revisa las reglas de Firestore" : "intenta de nuevo (" + cod + ")"));
+}
 async function saveField(colName, docId, field, value){
   if (_modoBorrador && !DEMO){
     const oldValue = valorActual(colName, docId, field);
@@ -987,8 +1004,7 @@ async function saveField(colName, docId, field, value){
     applyLocal(colName, docId, field, value);
     return true;
   } catch(e){
-    console.error("Error al guardar:", e);
-    toast("Error al guardar — revisa las reglas de Firestore");
+    _errorGuardar(e, field);
     return false;
   }
 }
@@ -1428,14 +1444,14 @@ function renderVariantesEnDetalle(p){
     html += `
       <label class="plabel" style="margin-top:12px">${esc(g.nombre)}</label>
       <select class="field" data-vargrupo="${esc(g.nombre)}">
-        <option value="" disabled ${!_prodDetSeleccion[g.nombre] ? "selected" : ""}>Elegí ${esc(g.nombre.toLowerCase())}</option>
+        <option value="" disabled ${!_prodDetSeleccion[g.nombre] ? "selected" : ""}>${esc(_elegirTxt(g.nombre))}</option>
         ${g.opciones.map(op => `<option value="${esc(op)}" ${_prodDetSeleccion[g.nombre] === op ? "selected" : ""}>${esc(op)}</option>`).join("")}
       </select>`;
   });
   if (p.permitePersonalizacion){
     html += `
       <label class="plabel" style="margin-top:12px">${esc(p.personalizacionEtiqueta || "Nota personalizada")} <span style="color:var(--muted);font-weight:600">(opcional)</span></label>
-      <input class="field" id="prodDetPersonalTexto" maxlength="120" value="${esc(_prodDetTextoPersonal)}" placeholder="Escribí acá...">`;
+      <input class="field" id="prodDetPersonalTexto" maxlength="120" value="${esc(_prodDetTextoPersonal)}" placeholder="Escribe aquí...">`;
   }
   cont.innerHTML = html;
 }
@@ -1498,7 +1514,7 @@ function initDetProducto(){
         return g.nombre && g.opciones && g.opciones.length && !_prodDetSeleccion[g.nombre];
       });
       if (grupoSinElegir){
-        toast(_sk("toastElegir") ? SKIN.toastElegir(grupoSinElegir.nombre) : "Elegí " + grupoSinElegir.nombre.toLowerCase() + " antes de agregar");
+        toast(_sk("toastElegir") ? SKIN.toastElegir(grupoSinElegir.nombre) : _elegirTxt(grupoSinElegir.nombre) + " antes de agregar");
         return;
       }
     }
@@ -1532,6 +1548,13 @@ function initDetProducto(){
 /* ════════════════════════════════════════════════════════════════
    MENU
    ════════════════════════════════════════════════════════════════ */
+/* Texto del primer renglón del selector de variantes: "Elige el sabor". Si el grupo ya viene escrito como
+   instrucción ("Elige el sabor", "Selecciona tamaño") se usa tal cual, sin repetir el verbo. */
+function _elegirTxt(nombre){
+  const n = String(nombre || "").trim();
+  if (/^(elige|elegir|escoge|selecciona|seleccionar)\b/i.test(n)) return n.charAt(0).toUpperCase() + n.slice(1);
+  return "Elige " + n.toLowerCase();
+}
 let filtroActual = "Todos";
 
 function renderMenu(){
@@ -3789,8 +3812,7 @@ async function guardarInline(colName, docId, field, valor){
     await col(colName).doc(docId).set({ [field]: valor }, { merge:true });
     return true;
   } catch(e){
-    console.error("Error al guardar:", e);
-    toast("Error al guardar — revisa las reglas de Firestore");
+    _errorGuardar(e, field);
     return false;
   }
 }
@@ -4718,7 +4740,7 @@ function renderEditorVariantes(p){
   return `
     <div class="variantes-editor">
       <label class="plabel">Grupos de variantes (hasta 3)</label>
-      ${filas || '<p class="pnota" style="margin:6px 0">Todavía no hay grupos — agregá uno.</p>'}
+      ${filas || '<p class="pnota" style="margin:6px 0">Todavía no hay grupos — agrega uno.</p>'}
       ${puedeAgregar ? `<button class="pill pill-outline pill-sm" data-a="addvariante" data-pid="${esc(p.id)}" style="margin-top:8px">➕ Agregar grupo de variantes</button>` : '<p class="pnota" style="margin:6px 0">Máximo 3 grupos por producto.</p>'}
     </div>`;
 }
@@ -4775,12 +4797,11 @@ function obtenerCategorias(){
   if (Array.isArray(state.config.categorias) && state.config.categorias.length){
     return state.config.categorias.slice();
   }
-  const cats = Array.from(new Set(productosActivos().map(p => p.categoria).filter(Boolean))).sort();
-  if (cats.length){
-    state.config.categorias = cats;
-    saveConfig("categorias", cats);
-  }
-  return cats;
+  /* Solo LEE: esto se llama al dibujar cualquier pantalla (también para visitas sin sesión). Antes aquí mismo se
+     guardaba la lista en Firestore: una visita fallaba con "Error al guardar" y, si los datos aún no habían
+     llegado, se podía grabar una lista de categorías equivocada. La lista se guarda recién cuando el dueño
+     agrega, renombra o elimina una categoría. */
+  return Array.from(new Set(productosActivos().map(p => p.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, "es"));
 }
 
 async function agregarCategoria(nombre){
@@ -4921,7 +4942,7 @@ function renderPanelCats(){
   const cats = obtenerCategorias();
 
   if (!cats.length){
-    wrap.innerHTML = '<p class="pnota">Sin categorías todavía. Creá la primera abajo.</p>';
+    wrap.innerHTML = '<p class="pnota">Sin categorías todavía. Crea la primera abajo.</p>';
     return;
   }
 
@@ -5030,7 +5051,9 @@ function renderPanelProds(){
   if (!wrap) return;
   const ae = document.activeElement;
   if (wrap.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
-  const cats = Array.from(new Set([...(Array.isArray(state.config.categorias) ? state.config.categorias : []), ...FILTROS.slice(1)])).sort((a, b) => a.localeCompare(b, "es"));
+  /* Una sola lista de categorías: la de "Categorías" (config.categorias). Antes se mezclaba con las que usaban los
+     productos y aparecía, por ejemplo, "Hamburguesas" en una tienda de pasteles. */
+  const cats = obtenerCategorias();
   wrap.innerHTML = porOrden(state.productos).map(p => {
     const fila = `
       <div class="prow ${p.activo === false ? "inactivo" : ""}">
@@ -5054,10 +5077,11 @@ function renderPanelProds(){
         <textarea class="field pe" style="min-height:70px" data-pid="${esc(p.id)}" data-pf="descripcion">${esc(p.descripcion || "")}</textarea>${_sk("camposProducto") ? SKIN.camposProducto(p) : ""}
         <label class="plabel">Categoría</label>
         <select class="field pe" data-pid="${esc(p.id)}" data-pf="categoria">
+          ${!p.categoria || !cats.includes(p.categoria) ? `<option value="" ${!p.categoria ? "selected" : ""} disabled>Elige una categoría</option>` : ""}
+          ${p.categoria && !cats.includes(p.categoria) ? `<option value="${esc(p.categoria)}" selected>${esc(p.categoria)} (ya no está en tu lista)</option>` : ""}
           ${cats.map(f => `<option value="${esc(f)}" ${f === p.categoria ? "selected" : ""}>${esc(f)}</option>`).join("")}
-          <option value="__nueva__">✏️ Escribir nueva...</option>
         </select>
-        ${!cats.length || p.categoria === "__nueva__" ? `<input class="field pe" style="margin-top:6px" data-pid="${esc(p.id)}" data-pf="categoria" value="${esc(p.categoria !== "__nueva__" ? p.categoria : "")}" placeholder="Nueva categoría">` : ""}
+        ${!cats.length ? `<p class="pnota" style="margin:6px 0 0">Primero crea una categoría arriba, en «Categorías».</p>` : ""}
         <button class="pill pill-outline pill-sm panel-full" data-imgprod="${esc(p.id)}">🖼 Cambiar imagen</button>
         <div class="switch-row">
           <span>Activo</span>
@@ -5172,7 +5196,7 @@ function _desactivarModoBorrador(){
 }
 function _cerrarPanel(){
   if (_pendingChanges.length){
-    const guardar = confirm("Tenés " + _pendingChanges.length + " cambio(s) sin guardar.\n\nAceptar = Guardar y cerrar\nCancelar = Descartar y cerrar");
+    const guardar = confirm("Tienes " + _pendingChanges.length + " cambio(s) sin guardar.\n\nAceptar = Guardar y cerrar\nCancelar = Descartar y cerrar");
     if (guardar){ _commitPending().then(_doCerrarPanel); return; }
     for (const ch of _pendingChanges){
       applyLocal(ch.col, ch.doc, ch.field, ch.oldValue);
@@ -5738,7 +5762,7 @@ function initPanel(){
     const max = state.productos.reduce((m, p) => Math.max(m, p.orden || 0), 0);
     const nuevo = {
       nombre: "Nuevo producto", precio: 0, descripcion: "",
-      categoria: "Hamburguesas", imagen: DEMO_IMAGES.burger1,
+      categoria: (obtenerCategorias()[0] || ""), imagen: DEMO_IMAGES.burger1,
       activo: true, orden: max + 1
     };
     if (_sk("productoNuevo")) Object.assign(nuevo, SKIN.productoNuevo(nuevo));
@@ -7010,7 +7034,7 @@ async function boot(){
       db.doc("usuarios/" + u.uid).get().then(function(doc){
         var roles = doc.exists ? (doc.data().roles || {}) : {};
         if (roles[STORE_ID]){
-          toast("⚠️ Estás en 'Mi cuenta' con tu cuenta de administrador — salí de acá antes de entrar al devmode");
+          toast("⚠️ Estás en 'Mi cuenta' con tu cuenta de administrador — sal de aquí antes de entrar al devmode");
         }
       }).catch(function(){});
       /* Si el usuario se logueó estando en el checkout gate → avanzar al form */
@@ -8501,7 +8525,7 @@ function v25Abrir(p){
   if (comida && !p.permitePersonalizacion){
     if (!prefs){
       prefs = document.createElement("div"); prefs.id = "pdPrefs";
-      prefs.innerHTML = '<label for="pdNota"><b>Preferencias</b><small>Cuéntanos algún requisito en especial</small></label><textarea id="pdNota" maxlength="140" placeholder="Ej: sin sal, bien cocida"></textarea>';
+      prefs.innerHTML = '<label for="pdNota"><b>Preferencias</b><small>Cuéntanos algún requisito en especial</small></label><textarea id="pdNota" maxlength="140" placeholder="Ej: color, talla o un mensaje para la tarjeta"></textarea>';
       var ancla = document.getElementById("prodDetExtras") || document.getElementById("prodDetVariantes");
       ancla.parentNode.insertBefore(prefs, ancla.nextSibling);
       prefs.querySelector("textarea").addEventListener("input", function(e){ _prodDetTextoPersonal = e.target.value; });
@@ -8576,6 +8600,18 @@ function hsCss(){
     "  .hs-in:not(.hs-doble) .hs-vid{margin-left:0}",
     "  .hs-txt.hs-corta{-webkit-line-clamp:9}",
     "}",
+    /* estilo del texto (fuente, tamaño, alineación, formato) */
+    ".hs .hs-txt{font-size:calc(var(--hs-s,15.5px)*var(--hs-m,1))}",
+    ".hs .hs-tit{font-size:calc(var(--hs-ts,26px)*var(--hs-m,1))}",
+    "@media (min-width:1024px){.hs{--hs-s:17px;--hs-ts:34px}}",
+    ".hs[data-t=p]{--hs-s:13.5px;--hs-ts:22px}.hs[data-t=g]{--hs-s:18.5px;--hs-ts:30px}",
+    "@media (min-width:1024px){.hs[data-t=p]{--hs-s:15px;--hs-ts:28px}.hs[data-t=g]{--hs-s:20px;--hs-ts:40px}}",
+    ".hs[data-f=playfair]{--hs-fam:'Playfair Display',Georgia,serif}.hs[data-f=lora]{--hs-fam:'Lora',Georgia,serif}",
+    ".hs[data-f=dancing]{--hs-fam:'Dancing Script','Segoe Script',cursive;--hs-m:1.2}.hs[data-f=moderna]{--hs-fam:'Plus Jakarta Sans',sans-serif}",
+    ".hs[data-f] .hs-txt{font-family:var(--hs-fam)}",
+    ".hs[data-f] .hs-tit{font-family:var(--hs-fam);text-transform:none;font-weight:700;letter-spacing:0;line-height:1.12}",
+    ".hs[data-a=c] .hs-tit{flex:1;text-align:center}.hs[data-a=c] .hs-txt{text-align:center}.hs[data-a=c] .hs-mas{display:block;margin:0 auto}",
+    ".hs[data-n=\"1\"] .hs-txt{font-weight:700}.hs[data-c=\"1\"] .hs-txt{font-style:italic}",
     /* panel */
     ".hs-pv{display:flex;align-items:center;gap:12px;margin:14px 0 10px;padding:10px;border:1px solid #E6E1DD;border-radius:14px;background:#FAF8F6}",
     ".hs-pv-img{width:64px;height:64px;border-radius:10px;background:#1A1A1A center/cover no-repeat;flex:none}",
@@ -8583,7 +8619,10 @@ function hsCss(){
     ".hs-barra{height:8px;border-radius:99px;background:#EDE8E4;overflow:hidden;margin:12px 0 6px}",
     ".hs-barra i{display:block;height:100%;width:0;background:var(--rojo);border-radius:99px;transition:width .25s}",
     ".hs-cuenta{font-size:11.5px;font-weight:700;color:#8A8580;text-align:right;margin:4px 0 10px}",
-    "#hsPanel textarea.field{min-height:132px;resize:vertical;line-height:1.5;font-family:inherit}"
+    "#hsPanel textarea.field{min-height:132px;resize:vertical;line-height:1.5;font-family:inherit}",
+    "#hsPanel .voc-chips button{padding:8px 13px;font-size:13.5px}",
+    "#hsEj.hs{padding:14px 14px 12px;border:1px solid #E6E1DD;border-radius:14px;margin:10px 0 0;background:var(--blanco,#fff)}",
+    "#hsEj .hs-cab{margin:0 0 6px}#hsEj .hs-tit{font-size:calc(var(--hs-ts,26px)*var(--hs-m,1)*.85)}"
   ].join("\n");
   document.head.appendChild(st);
 }
@@ -8592,6 +8631,41 @@ function _hsDatos(){
   return { tit: String(c.historiaTitulo || "").trim().slice(0, 60), txt: String(c.historiaTexto || "").trim().slice(0, 900),
            vid: v && typeof v === "object" && typeof v.url === "string" && v.url ? v : null,
            activa: c.historiaActiva !== false };
+}
+/* Estilo del texto de la historia. Todo es opcional: sin elegir nada queda el diseño de siempre. */
+/* tabla dentro de una función: renderAll puede correr antes de que el archivo llegue hasta acá */
+function _hsF(){ return _hsF.t || (_hsF.t = {
+  "":        { n: "Predeterminada", q: "" },
+  "moderna": { n: "Moderna",  q: "" },
+  "playfair":{ n: "Elegante", q: "Playfair+Display:wght@400;700" },
+  "lora":    { n: "Clásica",  q: "Lora:wght@400;700" },
+  "dancing": { n: "Manuscrita", q: "Dancing+Script:wght@500;700" }
+}); }
+function _hsEstilo(){
+  var c = state.config || {};
+  return {
+    f: Object.prototype.hasOwnProperty.call(_hsF(), c.historiaFuente) ? c.historiaFuente : "",
+    t: (c.historiaTam === "p" || c.historiaTam === "g") ? c.historiaTam : "m",
+    a: c.historiaAlin === "c" ? "c" : "i",
+    n: c.historiaNegrita === true, c: c.historiaCursiva === true
+  };
+}
+function _hsAtributos(el, e){
+  if (!el) return;
+  var q = function(k, v){ if (v) el.setAttribute(k, v); else el.removeAttribute(k); };
+  q("data-f", e.f); q("data-t", e.t === "m" ? "" : e.t); q("data-a", e.a === "c" ? "c" : ""); q("data-n", e.n ? "1" : ""); q("data-c", e.c ? "1" : "");
+}
+/* Las fuentes de Google se piden solo si hacen falta: la que eligió el dueño para sus clientes;
+   todas, cuando el dueño abre el panel para elegir. */
+function _hsFuentes(todas){
+  try {
+    var e = _hsEstilo(), lista = todas ? Object.keys(_hsF()) : [e.f];
+    lista.forEach(function(k){
+      var q = _hsF()[k] && _hsF()[k].q; if (!q || document.getElementById("hs-font-" + k)) return;
+      var l = document.createElement("link"); l.id = "hs-font-" + k; l.rel = "stylesheet";
+      l.href = "https://fonts.googleapis.com/css2?family=" + q + "&display=swap"; document.head.appendChild(l);
+    });
+  } catch(x){}
 }
 function _hsParrafos(t){
   return String(t).split(/\n\s*\n/).map(function(p){ return p.trim(); }).filter(Boolean)
@@ -8615,6 +8689,7 @@ function hsRender(){
   else if (!sec.parentNode) ini.appendChild(sec);
   /* sin contenido solo la ve el dueño en modo edición (no en la vista previa de cliente) */
   sec.classList.toggle("hs-solo-dev", !hay || !d.activa);
+  _hsAtributos(sec, _hsEstilo()); _hsFuentes(false);
   var k = JSON.stringify([d.tit, d.txt, d.vid, hay, d.activa]);
   if (_hs.k === k) return;
   _hs.k = k; _hs.abierto = false;
@@ -8644,6 +8719,7 @@ function hsRender(){
   if (tx && mas && tx.clientHeight > 0 && tx.scrollHeight <= tx.clientHeight + 4){ tx.classList.remove("hs-corta"); mas.remove(); }
 }
 document.addEventListener("click", function(e){
+  if (e.target && e.target.closest && e.target.closest("#btnPanel, #hsDev")) _hsFuentes(true);
   var t = e.target && e.target.closest ? e.target.closest("#hsMas, #hsDev, #hsOcultar, #hsMostrar") : null;
   if (!t) return;
   if (t.id === "hsOcultar" || t.id === "hsMostrar"){ hsActivar(t.id === "hsMostrar"); return; }
@@ -8755,6 +8831,14 @@ function hsPanel(){
       '<label class="plabel" for="hsTxt">Texto</label><textarea class="field" id="hsTxt" maxlength="900" placeholder="Ej: Amasamos el pan cada mañana y ahumamos la carne 12 horas en leña de manzano…"></textarea>' +
       '<div class="hs-cuenta" id="hsCuenta">0 / 900</div>' +
       '<button type="button" class="pill pill-solid pill-sm panel-full" id="hsGuardar">Guardar texto</button>' +
+      '<b class="pcard-t" style="display:block;margin-top:16px">Estilo del texto</b>' +
+      '<p class="pnota" style="font-size:12.5px;margin:2px 0 0">Elige cómo se ve. Se guarda al tocar y lo ven tus clientes.</p>' +
+      '<label class="plabel">Fuente</label><div class="voc-chips" id="hsChFuente">' +
+        Object.keys(_hsF()).map(function(k){ return '<button type="button" data-hsf="' + k + '" data-fam="' + k + '">' + _hsF()[k].n + '</button>'; }).join("") + '</div>' +
+      '<label class="plabel">Tamaño</label><div class="voc-chips" id="hsChTam"><button type="button" data-hst="p">Pequeño</button><button type="button" data-hst="m">Normal</button><button type="button" data-hst="g">Grande</button></div>' +
+      '<label class="plabel">Alineación</label><div class="voc-chips" id="hsChAlin"><button type="button" data-hsa="i">Izquierda</button><button type="button" data-hsa="c">Centrado</button></div>' +
+      '<label class="plabel">Formato</label><div class="voc-chips" id="hsChFmt"><button type="button" data-hsn="1"><b>N</b>egrita</button><button type="button" data-hsc="1"><i>C</i>ursiva</button></div>' +
+      '<div class="hs" id="hsEj" aria-hidden="true"><div class="hs-cab"><h2 class="hs-tit">Nuestra historia</h2></div><div class="hs-txt"><p>Así se verá el texto que escribas arriba, con la fuente y el tamaño que elijas.</p></div></div>' +
       '<div class="hs-pv" id="hsPv"></div>' +
       '<input type="file" id="hsFile" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm" hidden>' +
       '<button type="button" class="pill pill-outline pill-sm panel-full" id="hsSubir">Subir video</button>' +
@@ -8774,6 +8858,18 @@ function hsPanel(){
       } finally { b.disabled = false; }
     });
     qs("#hsActiva").addEventListener("change", function(){ hsActivar(this.checked); });
+    box.addEventListener("click", async function(e){
+      var b = e.target.closest("[data-hsf],[data-hst],[data-hsa],[data-hsn],[data-hsc]"); if (!b) return;
+      var cur = _hsEstilo(), campo, valor;
+      if (b.hasAttribute("data-hsf")){ campo = "historiaFuente"; valor = b.getAttribute("data-hsf"); }
+      else if (b.hasAttribute("data-hst")){ campo = "historiaTam"; valor = b.getAttribute("data-hst"); }
+      else if (b.hasAttribute("data-hsa")){ campo = "historiaAlin"; valor = b.getAttribute("data-hsa"); }
+      else if (b.hasAttribute("data-hsn")){ campo = "historiaNegrita"; valor = !cur.n; }
+      else { campo = "historiaCursiva"; valor = !cur.c; }
+      var ok = await saveConfig(campo, valor);
+      if (ok !== false && typeof toast === "function") toast("✅ Estilo guardado");
+      hsRender(); hsPanelPintar();
+    });
     qs("#hsSubir").addEventListener("click", function(){ if (!_hs.subiendo) qs("#hsFile").click(); });
     qs("#hsFile").addEventListener("change", async function(){
       var f = this.files && this.files[0]; this.value = "";
@@ -8808,6 +8904,11 @@ function hsPanelPintar(conTextos){
     tit.value = d.tit; txt.value = d.txt; qs("#hsCuenta").textContent = txt.value.length + " / 900";
   }
   if (!tit._oye){ tit._oye = txt._oye = true; [tit, txt].forEach(function(x){ x.addEventListener("input", function(){ x._tocado = true; }); }); qs("#hsGuardar").addEventListener("click", function(){ tit._tocado = txt._tocado = false; }); }
+  var es = _hsEstilo(); _hsAtributos(qs("#hsEj"), es);
+  var marca = function(sel, attr, val){ qsa(sel).forEach(function(x){ var on = x.getAttribute(attr) === val; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on ? "true" : "false"); }); };
+  marca("#hsChFuente button", "data-hsf", es.f); marca("#hsChTam button", "data-hst", es.t); marca("#hsChAlin button", "data-hsa", es.a === "c" ? "c" : "i");
+  qsa("#hsChFmt button").forEach(function(x){ var on = x.hasAttribute("data-hsn") ? es.n : es.c; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on ? "true" : "false"); });
+  qsa("#hsChFuente button").forEach(function(x){ var f = x.getAttribute("data-hsf"); x.style.fontFamily = f === "playfair" ? "'Playfair Display',serif" : f === "lora" ? "'Lora',serif" : f === "dancing" ? "'Dancing Script',cursive" : ""; });
   var sw = qs("#hsActiva"), est = qs("#hsEstado");
   if (sw) sw.checked = d.activa;
   if (est) est.textContent = !d.activa ? "Oculta: tus clientes no la ven." : (d.txt || d.vid) ? "Visible en tu tienda." : "Se verá cuando escribas el texto o subas un video.";
@@ -9032,7 +9133,7 @@ function vocIconoId(palabra){
 function vocIconoSvg(palabra){ return _vocIc()[vocIconoId(palabra)]; }
 
 /* ── Secciones que el dueño puede ocultar ── */
-function _secCampo(k){ return { promos: "mostrarPromos", cupones: "mostrarCupones", locales: "mostrarLocales" }[k]; }
+function _secCampo(k){ return { promos: "mostrarPromos", destacados: "mostrarDestacados", cupones: "mostrarCupones", locales: "mostrarLocales" }[k]; }
 function secOculta(k){
   if (!vocActiva() || !_secCampo(k)) return false;
   return (state.config || {})[_secCampo(k)] === false;
@@ -9044,10 +9145,12 @@ function secCss(){
   var dev = "body.dev-on:not(.preview-cliente)";
   st.textContent = [
     "body.sec-sin-promos #bloquePromos, body.sec-sin-promos #v24Promos{display:none!important}",
+    "body.sec-sin-destacados #vtCarrWrap{display:none!important}",
     "body.sec-sin-cupones #tabbar .tab[data-page='cupones'], body.sec-sin-cupones .mlink[data-go='cupones'], body.sec-sin-cupones #cupApply, body.sec-sin-cupones [data-sec-cupones]{display:none!important}",
     "body.sec-sin-locales #tabbar .tab[data-page='locales'], body.sec-sin-locales .mlink[data-go='locales']{display:none!important}",
     /* el dueño que está editando las sigue viendo, atenuadas */
     dev + ".sec-sin-promos #v24Promos{display:block!important;opacity:.45}",
+    dev + ".sec-sin-destacados #vtCarrWrap{display:block!important;opacity:.45}",
     dev + ".sec-sin-promos #v24Promos .v24-tit::after{content:'Oculta para tus clientes';margin-left:8px;font-size:11px;font-weight:800;color:#8A8A8A}",
     dev + ".sec-sin-cupones #tabbar .tab[data-page='cupones'], " + dev + ".sec-sin-locales #tabbar .tab[data-page='locales']{display:flex!important;opacity:.4}",
     dev + ".sec-sin-cupones .mlink[data-go='cupones'], " + dev + ".sec-sin-locales .mlink[data-go='locales']{display:block!important;opacity:.5}",
@@ -9088,7 +9191,7 @@ function secAplicar(){
   try {
     secCss();
     var b = document.body; if (!b) return;
-    ["promos", "cupones", "locales"].forEach(function(k){ b.classList.toggle("sec-sin-" + k, secOculta(k)); });
+    ["promos", "destacados", "cupones", "locales"].forEach(function(k){ b.classList.toggle("sec-sin-" + k, secOculta(k)); });
     secPie();
     var h = (location.hash || "").replace("#", "").split("?")[0];
     if ((h === "cupones" || h === "locales") && secOculta(h) && !secEditando()) irPagina("inicio");
@@ -9119,6 +9222,7 @@ function secPanel(){
     box.innerHTML = '<b class="pcard-t">Secciones de tu tienda</b>' +
       '<p class="pnota" style="font-size:12.5px;margin:2px 0 0">Todo está visible. Apaga lo que no quieras mostrar a tus clientes; tú lo seguirás viendo atenuado mientras editas.</p>' +
       fila("promos", "Promociones", "Los banners y los productos en promoción del inicio") +
+      fila("destacados", "Destacados", "El carrusel de productos destacados al comienzo del inicio") +
       fila("cupones", "Cupones", "La pestaña y el campo del código al pagar") +
       fila("locales", "Locales", "La pestaña. Si la apagas, la dirección y el horario salen al final de la página");
     ref.parentNode.insertBefore(box, ref.nextSibling);

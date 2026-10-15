@@ -933,7 +933,7 @@ html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
     <div id="emptyState" class="oculto">
       <div class="empty-ico">📭</div>
       <div class="empty-tit">Sin pedidos aquí</div>
-      <div class="empty-sub">Cuando lleguen nuevos pedidos aparecerán acá</div>
+      <div class="empty-sub">Cuando lleguen nuevos pedidos aparecerán aquí</div>
     </div>
     <div class="marca-dl sutil" id="marcaDL" role="img" aria-label="DerLabs"></div>
   </div>
@@ -1067,7 +1067,7 @@ html[data-tema="claro"] .marca-dl.sutil{opacity:.5}
   </div>
   <div style="position:relative;flex:1;display:flex">
     <div id="mapaCanvas"></div>
-    <div class="mapa-vacio oculto" id="mapaVacio">Ningún repartidor está compartiendo su ubicación ahora. Aparecen aquí apenas tocan "Salí con el pedido".</div>
+    <div class="mapa-vacio oculto" id="mapaVacio">Ningún repartidor está compartiendo su ubicación ahora. Aparecen aquí apenas tocan "Salir con el pedido".</div>
   </div>
 </div>
 
@@ -1484,7 +1484,7 @@ qs("#btnLogin").addEventListener("click", function(){
   var pass  = qs("#loginPass").value;
   var err   = qs("#loginErr");
   err.textContent = "";
-  if(!email || !pass){ err.textContent = "Completá los campos."; return; }
+  if(!email || !pass){ err.textContent = "Completa los campos."; return; }
   var btn = qs("#btnLogin");
   btn.disabled = true;
   btn.textContent = "Entrando…";
@@ -1495,7 +1495,7 @@ qs("#btnLogin").addEventListener("click", function(){
       "auth/wrong-password":"Contraseña incorrecta.",
       "auth/user-not-found":"No existe esa cuenta.",
       "auth/invalid-email":"Email inválido.",
-      "auth/too-many-requests":"Demasiados intentos. Esperá un momento.",
+      "auth/too-many-requests":"Demasiados intentos. Espera un momento.",
       /* Firebase unificó "contraseña incorrecta" y "usuario no existe"
          bajo este único código hace tiempo, por seguridad (así no se
          puede usar el mensaje de error para adivinar qué emails están
@@ -1504,7 +1504,7 @@ qs("#btnLogin").addEventListener("click", function(){
          cuál de los dos era. */
       "auth/invalid-credential":"Email o contraseña incorrectos.",
       "auth/user-disabled":"Esta cuenta fue deshabilitada — revisala en Firebase Console → Authentication.",
-      "auth/network-request-failed":"Sin conexión — revisá tu red e intentá de nuevo."
+      "auth/network-request-failed":"Sin conexión — revisa tu red e intenta de nuevo."
     };
     err.textContent = msgs[e.code] || ("Error al iniciar sesión (" + e.code + ").");
   });
@@ -1687,7 +1687,7 @@ function iniciarListenerPedidos(){
          se lo mostramos al vendedor en vez de dejarlo solo con "sin
          conexión", que no explica qué pasa de verdad. */
       if(err && err.code === "failed-precondition"){
-        mostrarToast("⚠️ Falta un índice de Firestore — revisá la consola del navegador para el link que lo crea", 8000, true);
+        mostrarToast("⚠️ Falta un índice de Firestore — revisa la consola del navegador para el link que lo crea", 8000, true);
       }
     }
   );

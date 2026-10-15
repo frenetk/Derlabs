@@ -316,7 +316,7 @@ function tarjeta(p){
   let boton = "";
   if (p.estado === "camino") boton = `<button class="btn btn-entregar principal" data-entregar="${esc(p.id)}">✅ Entregado</button>`;
   else if (p.estado === "nuevo") boton = `<div class="espera">⏳ El local aún no empieza a preparar este pedido. Podrás salir cuando esté en preparación.</div>`;
-  else if (p.estado !== "listo") boton = `<button class="btn btn-salir principal" data-salir="${esc(p.id)}">🛵 Salí con el pedido</button>`;
+  else if (p.estado !== "listo") boton = `<button class="btn btn-salir principal" data-salir="${esc(p.id)}">🛵 Salir con el pedido</button>`;
   return `
     <div class="card ${esc(p.estado)}">
       <div class="c-top"><span class="c-id">${esc(p.id)}</span><span class="badge b-${esc(p.estado)}">${ETQ[p.estado] || esc(p.estado)}</span></div>

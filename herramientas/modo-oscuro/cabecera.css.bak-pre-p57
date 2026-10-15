@@ -1,0 +1,37 @@
+/* ════════════════════════════════════════════════════════════════
+   P48 — MODO OSCURO de la tienda de comida
+   Se activa con <html data-tema="oscuro"> (config.temaComida = "oscuro",
+   panel → Diseño de la tienda → Colores). Es solo un cambio de colores:
+   no mueve ni cambia el tamaño de nada.
+
+   Cómo funciona:
+   · Los colores oscuros son las variables --o-* y solo existen dentro de
+     las partes que ve el cliente (lista de abajo). Cada regla dice
+     var(--o-algo, color-de-siempre): fuera de esas partes (panel de
+     administración, barra DEV, etc.) la variable no existe y queda el
+     color de siempre. Por eso el panel sigue claro.
+   · Los textos, íconos y bordes que en la tienda clara van con el color de
+     la marca (precios, nombre de la tienda, enlaces, borde de los botones
+     de contorno) van en dorado: --o-marca. Los botones rellenos conservan
+     el color de la marca.
+   · La parte 1 repite las reglas de color de la tienda, en el mismo orden,
+     cambiando solo los colores. La parte 2 son retoques a mano.
+   Si el navegador es muy antiguo y no entiende :is(), no se aplica nada
+   y la tienda se ve clara, como siempre.
+   ════════════════════════════════════════════════════════════════ */
+@supports selector(:is(a, b)){
+html[data-tema="oscuro"] :where(.wrapper,#btnFloat,#tabbar,#cartSheet,#cookiesModal,#dirModal,#cliPedModal,#toast,.gp-drop,.vt-hoja,#vtAyuda,#pdBar,#splashScreen){
+  color-scheme:dark;
+  --o-fondo:#0D0D0D;--o-sup:#1B1B1B;--o-sup2:#262626;--o-sup3:#3D3D3D;
+  --o-linea:#2E2E2E;--o-linea2:#4A4A4A;
+  --o-txt:#F5F5F5;--o-txt2:#A6A6A6;--o-txt3:#909090;
+  --o-vidrio:rgba(13,13,13,.94);
+  --o-a1:rgba(255,255,255,.06);--o-a2:rgba(255,255,255,.09);--o-a3:rgba(255,255,255,.15);--o-a4:rgba(255,255,255,.22);
+  --o-marca:#DDB65B;--o-sobre:var(--osc-marca-sobre,#FFFFFF);
+  --o-c-verde:#7DDB9C;--o-c-azul:#8FBCFF;--o-c-rojo:#FF9A9A;--o-c-ambar:#FFBE6B;--o-c-morado:#D6ACF7;
+  --o-t-verde:#1D3326;--o-t-azul:#1C2B42;--o-t-rojo:#3B2020;--o-t-ambar:#3A2C13;--o-t-morado:#302244;
+  --o-b-verde:rgba(125,219,156,.38);--o-b-azul:rgba(143,188,255,.38);--o-b-rojo:rgba(255,154,154,.38);--o-b-ambar:rgba(255,190,107,.38);--o-b-morado:rgba(214,172,247,.38);
+  --blanco:var(--o-fondo);--crema:var(--o-sup);--texto:var(--o-txt);--muted:var(--o-txt2);--borde:var(--o-linea);
+  --rojo:var(--osc-marca,#9B1B30);--rojo-h:var(--osc-marca-h,#C4273A);--rojo-texto:var(--osc-marca-sobre,#FFFFFF);
+  color:var(--o-txt);
+}
