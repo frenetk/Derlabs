@@ -85,7 +85,7 @@ html body.v-app .vt-track:has(> :only-child) > *{flex-basis:100%}
 html body.v-app .vt-track > .hero .hero-content,
 html body.v-app .vt-sl-txt{padding:56px 28px 26px}
 html body.v-app .vt-track > .hero .hero-title,
-html body.v-app .vt-sl-tit{font-size:46px}
+html body.v-app .vt-sl-tit{font-size:30px}
 html body.v-app .vt-track > .hero .hero-sub,
 html body.v-app .vt-sl-desc{font-size:16px}
 html body.v-app .vt-sl-add{font-size:15px;padding:11px 18px}

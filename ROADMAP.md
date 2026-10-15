@@ -1352,3 +1352,5 @@ idéntico pixel a pixel.
 7. **Destacados ocultable** (junto a Promociones, Cupones y Locales, en "Secciones de tu tienda").
 8. **Logo del encabezado más grande** (celular): con logo de la tienda, la barra de arriba pasa de 72 a 84 px
    (el logo de 62 a 74 px de alto). Solo `index.html` (comida); escritorio, retail y boutique igual.
+9. **Nombres de los destacados más chicos** (P59): carrusel de inicio, celular 26–32 px → 18–22 px (máx. 2 líneas, con
+   sombra suave) y portada 28–36 px → 20–24 px; escritorio 46 → 30 px. Para que no tapen la foto.

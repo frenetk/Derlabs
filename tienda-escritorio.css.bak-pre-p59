@@ -1,0 +1,227 @@
+/* ════════════════════════════════════════════════════════════════
+   P45 — TIENDA DE COMIDA EN ESCRITORIO (index.html, desde 1024 px)
+   Se carga con media="(min-width:1024px)": en celular no aplica nada.
+   No toca retail ni boutique (esas plantillas no enlazan este archivo).
+   Los selectores llevan "html body" delante para ganarle a los estilos
+   que app.js inyecta después (vitrina App, menú v24, hoja de producto).
+   ════════════════════════════════════════════════════════════════ */
+html{--dk-pad:max(32px, calc((100vw - 1200px) / 2 + 32px))}
+html body{background:#fff;--nav-h:76px}
+html body.con-logo{--nav-h:76px}
+html body.dk-nav{--tab-h:0px}
+html body .wrapper{max-width:none;box-shadow:none;padding-bottom:0;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── Cabecera única: logo · secciones · Mi cuenta · Tu pedido ── */
+html body .navbar,
+html body.v-app[data-page='inicio'] .navbar{
+  position:sticky;top:0;left:auto;right:auto;height:var(--nav-h);
+  padding:0 var(--dk-pad);gap:28px;justify-content:flex-start;
+  background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.08);pointer-events:auto;z-index:130;
+}
+html body.dev-on .navbar,
+html body.dev-on.v-app[data-page='inicio'] .navbar{top:44px}
+html body.preview-cliente .navbar{top:0}
+html body.dk-nav #btnBurger,
+html body.dk-nav #btnBack{display:none!important}
+html body .navbar .logo,
+html body.v-app[data-page='inicio'] .navbar #logoTop{
+  position:static;transform:none;visibility:visible;flex:none;order:0;
+  max-width:340px;overflow:visible;justify-content:flex-start;
+  height:calc(var(--nav-h) - 24px);font-size:30px;letter-spacing:2px;
+}
+html body .navbar .logo img{max-height:100%}
+html body .navbar #tabbar{
+  position:static;transform:none;left:auto;bottom:auto;width:auto;max-width:none;height:auto;
+  flex:1;display:flex!important;align-items:center;gap:4px;
+  padding:0;background:none;border:0;box-shadow:none;z-index:auto;
+}
+html body .navbar #tabbar .tab{
+  flex:none;flex-direction:row;gap:8px;height:44px;padding:0 16px;border-radius:999px;
+  font-size:15px;font-weight:700;color:var(--texto);
+}
+html body .navbar #tabbar .tab .t-svg{display:none}
+html body .navbar #tabbar .tab:hover{background:var(--crema,#FBF7F5)}
+html body .navbar #tabbar .tab.active{background:var(--crema,#FBF7F5);color:var(--rojo);font-weight:800}
+html body .navbar #tabbar .tab[data-page="cuenta"]{margin-left:auto;border:1.5px solid #E2D9D3;padding:0 16px 0 12px}
+html body .navbar #tabbar .tab[data-page="cuenta"] .t-svg{display:block;width:19px;height:19px}
+html body .navbar #btnCart,
+html body.v-app[data-page='inicio'] .navbar #btnCart{
+  flex:none;width:auto;height:44px;padding:0 18px 0 14px;gap:8px;border-radius:999px;
+  background:var(--rojo);color:var(--rojo-texto,#fff);box-shadow:none;
+  font-family:inherit;font-size:15px;font-weight:800;
+}
+html body .navbar #btnCart::after{content:"Tu pedido";order:1}
+html body .navbar #btnCart .ico-svg{width:20px;height:20px}
+html body .navbar #cartBadge{position:static;order:2;background:#fff;color:var(--rojo);min-width:22px;height:22px;font-size:12.5px}
+html body .navbar #cartBadge.oculto{display:none}
+
+/* ── Contenedor común de todas las secciones ── */
+html body .page{width:100%;max-width:1200px;margin:0 auto;padding-left:32px;padding-right:32px;box-sizing:border-box}
+html body .page.active{padding-bottom:56px}
+html body .bloque{padding:0;margin-bottom:44px}
+html body .hero{margin:28px 0 0}
+html body .puntos-banner{margin:0 0 44px}
+html body #popularesList{padding:0}
+html body .sec-title{font-size:40px}
+html body .footer-cr{padding:44px var(--dk-pad) 48px;margin-top:auto}
+
+/* ── Inicio (estilo App): ficha de la tienda a la izquierda, destacados a la derecha, menú debajo ── */
+html body.v-app #page-inicio.active{
+  display:grid;grid-template-columns:400px minmax(0,1fr);gap:8px 32px;align-items:stretch;padding-top:28px;
+}
+html body.v-app #page-inicio > *{grid-column:1 / -1;min-width:0}
+html body.v-app #page-inicio > #vtCab{
+  grid-column:1;margin:0;padding-bottom:18px;background:#fff;
+  border:1px solid #EFE6E0;border-radius:24px;overflow:hidden;
+}
+html body.v-app #page-inicio > #vtCarrWrap{grid-column:2;padding:0;display:flex;flex-direction:column}
+html body.v-app .vt-tit{padding:0 4px 12px}
+html body.v-app .vt-tit h2{font-size:32px}
+html body.v-app .vt-tit button{font-size:14.5px}
+html body.v-app .vt-carr{flex:1;display:flex;min-height:300px}
+html body.v-app .vt-track{flex:1;padding:0;gap:14px;border-radius:22px}
+html body.v-app .vt-track > *{flex-basis:calc(100% - 72px)}
+html body.v-app .vt-track:has(> :only-child) > *{flex-basis:100%}
+html body.v-app .vt-track > .hero .hero-content,
+html body.v-app .vt-sl-txt{padding:56px 28px 26px}
+html body.v-app .vt-track > .hero .hero-title,
+html body.v-app .vt-sl-tit{font-size:46px}
+html body.v-app .vt-track > .hero .hero-sub,
+html body.v-app .vt-sl-desc{font-size:16px}
+html body.v-app .vt-sl-add{font-size:15px;padding:11px 18px}
+html body.v-app .vt-segs{left:28px;right:28px;top:18px}
+html body.v-app .vt-dots{padding-top:14px}
+
+html body.v-app .v24-sec{padding:34px 0 0}
+html body.v-app .v24-tit{margin:0 0 12px}
+html body.v-app .v24-tit h2{font-size:32px}
+html body.v-app .v24-tabs{top:var(--nav-h);margin:0;padding:12px 0;gap:8px}
+html body.v-app.dev-on .v24-tabs{top:calc(var(--nav-h) + 44px)}
+html body.v-app .v24-tabs button{padding:10px 18px;font-size:14.5px}
+html body.v-app .v24-cat{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:44px;
+  scroll-margin-top:calc(var(--nav-h) + 72px);
+}
+html body.v-app .v24-cat h3{grid-column:1 / -1;margin:28px 0 4px;font-size:26px}
+html body.v-app .v24-item{padding:16px 4px;gap:16px}
+html body.v-app .v24-item:hover .v24-iinf b{color:var(--rojo)}
+html body.v-app .v24-iinf b{font-size:16.5px}
+html body.v-app .v24-iinf p{font-size:13.5px}
+html body.v-app .v24-ipr{font-size:15.5px}
+html body.v-app .v24-ithumb{width:108px;height:108px}
+html body.v-app .v24-ithumb .v24-add{width:38px;height:38px}
+html body.v-app #v24Promos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+html body.v-app #v24Promos > .v24-tit,
+html body.v-app #v24Promos > .v24-vacio{grid-column:1 / -1}
+html body.v-app #v24Promos .v24-promo{margin:0}
+
+/* ── Menú: categorías a la izquierda, productos en grilla ── */
+html body #page-menu.active{
+  display:grid;grid-template-columns:220px minmax(0,1fr);gap:0 36px;align-items:start;padding-top:32px;
+}
+html body #page-menu .filtros{
+  position:sticky;top:calc(var(--nav-h) + 24px);z-index:1;
+  display:flex;flex-direction:column;align-items:stretch;gap:4px;
+  padding:0;margin:0;overflow:visible;background:none;border:0;box-shadow:none;
+}
+html body.dev-on #page-menu .filtros{top:calc(var(--nav-h) + 68px)}
+html body #page-menu .filtros::before{
+  content:"Categorías";padding:0 14px 8px;
+  font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);
+}
+html body #page-menu .fpill{
+  flex:none;width:100%;text-align:left;border-radius:12px;padding:11px 14px;
+  font-size:15px;background:transparent;color:var(--texto);
+}
+html body #page-menu .fpill:hover{background:var(--crema,#FBF7F5)}
+html body #page-menu .fpill.active{background:var(--rojo);color:var(--rojo-texto,#fff)}
+html body .menu-list,
+html body #popularesList{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;padding:0;
+}
+html body .menu-list .prod-item,
+html body #popularesList .prod-item{
+  display:flex;flex-direction:column;padding:14px;margin:0;
+  border:1px solid #E9E2DC;border-radius:20px;box-shadow:none;background:#fff;
+}
+html body .menu-list .prod-item:hover,
+html body #popularesList .prod-item:hover{border-color:#CFC4BC}
+html body .menu-list .prod-img,
+html body #popularesList .prod-img{width:100%;height:172px;border-radius:14px;flex:none}
+html body .menu-list .prod-info,
+html body #popularesList .prod-info{flex:1;margin-top:14px}
+html body .menu-list .prod-item > .pill,
+html body #popularesList .prod-item > .pill{margin-top:14px;width:100%}
+
+/* ── Página de producto: foto a la izquierda, datos y compra a la derecha ── */
+html body #page-producto.active{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 44px;align-items:start;
+  padding:32px 32px 48px;
+}
+html body #page-producto > div:first-of-type{position:sticky!important;top:calc(var(--nav-h) + 28px)}
+html body.dev-on #page-producto > div:first-of-type{top:calc(var(--nav-h) + 72px)}
+html body #prodDetImg{border-radius:24px;min-height:380px;display:flex;align-items:center}
+html body #prodDetImgEl{max-height:560px}
+html body #page-producto > div:last-of-type{padding:4px 0 8px!important}
+html body #prodDetNombre{font-size:36px!important;line-height:1.1}
+html body #prodDetDesc{font-size:16px!important}
+/* La barra de cantidad + Agregar vive dentro de la columna derecha (app.js la mueve en escritorio) */
+html body #page-producto #pdBar{
+  position:sticky;bottom:20px;left:auto;right:auto;transform:none;width:auto;max-width:none;margin-top:28px;
+  padding:10px 12px 10px 18px;border-radius:999px;border:1px solid rgba(0,0,0,.08);
+  box-shadow:0 12px 32px rgba(0,0,0,.14);
+}
+
+/* ── Checkout: datos a la izquierda, resumen fijo a la derecha ── */
+html body #page-checkout.active{
+  display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:0 40px;align-items:start;
+}
+html body #page-checkout > *{min-width:0}
+html body .ck-wrap{padding:36px 0 56px;max-width:none}
+html body #ckForm{max-width:640px}
+html body #ckResumen{
+  position:sticky;top:calc(var(--nav-h) + 28px);left:auto;right:auto;bottom:auto;transform:none;
+  width:auto;max-width:none;margin:36px 0 40px;z-index:1;
+  padding:6px 20px 20px;border-radius:20px;border:1px solid #EFE6E0;box-shadow:none;
+}
+html body.dev-on #ckResumen{top:calc(var(--nav-h) + 72px)}
+html body #ckResumen .ck-resumen-body{max-height:none!important;overflow:visible!important}
+html body #ckResumen .ck-resumen-handle{cursor:default;pointer-events:none;padding:14px 0 12px}
+html body #ckResumen .ck-resumen-handle-arrow{display:none}
+html body #ckResumen .ck-resumen-handle-label{font-size:16px;font-weight:800;color:var(--texto)}
+
+/* ── Cupones, locales, cuenta y confirmación ── */
+html body .cup-wrap,
+html body .loc-wrap{padding:36px 0 24px}
+html body #cuponesList,
+html body #localesList{grid-template-columns:repeat(3,minmax(0,1fr))}
+html body #page-cuenta .cup-wrap{max-width:760px;margin:0 auto}
+html body .conf-wrap{padding:56px 0 40px}
+
+/* ── Flotantes y hojas ── */
+html body.dk-nav .float-btn{display:none!important}
+html body #vtAyuda{left:auto;right:32px;bottom:28px}
+html body[data-page='producto'] #vtAyuda{display:none}
+html body #previewChip{left:32px;bottom:28px}
+html body #cartSheet .sheet-handle{display:none}
+html body #cartSheet:not(.open){box-shadow:none}
+html body .vt-hoja{
+  bottom:auto;top:50%;transform:translate(-50%,-46%);opacity:0;visibility:hidden;
+  border-radius:28px;max-height:86vh;padding:22px 22px 24px;
+  transition:transform .22s ease,opacity .22s ease,visibility .22s;
+}
+html body .vt-hoja.open{transform:translate(-50%,-50%);opacity:1;visibility:visible}
+html body .vt-hoja .vt-asa{display:none}
+
+@media (max-width:1180px){
+  html body .navbar{gap:16px}
+  html body .navbar .logo{font-size:26px;max-width:240px}
+  html body .navbar #tabbar .tab{padding:0 12px;font-size:14.5px}
+  html body.v-app #page-inicio.active{grid-template-columns:360px minmax(0,1fr);gap:8px 24px}
+  html body #page-menu.active{grid-template-columns:190px minmax(0,1fr);gap:0 24px}
+  html body #page-checkout.active{grid-template-columns:minmax(0,1fr) 360px;gap:0 28px}
+  html body #v24Promos{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Estilo Clásico: aire entre la portada y la primera sección */
+html body:not(.v-app) #page-inicio .hero{margin-bottom:44px}
