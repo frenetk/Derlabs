@@ -9116,6 +9116,8 @@ function vocIconoId(palabra){
   try { n = n.normalize("NFD").replace(/[̀-ͯ]/g, ""); } catch(e){}
   n = n.trim();
   var exacto = { "menu": "utensils", "carta": "libro", "pasteles": "pastel", "productos": "caja", "catalogo": "grilla", "vitrina": "vitrina", "servicios": "servicio" };
+  /* en una pastelería la vitrina es de pasteles: lleva la torta, no la tienda */
+  if (n === "vitrina" && ((state.config || {}).subrubro === "pasteleria")) return "pastel";
   if (exacto[n]) return exacto[n];
   var reglas = [
     [/torta|pastel|kuchen|dulce|postre|bizcoch|cupcake|queque|cake|reposter/, "pastel"],

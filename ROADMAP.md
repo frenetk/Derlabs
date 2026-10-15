@@ -1282,7 +1282,7 @@ El ícono de la barra de abajo ya no es siempre el de cubiertos:
 | Pasteles | torta |
 | Productos | caja |
 | Catálogo | grilla de cuadros |
-| Vitrina | tienda |
+| Vitrina | tienda (en pastelería: torta) |
 | Servicios | campanilla |
 
 Si el dueño escribe su propia palabra ("Otro…"), se busca la que más se
@@ -1350,3 +1350,5 @@ idéntico pixel a pixel.
 6. **"Error al guardar — revisa las reglas de Firestore"**: venía de `obtenerCategorias()` (punto 2), que intentaba
    escribir en cada visita. El aviso ahora lo ve solo quien administra y trae el campo y el código del error.
 7. **Destacados ocultable** (junto a Promociones, Cupones y Locales, en "Secciones de tu tienda").
+8. **Logo del encabezado más grande** (celular): con logo de la tienda, la barra de arriba pasa de 72 a 84 px
+   (el logo de 62 a 74 px de alto). Solo `index.html` (comida); escritorio, retail y boutique igual.
