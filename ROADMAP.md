@@ -1244,17 +1244,17 @@ La palabra sale del subrubro que se eligió al generar la tienda
 |---|---|---|
 | Hamburguesas, comida rápida | Menú | Agrega algo rico del menú 🍔 (igual que antes) |
 | Cafetería | Carta | Agrega algo rico de la carta ☕ |
-| Pastelería | Pasteles | Agrega algo dulce a tu pedido 🧁 |
+| Pastelería | Vitrina | Agrega algo dulce a tu pedido 🧁 |
 | Servicios y reservas | Servicios | Agrega un servicio a tu reserva 📅 |
 
 - Cambia: la barra de abajo, el menú de la cabecera, el título de la sección
   en el inicio, los botones "Ver menú" / "Ver menú completo" (con otra palabra
-  dicen "Ver todo" y "Ver todos los pasteles / productos…") y el aviso del
+  dicen "Ver todo" y "Ver toda la vitrina / productos…") y el aviso del
   carrito vacío.
 - **Panel (devmode) → Apariencia → "Nombre de tu sección de productos":**
-  botones con las palabras que sirven para ese rubro (pastelería: Pasteles,
-  Productos, Catálogo, Vitrina, Carta) y "Otro…" para escribir la suya (hasta
-  24 letras). Vista previa de la barra, y "Volver a «Pasteles»".
+  botones con las palabras que sirven para ese rubro (pastelería: Vitrina, Pasteles,
+  Productos, Catálogo, Carta) y "Otro…" para escribir la suya (hasta
+  24 letras). Vista previa de la barra, y "Volver a «Vitrina»".
 - Si elige la palabra original se guarda vacío: la tienda sigue al rubro.
 - Las tiendas que ya existen toman la palabra de su subrubro apenas se
   publique este cambio; las de hamburguesas y comida rápida no cambian nada.
@@ -1267,3 +1267,66 @@ La palabra sale del subrubro que se eligió al generar la tienda
 La **base de clientes** (panel → Ventas → Clientes, con contraseña) quedó a
 medias el 5 de octubre y **no entra en P54**. Se retomará por separado: el
 trabajo a medias está guardado fuera del proyecto.
+
+
+## 33. Dibujo propio por sección, secciones ocultables y logo del pie (P55) — ✅ hecho
+
+### 33.1 Cada nombre de sección tiene su dibujo
+
+El ícono de la barra de abajo ya no es siempre el de cubiertos:
+
+| Palabra | Dibujo |
+|---|---|
+| Menú | cubiertos (el de siempre) |
+| Carta | libro abierto |
+| Pasteles | torta |
+| Productos | caja |
+| Catálogo | grilla de cuadros |
+| Vitrina | tienda |
+| Servicios | campanilla |
+
+Si el dueño escribe su propia palabra ("Otro…"), se busca la que más se
+parece: tortas/kuchen/postres → torta, galletas → galleta, café/bebidas →
+taza, regalos → regalo, servicios/reservas → campanilla, comida/platos →
+cubiertos, productos → caja, catálogo → grilla; si no hay parecido, una
+etiqueta. Los botones del panel y la vista previa muestran el dibujo de
+cada palabra. Código: `vocIconoId()` / `_vocIc()` en `app.js` (íconos al
+estilo Lucide, ISC, los mismos que ya usa la tienda).
+
+### 33.2 Secciones que el dueño puede ocultar
+
+Panel → Apariencia → **Secciones de tu tienda**: tres interruptores
+(**Promociones**, **Cupones**, **Locales**). **Todo viene visible**; solo se
+oculta lo que el dueño apaga (`config.mostrarPromos` / `mostrarCupones` /
+`mostrarLocales` = `false`; si el campo no existe, está visible).
+
+- **Promociones:** oculta los banners del inicio y la sección de productos
+  en promoción.
+- **Cupones:** oculta la pestaña, el enlace de la cabecera, el campo del
+  código en el pago y la línea "Cupones exclusivos" de Mi cuenta. Los
+  cupones ya creados siguen existiendo en el servidor.
+- **Locales:** oculta la pestaña y el enlace. La dirección, el horario y
+  "Cómo llegar" salen **al final de la página, sobre los derechos
+  reservados** (se toman de los locales ya cargados y se editan igual en el
+  modo edición). El botón "Locales y horarios" de Ayuda y el toque sobre la
+  dirección en modo Retiro bajan a ese bloque.
+- Las pestañas que quedan se reparten el ancho de la barra.
+- Quien abre a mano `#cupones` o `#locales` con la sección oculta vuelve al
+  inicio.
+- El dueño que está editando las sigue viendo, **atenuadas**; en "Ver como
+  cliente" desaparecen como las ve el cliente.
+- Solo tienda de comida. Retail y boutique no pasan por este código.
+- Para agregar otra sección ocultable (por ejemplo "Destacados") se suma
+  una clave en `_secCampo()` y una regla en `secCss()`.
+
+### 33.3 Logo DerLabs del pie 15 % más chico
+
+El logo de "Tienda creada con" al final de cada página de la tienda pasó de
+30 px a 25,5 px de alto (22 px en modo oscuro, antes 26). Los logos de las
+pantallas de acceso y de los paneles (P46) no se tocaron.
+
+### Modo oscuro
+
+Como cambiaron estilos de la tienda se volvieron a sacar las reglas de
+color (`volcar.js`) y a generar `tienda-oscuro.css`; el administrador sigue
+idéntico pixel a pixel.

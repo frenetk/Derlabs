@@ -16,7 +16,7 @@ html[data-tema="oscuro"] #cartSheet #fEfectivo,html[data-tema="oscuro"] #ckResum
 /* portada: el corte diagonal toma el color del fondo */
 html[data-tema="oscuro"] .vt-corte{fill:var(--o-fondo,#fff)}
 /* firma DerLabs: versión de letras blancas */
-html[data-tema="oscuro"] .wrapper .vt-firma img{content:url(/derlabs-logo-oscuro.png);height:26px}
+html[data-tema="oscuro"] .wrapper .vt-firma img{content:url(/derlabs-logo-oscuro.png);height:22px}
 /* el aviso flotante se despega del fondo */
 html[data-tema="oscuro"] #toast{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 24px rgba(0,0,0,.6)}
 /* etiquetas de color fuerte: la letra sigue oscura */

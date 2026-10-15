@@ -429,6 +429,16 @@ html[data-tema="oscuro"] body #ckResumen .ck-resumen-handle-label{color:var(--te
 [data-tema="oscuro"] .hs-barra{background:var(--o-sup2,rgb(237, 232, 228))}
 [data-tema="oscuro"] .hs-barra i{background:var(--rojo)}
 [data-tema="oscuro"] .hs-cuenta{color:var(--o-txt2,rgb(138, 133, 128))}
+[data-tema="oscuro"] body.dev-on:not(.preview-cliente).sec-sin-promos #v24Promos .v24-tit::after{color:var(--o-txt2,rgb(138, 138, 138))}
+[data-tema="oscuro"] .sec-fila{border-top:1px solid var(--o-linea,rgb(238, 238, 238))}
+[data-tema="oscuro"] .sec-fila small{color:var(--muted,var(--o-txt2,#777))}
+[data-tema="oscuro"] #crLocales{color:var(--muted,var(--o-txt2,#777))}
+[data-tema="oscuro"] .cr-loc .cr-loc-n{color:var(--texto,var(--o-txt,#1A1A1A))}
+[data-tema="oscuro"] .cr-loc a{color:var(--o-marca,var(--rojo));text-decoration:none}
+[data-tema="oscuro"] .voc-chips button{border:1.5px solid var(--o-linea,rgb(230, 225, 221));background:var(--o-sup,rgb(255, 255, 255));color:var(--o-txt,rgb(26, 26, 26))}
+[data-tema="oscuro"] .voc-chips button.on{border-color:var(--o-marca,var(--rojo));color:var(--o-marca,var(--rojo));background:var(--crema,var(--o-sup2,#F7F5F3))}
+[data-tema="oscuro"] .voc-pv{color:var(--muted,var(--o-txt2,#777))}
+[data-tema="oscuro"] .voc-tab{border:1px solid var(--o-linea,rgb(230, 225, 221));background:var(--o-sup,rgb(255, 255, 255));color:var(--o-marca,var(--rojo))}
 [data-tema="oscuro"] body.v-app[data-page="inicio"] .navbar{background:transparent}
 [data-tema="oscuro"] body.v-app[data-page="inicio"] .navbar .nav-icon{background:var(--o-vidrio,rgba(255, 255, 255, 0.95));color:var(--o-txt,rgb(26, 26, 26))}
 [data-tema="oscuro"] .vt-portada{background:var(--o-sup2,rgb(232, 228, 225))}
@@ -626,7 +636,7 @@ html[data-tema="oscuro"] #cartSheet #fEfectivo,html[data-tema="oscuro"] #ckResum
 /* portada: el corte diagonal toma el color del fondo */
 html[data-tema="oscuro"] .vt-corte{fill:var(--o-fondo,#fff)}
 /* firma DerLabs: versión de letras blancas */
-html[data-tema="oscuro"] .wrapper .vt-firma img{content:url(/derlabs-logo-oscuro.png);height:26px}
+html[data-tema="oscuro"] .wrapper .vt-firma img{content:url(/derlabs-logo-oscuro.png);height:22px}
 /* el aviso flotante se despega del fondo */
 html[data-tema="oscuro"] #toast{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 24px rgba(0,0,0,.6)}
 /* etiquetas de color fuerte: la letra sigue oscura */

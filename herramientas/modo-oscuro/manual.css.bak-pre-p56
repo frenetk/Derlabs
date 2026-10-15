@@ -1,0 +1,46 @@
+html[data-tema="oscuro"] body{background:#0D0D0D}
+/* estilos escritos dentro de las etiquetas (no se pueden cambiar de otra forma) */
+html[data-tema="oscuro"] :is([style*="color:var(--rojo)"],[style*="color: var(--rojo)"]):not([style*="background:var(--rojo)"],[style*="background: var(--rojo)"]){color:var(--o-marca,var(--rojo))!important}
+html[data-tema="oscuro"] :is([style*="color:var(--verde)"],[style*="color: var(--verde)"]){color:var(--o-c-verde,var(--verde))!important}
+html[data-tema="oscuro"] [style*="color:#1a1a1a" i]{color:var(--o-txt,#1A1A1A)!important}
+html[data-tema="oscuro"] [style*="color:#888"]{color:var(--o-txt2,#888)!important}
+html[data-tema="oscuro"] [style*="color:#bbb"]{color:var(--o-txt3,#bbb)!important}
+html[data-tema="oscuro"] [style*="solid #eee"],html[data-tema="oscuro"] [style*="solid #ddd"],html[data-tema="oscuro"] [style*="border-color:#ddd"]{border-color:var(--o-linea,#ddd)!important}
+html[data-tema="oscuro"] #fEfectivo{border-color:var(--o-linea2,#ddd)!important}
+html[data-tema="oscuro"] #prodDetImg{background-color:var(--o-sup2,#eee)!important}
+html[data-tema="oscuro"] #prodDetMenos{background:var(--o-sup,#fff)!important;border-color:var(--o-marca,var(--rojo))!important}
+html[data-tema="oscuro"] .gp-drop{background:var(--o-sup,#fff)!important;border-color:var(--o-linea2,#E0E0E0)!important}
+/* campos que no traen color de fondo propio */
+html[data-tema="oscuro"] #pdPrefs textarea,html[data-tema="oscuro"] #fEfectivo,html[data-tema="oscuro"] #fCupon{background-color:var(--o-sup,#fff)}
+html[data-tema="oscuro"] #cartSheet #fEfectivo,html[data-tema="oscuro"] #ckResumen #fEfectivo,html[data-tema="oscuro"] #ckResumen #fCupon{background-color:var(--o-sup2,#fff)}
+/* portada: el corte diagonal toma el color del fondo */
+html[data-tema="oscuro"] .vt-corte{fill:var(--o-fondo,#fff)}
+/* firma DerLabs: versión de letras blancas */
+html[data-tema="oscuro"] .wrapper .vt-firma img{content:url(/derlabs-logo-oscuro.png);height:26px}
+/* el aviso flotante se despega del fondo */
+html[data-tema="oscuro"] #toast{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 24px rgba(0,0,0,.6)}
+/* etiquetas de color fuerte: la letra sigue oscura */
+html[data-tema="oscuro"] .v24-badge{color:#1A1A1A}
+/* el velo detrás de hojas y ventanas, más marcado sobre fondo negro */
+html[data-tema="oscuro"] #cartOverlay,html[data-tema="oscuro"] .vt-velo,html[data-tema="oscuro"] #dirModal,html[data-tema="oscuro"] :is(#cookiesModal,#cliPedModal).overlay{background-color:rgba(0,0,0,.66)}
+/* textos e íconos que van encima del color de la tienda */
+html[data-tema="oscuro"] .vt-op.dest small{color:var(--o-sobre,rgba(255,255,255,.85));opacity:.85}
+html[data-tema="oscuro"] .vt-op.dest .vt-op-ic{color:var(--o-sobre,#fff)}
+/* logo de la tienda: por defecto lleva una placa blanca detrás (un logo oscuro y transparente no se vería sobre negro).
+   Si app.js comprueba que el logo es claro o trae su propio fondo, lo marca data-logo="libre" y va sin placa. */
+html[data-tema="oscuro"] .wrapper .logo img{mix-blend-mode:normal;border-radius:9px}
+html[data-tema="oscuro"]:not([data-logo="libre"]) .wrapper .logo img{background:#fff;padding:3px 9px;box-sizing:border-box}
+html[data-tema="oscuro"]:not([data-logo="libre"]) .wrapper .vt-icono:has(img){background:#fff}
+/* pantalla de carga (el fondo y la placa del logo están en index.html, para que no haya destello) */
+html[data-tema="oscuro"] #splashScreen:not(.sobre-tienda){background-color:#0D0D0D}
+html[data-tema="oscuro"] #splashScreen .splash-titulo,html[data-tema="oscuro"] #splashScreen .splash-subtitulo{color:#F5F5F5}
+html[data-tema="oscuro"] #splashScreen .splash-dots span{background:#F5F5F5}
+html[data-tema="oscuro"] #splashScreen:not(.con-logo) .splash-content{background:#0D0D0D;padding:30px 30px 0;margin:-30px -30px 0}
+html[data-tema="oscuro"] #splashScreen:not(.con-logo) .splash-icon{filter:invert(1);mix-blend-mode:screen}
+/* escritorio: la sección activa y el paso del cursor se distinguen de la barra */
+@media (min-width:1024px){
+html[data-tema="oscuro"] body .navbar #tabbar .tab:hover,html[data-tema="oscuro"] body .navbar #tabbar .tab.active{background:var(--o-sup2,#FBF7F5)}
+}
+/* los errores no van en dorado: siguen en rojo */
+html[data-tema="oscuro"] .ffield.error input,html[data-tema="oscuro"] .ffield.error textarea,html[data-tema="oscuro"] .ffield.error select{border-color:var(--o-c-rojo,var(--rojo))}
+html[data-tema="oscuro"] .err{color:var(--o-c-rojo,var(--rojo))}

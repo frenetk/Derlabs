@@ -1033,7 +1033,10 @@ const PAGINAS = ["inicio","menu","checkout","confirmacion","cupones","locales","
 
 function paginaActual(){
   const h = (location.hash || "#inicio").replace("#","").split("?")[0];
-  return PAGINAS.includes(h) ? h : "inicio";
+  var p = PAGINAS.includes(h) ? h : "inicio";
+  /* P55: una sección que el dueño ocultó no se abre (el dueño editando sí) */
+  if ((p === "cupones" || p === "locales") && typeof secOculta === "function" && secOculta(p) && !secEditando()) return "inicio";
+  return p;
 }
 function irPagina(p){ location.hash = "#" + p; }
 
@@ -1131,7 +1134,7 @@ function renderAll(){
   renderNombre();
   renderInicio();
   try { hsRender(); hsPanelPintar(); } catch(e){ console.warn("historia:", e); }
-  vocAplicar(); vocPanelPintar();
+  vocAplicar(); vocPanelPintar(); secAplicar();
   renderMenu();
   renderCupones();
   renderLocales();
@@ -7382,7 +7385,7 @@ function _vtCss(){
     ".vt-btn:disabled{opacity:.45}",
     ".vt-firma{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(0,0,0,.08);text-decoration:none;color:var(--muted)}",
     ".vt-firma span{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}",
-    ".vt-firma img{height:30px;width:auto}"
+    ".vt-firma img{height:25.5px;width:auto}"
   ].join("\n");
   document.head.appendChild(st);
 }
@@ -7515,7 +7518,7 @@ function _vtRenderAyuda(){
   }
   h += '<button class="vt-op" data-vtir="locales"><span class="vt-op-ic">' + _vtI("pin", 20) + '</span><span class="t"><b>Locales y horarios</b><small>Dónde estamos</small></span>' + _vtI("chev", 18) + '</button>';
   var box = qs("#vtAyudaOps"); box.innerHTML = h;
-  qsa("#vtAyudaOps [data-vtir]").forEach(function(b){ b.addEventListener("click", function(){ window._vtCerrarHojas(); irPagina(b.dataset.vtir); }); });
+  qsa("#vtAyudaOps [data-vtir]").forEach(function(b){ b.addEventListener("click", function(){ window._vtCerrarHojas(); vocIr(b.dataset.vtir); }); });
 }
 
 function _vtSlideProd(p){
@@ -7546,7 +7549,7 @@ function _vtMontar(){
     });
     qsa("#vtSeg [data-vtipo]").forEach(function(b){ b.addEventListener("click", function(){ _vtSetTipo(b.dataset.vtipo); }); });
     qs("#vtDir").addEventListener("click", function(){
-      if (typeof tipoEntrega !== "undefined" && tipoEntrega === "retiro"){ irPagina("locales"); return; }
+      if (typeof tipoEntrega !== "undefined" && tipoEntrega === "retiro"){ vocIr("locales"); return; }
       _vt.dirSel = _vtLS("dir"); qs("#vtDirInp").value = _vt.dirSel ? _vt.dirSel.direccion : "";
       _vtEvaluarDir(); _vtAbrir("#vtHojaDir"); setTimeout(function(){ qs("#vtDirInp").focus(); }, 280);
     });
@@ -7675,6 +7678,7 @@ function instalarPanelVitrina(){
     }); });
     qs("#vtBtnPortada").addEventListener("click", function(){ if (typeof abrirImgModal === "function") abrirImgModal({ col: "config", doc: "general", field: "portadaImagen" }); });
     hsPanel();
+    secPanel();
     vocPanel();
   } catch(e){ console.warn("panel vitrina:", e); }
 }
@@ -8818,7 +8822,7 @@ function hsPanelPintar(conTextos){
 /* ════════════════════════════════════════════════════════════════
    P54 — VOCABULARIO POR RUBRO (solo tienda de comida)
    La sección de productos no tiene por qué llamarse "Menú": en una
-   pastelería es "Pasteles", en una cafetería "Carta", en un negocio de
+   pastelería es "Vitrina", en una cafetería "Carta", en un negocio de
    reservas "Servicios". La palabra sale sola del subrubro que se eligió
    al generar la tienda (config.subrubro) y el dueño la puede cambiar en
    el panel (Apariencia → Nombre de tu sección): config.seccionNombre.
@@ -8837,12 +8841,12 @@ function _vocT(){
       "hamburguesas":  { sec: "Menú",      vacio: dv },
       "comida-rapida": { sec: "Menú",      vacio: dv },
       "cafeteria":     { sec: "Carta",     vacio: "Agrega algo rico de la carta ☕" },
-      "pasteleria":    { sec: "Pasteles",  vacio: "Agrega algo dulce a tu pedido 🧁" },
+      "pasteleria":    { sec: "Vitrina",   vacio: "Agrega algo dulce a tu pedido 🧁" },
       "servicios":     { sec: "Servicios", vacio: "Agrega un servicio a tu reserva 📅" }
     },
     /* Palabras que se ofrecen en el panel, según el rubro (la primera es la original) */
     opciones: {
-      "pasteleria": ["Pasteles", "Productos", "Catálogo", "Vitrina", "Carta"],
+      "pasteleria": ["Vitrina", "Pasteles", "Productos", "Catálogo", "Carta"],
       "cafeteria":  ["Carta", "Menú", "Productos", "Catálogo"],
       "servicios":  ["Servicios", "Catálogo", "Productos"],
       "_":          ["Menú", "Carta", "Productos", "Catálogo"]
@@ -8851,6 +8855,7 @@ function _vocT(){
     ver: {
       "Menú":      ["Ver menú", "Ver menú completo"],
       "Carta":     ["Ver carta", "Ver carta completa"],
+      "Vitrina":   ["Ver todo", "Ver toda la vitrina"],
       "Pasteles":  ["Ver todo", "Ver todos los pasteles"],
       "Servicios": ["Ver todo", "Ver todos los servicios"]
     }
@@ -8878,7 +8883,16 @@ function vocAplicar(){
   try {
     if (!vocActiva()) return;
     var n = vocSeccion();
-    vocTexto(qs('#tabbar .tab[data-page="menu"]'), n);
+    var tabM = qs('#tabbar .tab[data-page="menu"]');
+    vocTexto(tabM, n);
+    if (tabM){
+      var ico = vocIconoId(n);
+      if (tabM.getAttribute("data-voc-ic") !== ico){
+        var sv = tabM.querySelector("svg"), nuevo = _vocIc()[ico];
+        if (ico !== "utensils" || tabM.hasAttribute("data-voc-ic")){ if (sv && nuevo) sv.outerHTML = nuevo; }
+        tabM.setAttribute("data-voc-ic", ico);
+      }
+    }
     var m = qs('.mlink[data-go="menu"]'); if (m && m.textContent !== n) m.textContent = n;
     var v1 = qs("#btnVerMenu"); if (v1 && v1.textContent !== vocVer(true)) v1.textContent = vocVer(true);
     var v2 = qs("#vtVerMenu"); if (v2 && v2.textContent !== vocVer(false)) v2.textContent = vocVer(false);
@@ -8893,6 +8907,7 @@ function vocCss(){
     ".voc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}",
     ".voc-chips button{border:1.5px solid #E6E1DD;background:#fff;color:#1A1A1A;border-radius:999px;padding:9px 16px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}",
     ".voc-chips button.on{border-color:var(--rojo);color:var(--rojo);background:var(--crema,#F7F5F3)}",
+    ".voc-chips button svg{width:18px;height:18px;display:inline-block;vertical-align:-4px;margin-right:6px}",
     ".voc-otro{display:flex;gap:8px;margin:10px 0 0;align-items:stretch}",
     ".voc-otro[hidden]{display:none}",
     ".voc-otro .field{margin:0;flex:1;min-width:0}",
@@ -8913,11 +8928,12 @@ function _vocPanelPintar(){
   var t = _vocT(), ops = t.opciones[sub] || t.opciones._;
   var esLista = ops.indexOf(act) >= 0;
   box.querySelector("#vocChips").innerHTML = ops.map(function(o){
-    return '<button type="button" data-voc="' + esc(o) + '" aria-pressed="' + (o === act ? "true" : "false") + '"' + (o === act ? ' class="on"' : "") + '>' + esc(o) + '</button>';
+    return '<button type="button" data-voc="' + esc(o) + '" aria-pressed="' + (o === act ? "true" : "false") + '"' + (o === act ? ' class="on"' : "") + '>' + vocIconoSvg(o) + esc(o) + '</button>';
   }).join("") + '<button type="button" data-voc="__otro"' + (!esLista ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>Otro…</button>';
   var ot = box.querySelector("#vocOtro"), tx = box.querySelector("#vocTxt");
   if (!esLista){ ot.hidden = false; if (document.activeElement !== tx) tx.value = act; }
   box.querySelector("#vocPvTxt").textContent = act;
+  var pvs = box.querySelector(".voc-tab svg"); if (pvs) pvs.outerHTML = vocIconoSvg(act);
   var rs = box.querySelector("#vocRest"); rs.hidden = !String((state.config || {}).seccionNombre || "").trim();
   rs.textContent = "Volver a «" + vocOriginal() + "»";
 }
@@ -8960,6 +8976,163 @@ function vocPanel(){
     });
     vocPanelPintar();
   } catch(e){ console.warn("panel vocabulario:", e); }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   P55 — DIBUJO PROPIO PARA CADA NOMBRE DE SECCIÓN Y SECCIONES OCULTABLES
+   1) Cada palabra de la sección de productos tiene su ícono en la barra
+      de abajo (Menú: cubiertos · Carta: libro · Pasteles: torta · Productos: caja · Catálogo: grilla · Vitrina: tienda · Servicios:
+      campanilla). Una palabra escrita por el dueño busca la que más se
+      parece ("tortas" → torta, "regalos" → regalo) y, si no hay, usa una
+      etiqueta.
+   2) Promociones, Cupones y Locales se pueden ocultar desde el panel
+      (Apariencia → Secciones de tu tienda). TODO VIENE VISIBLE: solo se
+      oculta lo que el dueño apaga (config.mostrarPromos / mostrarCupones /
+      mostrarLocales = false). El dueño que está editando las sigue viendo,
+      atenuadas. Sin la pestaña Locales, la dirección y el horario salen en
+      el pie de la página, junto a los derechos reservados.
+   Íconos: estilo Lucide (ISC), igual que el resto de los de la tienda.
+   ════════════════════════════════════════════════════════════════ */
+function _vocIc(){
+  if (_vocIc.t) return _vocIc.t;
+  var ABRE = '<svg class="t-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  var W = function(p){ return ABRE + p + '</svg>'; };
+  var E = function(e){ var s = (typeof EMOJI_A_ICONO !== "undefined" && EMOJI_A_ICONO[e]) || ""; return s ? s.replace(/^<svg[^>]*>/, ABRE).replace(/>\s+</g, "><").replace(/\s*\n\s*/g, "") : ""; };
+  var t = {
+    utensils: W('<path d="M7 2v8"/><path d="M4.5 2v5a2.5 2.5 0 0 0 5 0V2"/><path d="M17 22V2c-2.2 1.4-3.5 4-3.5 7 0 2 1 3.2 3.5 3.5"/>'),
+    libro:    W('<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>'),
+    grilla:   W('<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>'),
+    servicio: W('<path d="M3 20a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1h18a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1Z"/><path d="M20 16a8 8 0 1 0-16 0"/><path d="M12 4v4"/><path d="M10 4h4"/>'),
+    etiqueta: W('<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>'),
+    pastel: E("🎂"), caja: E("📦"), vitrina: E("🏪"), cafe: E("☕"), galleta: E("🍪"), regalo: E("🎁")
+  };
+  for (var k in t) if (!t[k]) t[k] = t.etiqueta;
+  return (_vocIc.t = t);
+}
+/* Qué dibujo le toca a una palabra */
+function vocIconoId(palabra){
+  var n = String(palabra || "").toLowerCase();
+  try { n = n.normalize("NFD").replace(/[̀-ͯ]/g, ""); } catch(e){}
+  n = n.trim();
+  var exacto = { "menu": "utensils", "carta": "libro", "pasteles": "pastel", "productos": "caja", "catalogo": "grilla", "vitrina": "vitrina", "servicios": "servicio" };
+  if (exacto[n]) return exacto[n];
+  var reglas = [
+    [/torta|pastel|kuchen|dulce|postre|bizcoch|cupcake|queque|cake|reposter/, "pastel"],
+    [/galleta|cookie|alfajor|brownie|macaron/, "galleta"],
+    [/\bcafe|bebida|infusi|\bte\b|jugo|batido/, "cafe"],
+    [/regalo|gift|ramo|detalle/, "regalo"],
+    [/servicio|reserva|cita|atencion|agenda/, "servicio"],
+    [/menu|carta|plato|almuerzo|comida|cocina|sushi|pizza|hamburg|sandwich|completo/, "utensils"],
+    [/producto|articulo|pedido|tienda|mercader/, "caja"],
+    [/catalogo|coleccion|galeria|variedad/, "grilla"]
+  ];
+  for (var i = 0; i < reglas.length; i++) if (reglas[i][0].test(n)) return reglas[i][1];
+  return "etiqueta";
+}
+function vocIconoSvg(palabra){ return _vocIc()[vocIconoId(palabra)]; }
+
+/* ── Secciones que el dueño puede ocultar ── */
+function _secCampo(k){ return { promos: "mostrarPromos", cupones: "mostrarCupones", locales: "mostrarLocales" }[k]; }
+function secOculta(k){
+  if (!vocActiva() || !_secCampo(k)) return false;
+  return (state.config || {})[_secCampo(k)] === false;
+}
+function secEditando(){ var b = document.body; return !!b && b.classList.contains("dev-on") && !b.classList.contains("preview-cliente"); }
+function secCss(){
+  if (qs("#sec-css")) return;
+  var st = document.createElement("style"); st.id = "sec-css";
+  var dev = "body.dev-on:not(.preview-cliente)";
+  st.textContent = [
+    "body.sec-sin-promos #bloquePromos, body.sec-sin-promos #v24Promos{display:none!important}",
+    "body.sec-sin-cupones #tabbar .tab[data-page='cupones'], body.sec-sin-cupones .mlink[data-go='cupones'], body.sec-sin-cupones #cupApply, body.sec-sin-cupones [data-sec-cupones]{display:none!important}",
+    "body.sec-sin-locales #tabbar .tab[data-page='locales'], body.sec-sin-locales .mlink[data-go='locales']{display:none!important}",
+    /* el dueño que está editando las sigue viendo, atenuadas */
+    dev + ".sec-sin-promos #v24Promos{display:block!important;opacity:.45}",
+    dev + ".sec-sin-promos #v24Promos .v24-tit::after{content:'Oculta para tus clientes';margin-left:8px;font-size:11px;font-weight:800;color:#8A8A8A}",
+    dev + ".sec-sin-cupones #tabbar .tab[data-page='cupones'], " + dev + ".sec-sin-locales #tabbar .tab[data-page='locales']{display:flex!important;opacity:.4}",
+    dev + ".sec-sin-cupones .mlink[data-go='cupones'], " + dev + ".sec-sin-locales .mlink[data-go='locales']{display:block!important;opacity:.5}",
+    /* panel */
+    ".sec-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #EEE}",
+    ".sec-fila:first-of-type{margin-top:8px}",
+    ".sec-fila b{display:block;font-size:14px}",
+    ".sec-fila small{display:block;margin-top:2px;font-size:12px;color:var(--muted,#777);line-height:1.35}",
+    /* dirección en el pie cuando no hay pestaña Locales */
+    "#crLocales{margin:0 0 14px;font-size:13px;line-height:1.5;color:var(--muted,#777)}",
+    ".cr-loc{margin:0 0 10px}",
+    ".cr-loc p{margin:2px 0 0;font-weight:600}",
+    ".cr-loc .cr-loc-n{margin:0;font-weight:800;color:var(--texto,#1A1A1A)}",
+    ".cr-loc a{display:inline-block;margin-top:3px;font-size:12.5px;font-weight:800;color:var(--rojo);text-decoration:none}"
+  ].join("\n");
+  document.head.appendChild(st);
+}
+/* Dirección y horario en el pie, en lugar de la pestaña Locales */
+function secPie(){
+  var f = qs(".footer-cr"); if (!f) return;
+  var box = qs("#crLocales");
+  var ls = Array.isArray(state.locales) ? state.locales : [];
+  if (!(secOculta("locales") && ls.length)){ if (box) box.remove(); return; }
+  var h = ls.map(function(l){
+    var ed = function(campo){ return ' data-ecol="locales" data-edoc="' + esc(l.id) + '" data-efield="' + campo + '" data-etype="text"'; };
+    return '<div class="cr-loc">' +
+      (l.nombre ? '<p class="cr-loc-n"' + ed("nombre") + '>' + esc(l.nombre) + '</p>' : "") +
+      (l.direccion ? '<p' + ed("direccion") + '>' + esc(l.direccion) + '</p>' : "") +
+      (l.horario ? '<p' + ed("horario") + '>' + esc(l.horario) + '</p>' : "") +
+      (l.direccion ? '<a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(l.direccion) + '" target="_blank" rel="noopener">Cómo llegar →</a>' : "") +
+      '</div>';
+  }).join("");
+  if (!box){ box = document.createElement("div"); box.id = "crLocales"; f.insertBefore(box, qs(".cr-texto", f) || f.firstChild); }
+  if (box._h !== h){ box.innerHTML = h; box._h = h; }
+}
+/* Aplica lo que el dueño eligió: clases en el body, pie y vuelta al inicio si el cliente está en una página oculta */
+function secAplicar(){
+  try {
+    secCss();
+    var b = document.body; if (!b) return;
+    ["promos", "cupones", "locales"].forEach(function(k){ b.classList.toggle("sec-sin-" + k, secOculta(k)); });
+    secPie();
+    var h = (location.hash || "").replace("#", "").split("?")[0];
+    if ((h === "cupones" || h === "locales") && secOculta(h) && !secEditando()) irPagina("inicio");
+    secPanelPintar();
+  } catch(e){ console.warn("secciones:", e); }
+}
+/* "Locales y horarios": sin la pestaña, baja a la dirección del pie */
+function vocIrLocales(){
+  var el = qs("#crLocales");
+  if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  else if (typeof toast === "function") toast("Aún no hay locales cargados");
+}
+function vocIr(p){ if (p === "locales" && secOculta("locales") && !secEditando()) vocIrLocales(); else irPagina(p); }
+
+function secPanelPintar(){
+  qsa("#secPanel [data-sec]").forEach(function(i){ i.checked = !secOculta(i.getAttribute("data-sec")); });
+}
+function secPanel(){
+  try {
+    if (!_vtEsComida() || qs("#secPanel")) return;
+    var ref = qs("#vtPanelEstilo"); if (!ref || !ref.parentNode) return;
+    secCss();
+    var fila = function(k, t, d){
+      return '<div class="sec-fila"><div><b>' + t + '</b><small>' + d + '</small></div>' +
+        '<label class="switch"><input type="checkbox" data-sec="' + k + '" aria-label="Mostrar ' + t + '"><span class="slider"></span></label></div>';
+    };
+    var box = document.createElement("div"); box.id = "secPanel"; box.className = "pcard";
+    box.innerHTML = '<b class="pcard-t">Secciones de tu tienda</b>' +
+      '<p class="pnota" style="font-size:12.5px;margin:2px 0 0">Todo está visible. Apaga lo que no quieras mostrar a tus clientes; tú lo seguirás viendo atenuado mientras editas.</p>' +
+      fila("promos", "Promociones", "Los banners y los productos en promoción del inicio") +
+      fila("cupones", "Cupones", "La pestaña y el campo del código al pagar") +
+      fila("locales", "Locales", "La pestaña. Si la apagas, la dirección y el horario salen al final de la página");
+    ref.parentNode.insertBefore(box, ref.nextSibling);
+    box.addEventListener("change", async function(e){
+      var i = e.target.closest("[data-sec]"); if (!i) return;
+      var campo = _secCampo(i.getAttribute("data-sec")), mostrar = !!i.checked;
+      state.config[campo] = mostrar;
+      secAplicar();
+      try { renderAll(); } catch(err){}
+      try { await saveConfig(campo, mostrar); if (typeof toast === "function") toast(mostrar ? "✅ Sección visible" : "✅ Sección oculta para tus clientes"); }
+      catch(err){ if (typeof toast === "function") toast("⚠️ No se pudo guardar"); }
+    });
+    secPanelPintar();
+  } catch(e){ console.warn("panel secciones:", e); }
 }
 
 /* ════════════════════════════════════════════════════════════════
