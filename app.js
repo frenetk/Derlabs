@@ -5613,8 +5613,15 @@ function initPanel(){
   bindCfg("pDelCosto", "deliveryCosto", "num");
   bindCfg("pDelMin", "deliveryMinimo", "num");
   bindCfg("pTiempo", "tiempoEntrega", "trim");
-  bindCfg("pDeliveryOn", "deliveryActivo");
-  bindCfg("pRetiroOn", "retiroActivo");
+  /* P60: en la tienda de comida pasan por v60CambiarEntrega (no deja apagar las dos) */
+  ["pDeliveryOn", "pRetiroOn"].forEach(function(id){
+    var el = qs("#" + id); if (!el) return;
+    var campo = id === "pDeliveryOn" ? "deliveryActivo" : "retiroActivo";
+    el.addEventListener("change", function(){
+      if (typeof v28EsComida === "function" && v28EsComida()) v60CambiarEntrega(campo, el);
+      else saveConfig(campo, el.checked);
+    });
+  });
   bindCfg("pConfTitulo", "confTitulo", "trim");
   bindCfg("pConfSub", "confSub", "trim");
   bindCfg("pTl1", "timeline1", "trim");
@@ -9325,6 +9332,22 @@ function _v26Titulo(pt){
     if (V26_GRUPOS[i].items[j][0] === pt) return V26_GRUPOS[i].items[j][2];
   return "Panel";
 }
+/* P60: activar o apagar delivery / retiro. Siempre debe quedar al menos uno: si no, nadie podría pedir. */
+async function v60CambiarEntrega(campo, el){
+  var otro = campo === "deliveryActivo" ? "retiroActivo" : "deliveryActivo", v = !!el.checked;
+  if (!v && state.config[otro] === false){
+    el.checked = true;
+    toast("Debe quedar al menos una forma de entrega. Si no quieres recibir pedidos, cierra la tienda.");
+    return;
+  }
+  state.config[campo] = v;
+  var ok = await saveConfig(campo, v);
+  if (ok !== false) toast(v ? (campo === "deliveryActivo" ? "✅ Delivery activado" : "✅ Retiro activado") : (campo === "deliveryActivo" ? "Delivery desactivado" : "Retiro desactivado"));
+  var a = qs("#pDeliveryOn"), b = qs("#pRetiroOn"), c = qs("#pvDelivery"), d = qs("#pvRetiro");
+  if (a) a.checked = state.config.deliveryActivo !== false; if (c) c.checked = state.config.deliveryActivo !== false;
+  if (b) b.checked = state.config.retiroActivo !== false;   if (d) d.checked = state.config.retiroActivo !== false;
+  try { renderAll(); } catch(e){}
+}
 function v26PanelHome(){
   var p = qs("#adminPanel"), h = qs("#pHome"); if (!p || !h) return;
   var abierta = state.config.abierto !== false, eh = hrEstado();
@@ -9333,6 +9356,10 @@ function v26PanelHome(){
   h.innerHTML =
     '<div class="pv-estado"><div><b>' + tit + '</b><small>' + subt + '</small></div>' +
       '<label class="switch"><input type="checkbox" id="pvAbierto"' + (abierta ? " checked" : "") + '><span class="slider"></span></label></div>' +
+    /* P60: cómo entrega la tienda — cada una decide si ofrece delivery, retiro o ambos */
+    (v28EsComida() ? '<div class="pv-estado pv-entrega"><div class="pv-ent-t"><b>Cómo entregas</b><small>Lo que eliges aquí es lo que ven tus clientes al pedir</small></div>' +
+      '<div class="pv-ent-f"><span><b>Delivery</b><small>Llevas el pedido a su dirección</small></span><label class="switch"><input type="checkbox" id="pvDelivery"' + (state.config.deliveryActivo !== false ? " checked" : "") + '><span class="slider"></span></label></div>' +
+      '<div class="pv-ent-f"><span><b>Retiro en local</b><small>El cliente pasa a buscarlo</small></span><label class="switch"><input type="checkbox" id="pvRetiro"' + (state.config.retiroActivo !== false ? " checked" : "") + '><span class="slider"></span></label></div></div>' : "") +
     (v28EsComida() && !hrTiene(state.config.horario) ? '<button type="button" class="pv-fila pv-aviso" data-pvir="tienda"><span class="pv-ico">🕒</span><span class="pv-txt"><b>Agrega tu horario de atención</b><small>La tienda abre y cierra sola a la hora que indiques</small></span><span class="pv-chev">›</span></button>' : '') +
     v41Plan() +
     V26_GRUPOS.map(function(g){
@@ -9372,6 +9399,10 @@ function v26PanelInit(){
     ".pv-estado{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-radius:16px;background:var(--crema,#F7F5F3);margin-bottom:16px}",
     ".pv-estado b{display:block;font-size:15px}.pv-estado small{display:block;font-size:12.5px;color:var(--muted,#666);margin-top:2px}",
     ".pv-grupo{margin-bottom:18px}",
+    ".pv-entrega{flex-direction:column;align-items:stretch;gap:0}",
+    ".pv-ent-t{margin-bottom:4px}",
+    ".pv-ent-f{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 0;margin-top:10px;border-top:1px solid rgba(0,0,0,.07)}",
+    ".pv-ent-f b{font-size:14px}",
     ".pv-grupo h5{margin:0 0 6px 4px;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted,#666);font-weight:900}",
     ".pv-fila{display:flex;align-items:center;gap:12px;width:100%;padding:12px;margin:0 0 6px;border:1px solid var(--borde,#eee);border-radius:16px;background:#fff;font:inherit;color:inherit;text-align:left;cursor:pointer}",
     ".pv-fila:active{background:var(--crema,#F7F5F3)}",
@@ -9405,6 +9436,7 @@ function v26PanelInit(){
     if (e.target.closest("[data-pvpro]")) v28AvisoPro("Plan Pro");
   });
   home.addEventListener("change", function(e){
+    if (e.target.id === "pvDelivery" || e.target.id === "pvRetiro"){ v60CambiarEntrega(e.target.id === "pvDelivery" ? "deliveryActivo" : "retiroActivo", e.target); return; }
     if (e.target.id !== "pvAbierto") return;
     var v = e.target.checked;
     Promise.resolve(saveConfig("abierto", v)).then(function(){ renderAll(); v26PanelHome(); });

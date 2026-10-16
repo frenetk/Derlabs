@@ -1354,3 +1354,7 @@ idéntico pixel a pixel.
    (el logo de 62 a 74 px de alto). Solo `index.html` (comida); escritorio, retail y boutique igual.
 9. **Nombres de los destacados más chicos** (P59): carrusel de inicio, celular 26–32 px → 18–22 px (máx. 2 líneas, con
    sombra suave) y portada 28–36 px → 20–24 px; escritorio 46 → 30 px. Para que no tapen la foto.
+10. **Delivery y retiro con un toque** (P60): en el inicio del panel, bajo "Tienda abierta", la tarjeta
+    "Cómo entregas" con dos interruptores (Delivery / Retiro en local). Son los mismos campos de siempre
+    (`deliveryActivo`, `retiroActivo`, también en Entrega y mensajes) y quedan sincronizados. No deja apagar los dos:
+    avisa que para no recibir pedidos se cierra la tienda. Solo tienda de comida.
