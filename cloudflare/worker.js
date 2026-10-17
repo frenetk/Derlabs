@@ -44,6 +44,7 @@ import { imagen, servirImagen } from "./functions/imagenes.js";
 import { inventario } from "./functions/inventario.js";
 import { video, servirVideo } from "./functions/video.js";
 import { whatsapp } from "./functions/whatsapp.js";
+import { revisarPagosWA } from "./functions/_waAviso.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -600,6 +601,8 @@ export default {
 
   /* ── Cron Trigger. ── */
   async scheduled(controller, env, ctx) {
+    /* P68: el cron de cada minuto solo revisa los pagos de WhatsApp (lectura chica: waPagos en espera) */
+    if (controller && controller.cron === "* * * * *") { ctx.waitUntil(revisarPagosWA(env, getDb(env))); return; }
     ctx.waitUntil(limpiarPendientes(env));
     ctx.waitUntil(revisarDominios(env));
     ctx.waitUntil(reintentarBoletas(env, getDb));   /* boletas electrónicas que quedaron pendientes */

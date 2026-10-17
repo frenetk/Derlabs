@@ -1434,3 +1434,12 @@ idéntico pixel a pixel.
 - **Estilo del asistente** (panel del dueño): ya no se edita el mensaje completo. El dueño elige tono
   (`waTono`: cercano / formal / alegre), una frase de bienvenida de 120 caracteres (`waFrase`) y lo que el asistente
   debe saber (`waInfo`, 400). El servidor quita links, teléfonos, formato y llaves; `waSaludo` ya no se usa.
+
+## 39. WhatsApp: el link de pago vence a los 15 minutos (P68) — ✅ hecho
+
+- Los links de pago del asistente (MercadoPago y Webpay) vencen a los 15 minutos (`crearPago` acepta `venceMin`:
+  MercadoPago con `expires` / `expiration_date_to`; Flow con `timeout`). La web sigue igual.
+- Cada link queda en `waPagos/{pedidoId}` (estado esperando / pagado / vencido). Un cron nuevo cada minuto
+  (`* * * * *`, solo lee los pagos en espera) le recuerda al cliente a los 7 minutos ("Estamos esperando tu pago…
+  tienes hasta las HH:MM; si no, deberás comenzar otra vez", con el botón de pago) y a los 15 le avisa que venció y
+  la conversación parte de cero. El cron de 5 minutos sigue con sus tareas de siempre.

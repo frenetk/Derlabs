@@ -59,8 +59,10 @@ export async function crearPago(request, env){
       return new Response(JSON.stringify({ ok: false, error: "No se pudo determinar la URL del sitio" }), { status: 500, headers });
     }
 
+    /* P68: link con vencimiento (WhatsApp: 15 min). Sin el campo, como siempre. */
+    const venceMin = Math.min(60, Math.max(0, Math.floor(Number(body.venceMin) || 0)));
     if (esFlow) {
-      const rf = await iniciarPagoFlow({ db, storeId, config, id, urlTienda, cliente, tipo, val, seguimiento });
+      const rf = await iniciarPagoFlow({ db, storeId, config, id, urlTienda, cliente, tipo, val, seguimiento, venceMin });
       return new Response(JSON.stringify(rf.st === 200 ? { ok: true, init_point: rf.init_point, pedidoId: rf.pedidoId } : { ok: false, error: rf.error }), { status: rf.st, headers });
     }
 
@@ -91,7 +93,8 @@ export async function crearPago(request, env){
         },
         auto_return: "approved",
         notification_url: urlTienda + "/api/webhookPago?storeId=" + encodeURIComponent(storeId),
-        metadata: { pedidoId: id, storeId }
+        metadata: { pedidoId: id, storeId },
+        ...(venceMin >= 5 ? { expires: true, expiration_date_from: new Date(Date.now() - 60000).toISOString(), expiration_date_to: new Date(Date.now() + venceMin * 60000).toISOString() } : {})
       }
     });
 

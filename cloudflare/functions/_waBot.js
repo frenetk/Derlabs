@@ -14,6 +14,7 @@ import { crearPago } from "./crearPago.js";
    P67: pago online con las pasarelas de la tienda (MercadoPago / Webpay por Flow): el bot
    manda un botón con el link; el pedido se crea cuando la pasarela confirma el pago
    (webhookPago / webhookFlow) y _waAviso.js le avisa al cliente por WhatsApp.
+   P68: el link vence a los 15 minutos; a los 7 el bot le recuerda al cliente (waPagos/{pedidoId}).
 
    El dueño elige el tono (config.waTono), una frase corta (config.waFrase) y datos para el
    asistente (config.waInfo). Los textos del sistema no se pueden editar.
@@ -331,16 +332,21 @@ export async function crearPedidoWA(db, env, storeId, cfg, conv, nombre, waId, o
 }
 
 /* ── pago online: link de MercadoPago o Webpay (Flow) con las mismas reglas de la web ── */
-export async function linkPagoWA(env, storeId, conv, nombre, waId, origin, pasarela){
+export const PAGO_VENCE_MIN = 15, PAGO_AVISO_MIN = 7;   /* P68 */
+export async function linkPagoWA(db, env, storeId, conv, nombre, waId, origin, pasarela){
   const id = "WA" + Date.now().toString().slice(-6) + Math.floor(Math.random() * 10);
   const cuerpo = { storeId, items: itemsParaValidar(conv), cliente: datosCliente(conv, nombre, waId, pasarela === "flow" ? "flow" : "mercadopago"),
-    pedidoId: id, tipo: conv.tipo, costoDelivery: conv.envio || 0, cuponAplicado: null };
+    pedidoId: id, tipo: conv.tipo, costoDelivery: conv.envio || 0, cuponAplicado: null, venceMin: PAGO_VENCE_MIN };
   if (pasarela === "flow") cuerpo.pasarela = "flow";
   try {
     const r = await crearPago(new Request(origin + "/api/crearPago", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) }), env);
     const j = await r.json().catch(() => ({}));
     if (!j.ok || !(j.init_point || j.payment_link)) return { ok: false, error: j.error || "la pasarela no respondió" };
-    return { ok: true, id: j.pedidoId || id, url: j.init_point || j.payment_link };
+    const pid = j.pedidoId || id, url = j.init_point || j.payment_link, ahora = Date.now();
+    /* P68: el cron de cada minuto (_waAviso.revisarPagosWA) recuerda a los 7 min y da por vencido a los 15 */
+    try { await db.doc("waPagos/" + pid).set({ storeId, waId, pedidoId: pid, url, total: conv.total || 0, pasarela, estado: "esperando", recordado: false,
+      creadoEn: new Date(ahora).toISOString(), venceEn: new Date(ahora + PAGO_VENCE_MIN * 60000).toISOString() }); } catch(e){ console.warn("waPagos:", e.message); }
+    return { ok: true, id: pid, url };
   } catch(e){ return { ok: false, error: e.message }; }
 }
 
@@ -385,7 +391,7 @@ export async function atender(ctx){
       case "resumen": { const r = await armarResumen(); return r.msg ? [r.msg] : []; }
       case "pasarela": return [botonesPasarela()];
       case "email": return [txt("📧 Escríbeme tu correo para enviarte el link de Webpay.")];
-      case "pagando": return conv.linkPago ? [botonLink("Tu link de pago sigue activo 👇 Cuando pagues te confirmo por aquí.", "💳 Pagar " + plata(conv.total), conv.linkPago)] : [];
+      case "pagando": return conv.linkPago ? [botonLink("Tu link de pago sigue activo por unos minutos 👇 Cuando pagues te confirmo por aquí.", "💳 Pagar " + plata(conv.total), conv.linkPago)] : [];
       default: return conv.carrito.length ? [pedirMas(conv, prods)] : [botones("¿Qué te gustaría pedir?", BT_INICIO)];
     }
   };
@@ -452,10 +458,10 @@ export async function atender(ctx){
   };
   const pagarOnline = async (pasarela) => {
     if (pasarela === "flow" && !EMAIL_OK.test(conv.email || "")){ conv.paso = "email"; conv.pasarela = "flow"; return fin([txt("📧 Para pagar con Webpay necesito tu correo (ahí te llega el comprobante). Escríbelo aquí:")], conv); }
-    const r = await linkPagoWA(env, storeId, conv, nombre, waId, origin, pasarela);
+    const r = await linkPagoWA(db, env, storeId, conv, nombre, waId, origin, pasarela);
     if (!r.ok){ conv.paso = "resumen"; return fin([txt("⚠️ No pude generar el link de pago (" + r.error + ")."), botones("¿Lo dejamos en efectivo?", [["ef", "💵 Pagar en efectivo"], ["cancelar", "❌ Cancelar"]])], conv); }
     conv.paso = "pagando"; conv.pedidoId = r.id; conv.linkPago = r.url; conv.pasarela = pasarela;
-    return Object.assign(fin([botonLink("💳 Paga tu pedido *#" + r.id + "* (" + plata(conv.total) + ") con " + (pasarela === "flow" ? "Webpay" : "MercadoPago") + " 👇\n\nApenas se confirme el pago, tu pedido entra a la cocina y te aviso por aquí ✅", "💳 Pagar " + plata(conv.total), r.url)], conv), { pagoPendiente: r.id });
+    return Object.assign(fin([botonLink("💳 Paga tu pedido *#" + r.id + "* (" + plata(conv.total) + ") con " + (pasarela === "flow" ? "Webpay" : "MercadoPago") + " 👇\n\nTienes " + PAGO_VENCE_MIN + " minutos. Apenas se confirme el pago, tu pedido entra a la cocina y te aviso por aquí ✅", "💳 Pagar " + plata(conv.total), r.url)], conv), { pagoPendiente: r.id });
   };
 
   /* tienda cerrada: no se toman pedidos */

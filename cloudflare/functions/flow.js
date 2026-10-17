@@ -64,6 +64,7 @@ export async function flowLlamar(fc, metodo, ruta, params){
 /* Paso 1 — lo llama crearPago.js con el pedido ya validado contra Firestore */
 export async function iniciarPagoFlow(d){
   const { db, storeId, config, id, urlTienda, cliente, tipo, val, seguimiento } = d;
+  const venceSeg = Number(d.venceMin) >= 5 ? Math.min(1500, Math.floor(Number(d.venceMin) * 60)) : 1500;   /* P68 */
   const fc = flowCfg(config);
   if (!fc) return { st: 400, error: "El pago con Webpay (Flow) no está configurado en esta tienda" };
   const email = String((cliente && cliente.email) || "").trim().toLowerCase();
@@ -83,7 +84,7 @@ export async function iniciarPagoFlow(d){
     urlReturn: urlTienda + "/api/retornoFlow?storeId=" + enc(storeId) + "&pid=" + enc(id),
     /* sin "optional": Flow se lo muestra al comprador en la página de pago. El pedido se
        reconoce por el número de orden (<pedido>-<azar>) y la tienda viene en la dirección. */
-    timeout: 1500     /* la orden vence a los 25 min, antes de que limpiarPendientes borre el intento (30 min) */
+    timeout: venceSeg     /* la orden vence a los 25 min, antes de que limpiarPendientes borre el intento (30 min) */
   });
   if (!r.url || !r.token) return { st: 502, error: "Flow no devolvió la dirección de pago" };
 
