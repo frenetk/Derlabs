@@ -347,9 +347,22 @@ async function inyectarNombreReal(html, hostname, env, ctx, cfgYaLeida) {
    del landing, así que cambiar landing.html no les llega. Esta regla se agrega
    al servir la página; lleva data-ed-ui para que el editor no la guarde. */
 const LANDING_ETIQUETAS = '<style data-ed-ui data-p50>.badge,.badge.verde{background:none!important;border:0!important;padding:0!important;border-radius:0!important;box-shadow:none!important}</style>';
+/* P61 · Landing en celular: nada se sale de la pantalla.
+   Lo que se escribe en el editor puede traer espacios "duros" (&nbsp;) que no dejan cortar la línea:
+   en los títulos se cambian por espacios normales. Y ningún bloque puede ser más ancho que la pantalla. */
+const LANDING_MOVIL = '<style data-ed-ui data-p61>html,body{max-width:100%;overflow-x:hidden}' +
+  'img,video,iframe,svg{max-width:100%}' +
+  'h1,h2,h3,h4,p,li,span,a{overflow-wrap:break-word}' +
+  '@media (max-width:760px){h1,h2,h3{white-space:normal!important}.section-tit{font-size:clamp(26px,7.4vw,34px)}.cierre-tit{font-size:clamp(22px,6.4vw,28px)}}</style>';
+function sinEspaciosDuros(html){
+  return html.replace(/<(h[1-4])\b([^>]*)>([\s\S]*?)<\/\1>/gi, function(m, t, at, dentro){
+    return "<" + t + at + ">" + dentro.replace(/&nbsp;|\u00a0/g, " ") + "</" + t + ">";
+  });
+}
 function conAjustesLanding(html){
+  html = sinEspaciosDuros(html);
   const i = html.indexOf("</head>");
-  return i > -1 ? html.slice(0, i) + LANDING_ETIQUETAS + html.slice(i) : html;
+  return i > -1 ? html.slice(0, i) + LANDING_ETIQUETAS + LANDING_MOVIL + html.slice(i) : html;
 }
 async function leerLandingPublicada(env){
   try { const h = env.LANDING ? await env.LANDING.get("publicada", { cacheTtl: 60 }) : null; return h ? conAjustesLanding(h) : null; }
@@ -369,7 +382,7 @@ async function servirEditorLanding(request, env){
     html = await (await env.ASSETS.fetch(new Request(u, request))).text();
     origen = "base";
   }
-  const cabeza = '<meta name="robots" content="noindex, nofollow" data-ed-ui>' + LANDING_ETIQUETAS;
+  const cabeza = '<meta name="robots" content="noindex, nofollow" data-ed-ui>' + LANDING_ETIQUETAS + LANDING_MOVIL;
   const pie = '<script data-ed-ui>window.__ED_ORIGEN=' + JSON.stringify(origen) + ';window.__ED_KV=' + (env.LANDING ? "true" : "false") + ';</script>'
             + '<script src="/landing-editor.js?v=1" data-ed-ui></script>';
   const iH = html.indexOf("</head>");

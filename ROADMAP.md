@@ -1358,3 +1358,8 @@ idéntico pixel a pixel.
     "Cómo entregas" con dos interruptores (Delivery / Retiro en local). Son los mismos campos de siempre
     (`deliveryActivo`, `retiroActivo`, también en Entrega y mensajes) y quedan sincronizados. No deja apagar los dos:
     avisa que para no recibir pedidos se cierra la tienda. Solo tienda de comida.
+11. **Landing derlabs.cl en celular** (P61): la página quedaba más ancha que la pantalla (el celular la achicaba y
+    se veía cortada). El Worker agrega al servir la versión publicada (y en el editor, con `data-ed-ui`) una regla
+    que no deja nada más ancho que la pantalla, títulos que cortan línea y tamaño de títulos para celular; en los
+    títulos cambia los espacios duros (`&nbsp;`) que deja el editor por espacios normales. `landing.html` base
+    trae la misma regla y el pie con DerLabs SpA · RUT.
