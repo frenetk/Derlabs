@@ -1375,3 +1375,6 @@ idéntico pixel a pixel.
 - Cada conversación: `tiendas/{storeId}/waChats/{numero}` (nombre, último texto, cantidad, último saludo).
 - Secretos en Cloudflare: `WA_TOKEN` (usuario del sistema), `WA_APP_SECRET`, `WA_VERIFY_TOKEN`; variable `WA_DOMINIO`.
 - Pendiente: avisos de estado del pedido (necesitan una plantilla aprobada por Meta) y Fase 2 (pedidos por chat).
+- P63: diagnóstico en `/api/whatsapp?diag=<WA_VERIFY_TOKEN>` (configuración presente sí/no y los últimos 15 avisos de
+  Meta, guardados en el KV `LANDING` como `wa_diag`, con números tapados). `wrangler.toml`: nombre `derlabs` (el del
+  panel de Cloudflare) y `[observability] enabled = true` para ver los registros en Observability.

@@ -21,6 +21,18 @@ import { getDb, estadoHorario } from "./_firebase.js";
      WA_DOMINIO        texto   · dominio de la tienda piloto (opcional si existe waNumeros) */
 
 const GRAPH = "https://graph.facebook.com/v21.0/";
+/* P63 · Diagnóstico: los últimos 15 avisos que llegaron (sin textos ni números completos) quedan en el KV
+   LANDING, clave "wa_diag". Se ven en /api/whatsapp?diag=<WA_VERIFY_TOKEN>. */
+const DIAG_MAX = 15;
+async function anotar(env, item){
+  try {
+    if (!env.LANDING) return;
+    let lista = []; try { lista = JSON.parse((await env.LANDING.get("wa_diag")) || "[]"); } catch(e){ lista = []; }
+    lista.unshift(Object.assign({ en: new Date().toISOString() }, item));
+    await env.LANDING.put("wa_diag", JSON.stringify(lista.slice(0, DIAG_MAX)));
+  } catch(e){ console.error("wa diag:", e.message); }
+}
+const tapar = n => { n = String(n || ""); return n.length > 4 ? n.slice(0, 4) + "•••" + n.slice(-2) : n; };
 const CADA_SALUDO_MS = 12 * 3600 * 1000;
 
 function texto(cuerpo, status){
@@ -112,6 +124,12 @@ async function procesarMensaje(db, env, phoneId, msg, contacto, ahora){
 
 export async function whatsapp(request, env, ahora){
   const url = new URL(request.url);
+  if (request.method === "GET" && url.searchParams.has("diag")){
+    if (!env.WA_VERIFY_TOKEN || !igualSeguro(url.searchParams.get("diag"), env.WA_VERIFY_TOKEN)) return texto("Prohibido", 403);
+    let lista = []; try { lista = JSON.parse((env.LANDING && await env.LANDING.get("wa_diag")) || "[]"); } catch(e){}
+    const conf = { WA_TOKEN: !!env.WA_TOKEN, WA_APP_SECRET: !!env.WA_APP_SECRET, WA_VERIFY_TOKEN: !!env.WA_VERIFY_TOKEN, WA_DOMINIO: String(env.WA_DOMINIO || ""), FIREBASE: !!env.FIREBASE_SERVICE_ACCOUNT, KV: !!env.LANDING };
+    return new Response(JSON.stringify({ configuracion: conf, ultimosAvisos: lista.length ? lista : "Todavía no llega ningún aviso de Meta" }, null, 2), { headers: { "Content-Type": "application/json; charset=utf-8" } });
+  }
   if (request.method === "GET"){
     const modo = url.searchParams.get("hub.mode"), tk = url.searchParams.get("hub.verify_token"), reto = url.searchParams.get("hub.challenge");
     if (modo === "subscribe" && env.WA_VERIFY_TOKEN && igualSeguro(tk, env.WA_VERIFY_TOKEN) && reto) return texto(reto);
@@ -119,7 +137,10 @@ export async function whatsapp(request, env, ahora){
   }
   if (request.method !== "POST") return texto("Método no permitido", 405);
   const cuerpo = await request.text();
-  if (!(await firmaValida(cuerpo, request.headers.get("x-hub-signature-256"), env.WA_APP_SECRET))) return texto("Firma inválida", 401);
+  if (!(await firmaValida(cuerpo, request.headers.get("x-hub-signature-256"), env.WA_APP_SECRET))){
+    await anotar(env, { resultado: "firma inválida (revisa WA_APP_SECRET)", conFirma: !!request.headers.get("x-hub-signature-256") });
+    return texto("Firma inválida", 401);
+  }
   let j; try { j = JSON.parse(cuerpo); } catch(e){ return texto("JSON inválido", 400); }
   const db = getDb(env), res = [];
   for (const entrada of (j.entry || [])){
@@ -133,6 +154,10 @@ export async function whatsapp(request, env, ahora){
       }
     }
   }
+  const cambios = (j.entry || []).reduce((n, e) => n + ((e.changes || []).length), 0);
+  const tipos = [].concat.apply([], (j.entry || []).map(e => (e.changes || []).map(c => c.field + (c.value && c.value.statuses ? ":estado" : "") + (c.value && c.value.messages ? ":mensaje" : ""))));
+  await anotar(env, { resultado: res.length ? res.map(x => x.error ? "error: " + x.error : x.motivo ? x.motivo : x.repetido ? "repetido" : x.saludo ? "saludo enviado" : "anotado (sin saludo)").join(" | ") : "aviso sin mensajes", campos: tipos.join(","), cambios,
+    de: [].concat.apply([], (j.entry || []).map(e => (e.changes || []).map(c => ((c.value && c.value.messages) || []).map(m => tapar(m.from)).join(",")))).filter(Boolean).join(",") });
   /* a Meta siempre se le contesta 200: si no, reintenta el mismo aviso por horas */
   return new Response(JSON.stringify({ ok: true, n: res.length, res }), { headers: { "Content-Type": "application/json" } });
 }

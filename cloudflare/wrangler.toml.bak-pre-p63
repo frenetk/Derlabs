@@ -1,0 +1,21 @@
+name = "derlabs-worker"
+main = "worker.js"
+compatibility_date = "2026-09-16"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+# Dominios: NO se declaran aquí. Los administra functions/dominios.js
+# (cron cada 5 min): derlabs.cl, www.derlabs.cl, derlabs.store,
+# derlabs.online, *.derlabs.store y los dominios de los clientes.
+
+[assets]
+directory = "../"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[kv_namespaces]]
+binding = "LANDING"
+id = "3a095eb102514e1f967be18f58882342"

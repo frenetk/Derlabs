@@ -1,4 +1,4 @@
-name = "derlabs-worker"
+name = "derlabs"
 main = "worker.js"
 compatibility_date = "2026-09-16"
 compatibility_flags = ["nodejs_compat"]
@@ -19,3 +19,7 @@ crons = ["*/5 * * * *"]
 [[kv_namespaces]]
 binding = "LANDING"
 id = "3a095eb102514e1f967be18f58882342"
+
+# Registros visibles en Cloudflare → Observability
+[observability]
+enabled = true
