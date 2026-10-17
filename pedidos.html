@@ -1804,7 +1804,7 @@ function cardHTML(p){
     (cl.direccion ? '<div class="card-dir">📍 ' + esc(cl.direccion) + (cl.comuna ? ", " + esc(cl.comuna) : "") + '</div>' : ''),
     '<div class="card-footer">',
       '<div class="card-total">' + fmtPrecio(p.total) + '</div>',
-      (p.origen === "whatsapp" ? '<a class="card-wa" href="https://wa.me/' + esc(String(p.waId || (cl.telefono || "")).replace(/\D/g, "")) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Pedido por WhatsApp · abrir el chat">💬 WhatsApp</a>' : ''),
+      (p.origen === "whatsapp" || cl.origen === "whatsapp" ? '<a class="card-wa" href="https://wa.me/' + esc(String(p.waId || cl.waId || (cl.telefono || "")).replace(/\D/g, "")) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Pedido por WhatsApp · abrir el chat">💬 WhatsApp</a>' : ''),
       '<div class="card-pago">' + esc(p.metodoPago === "mercadopago" ? "MercadoPago" : p.metodoPago === "flow" ? "Webpay · Flow" : "Efectivo") + '</div>',
     '</div>',
     hayBoton ? [

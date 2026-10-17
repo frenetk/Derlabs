@@ -9260,7 +9260,6 @@ function secPanel(){
      lleva en el mes. Eso lo responde /api/whatsapp?op=tienda.
    ════════════════════════════════════════════════════════════════ */
 var _wa = { estado: null, cargando: false, error: "" };
-function _waBase(){ return (_wa.estado && _wa.estado.saludoBase) || "¡Hola {cliente}! 👋 Gracias por escribir a *{tienda}*.\n\n🛒 Haz tu pedido aquí: {link}\n{estado}"; }
 function waCss(){
   if (qs("#wa-css")) return;
   var st = document.createElement("style"); st.id = "wa-css";
@@ -9284,7 +9283,13 @@ function waCss(){
     "#waPanel .wa-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}#waPanel .wa-btns button{margin:0}",
     "#waPanel .wa-ped{display:flex;align-items:center;gap:12px;margin:12px 0 0;padding:12px;border:1.5px solid #E6E1DD;border-radius:12px}",
     "#waPanel .wa-ped>span{flex:1;min-width:0;font-size:14px}#waPanel .wa-ped small{display:block;font-size:12px;line-height:1.4;color:#6B6560;margin-top:3px}",
-    "#waPanel .wa-ped .switch{flex:none}"
+    "#waPanel .wa-ped .switch{flex:none}",
+    "#waPanel .wa-sec{margin:16px 0 0}#waPanel .wa-sec b{display:block;font-size:14.5px}#waPanel .wa-sec small{display:block;font-size:12px;line-height:1.4;color:#6B6560;margin-top:2px}",
+    "#waPanel .wa-tonos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 0}",
+    "#waPanel .wa-tonos button{border:1.5px solid #E6E1DD;background:#fff;border-radius:12px;padding:9px 6px;font:inherit;cursor:pointer;color:#1A1A1A;text-align:center;min-width:0}",
+    "#waPanel .wa-tonos button b{display:block;font-size:13px}#waPanel .wa-tonos button small{display:block;font-size:11px;color:#8A8580;margin-top:2px}",
+    "#waPanel .wa-tonos button.sel{border-color:#1E7B3C;background:#EAF6EE;box-shadow:inset 0 0 0 1px #1E7B3C}",
+    "#waPanel .wa-opc{font-weight:600;color:#8A8580}#waPanel textarea#waInfo{min-height:84px}"
   ].join("\n");
   document.head.appendChild(st);
 }
@@ -9297,39 +9302,38 @@ function waPanel(){
     box.innerHTML = '<div class="pcard-h"><div><b>🤖 Asistente de WhatsApp</b><small id="waResumen">Responde solo a quien te escribe</small></div>' +
       '<label class="switch"><input type="checkbox" id="waOn" aria-label="Respuestas automáticas por WhatsApp"><span class="slider"></span></label></div>' +
       '<p class="pnota" style="font-size:12.5px;margin:8px 0 0">Cuando un cliente escribe a tu WhatsApp, recibe al instante tu link, tu horario y si estás abierto. Tú sigues usando tu WhatsApp como siempre.</p>' +
-      '<div class="wa-ped"><span><b>🛒 Tomar pedidos por chat</b><small>Mientras estás abierto, el asistente muestra tu menú, pregunta lo necesario (tamaño, extras, dirección) y el pedido llega a tu gestor como cualquier otro, con pago en efectivo.</small></span>' +
+      '<div class="wa-ped"><span><b>🛒 Tomar pedidos por chat</b><small>Mientras estás abierto, el asistente muestra tu menú, pregunta lo necesario (tamaño, extras, dirección) y el pedido llega a tu gestor como cualquier otro. Pagan en efectivo u online, si tienes MercadoPago o Webpay activo.</small></span>' +
       '<label class="switch"><input type="checkbox" id="waPed" aria-label="Tomar pedidos por WhatsApp"><span class="slider"></span></label></div>' +
       '<div id="waConn"></div>' +
-      '<label class="plabel" for="waTxt">Mensaje de bienvenida</label>' +
-      '<textarea class="field" id="waTxt" maxlength="600"></textarea>' +
-      '<div class="wa-chips" id="waChips"><span class="pnota" style="margin:0;align-self:center;font-size:12px">Agregar:</span>' +
-        '<button type="button" data-wains="{cliente}">👤 Nombre del cliente</button><button type="button" data-wains="{tienda}">🏪 Tu tienda</button>' +
-        '<button type="button" data-wains="{link}">🔗 Link para pedir</button><button type="button" data-wains="{estado}">🟢 Abierto o cerrado</button></div>' +
-      '<div class="wa-cnt" id="waCnt">0 / 600</div>' +
-      '<div class="wa-pv"><small>Así lo verá tu cliente</small><div class="wa-burbuja" id="waPv"></div></div>' +
-      '<div class="wa-btns"><button type="button" class="pill pill-solid pill-sm" id="waGuardar">Guardar mensaje</button>' +
-      '<button type="button" class="pill pill-outline-muted pill-sm" id="waRest">Usar el mensaje original</button></div>';
+      '<div class="wa-sec"><b>Cómo habla tu asistente</b><small>Tú eliges el estilo; los mensajes los arma DerLabs para que siempre funcionen (link, horario, pedidos y pagos).</small></div>' +
+      '<div class="wa-tonos" id="waTonos">' +
+        '<button type="button" data-watono="cercano"><b>😊 Cercano</b><small>Tutea, amable</small></button>' +
+        '<button type="button" data-watono="formal"><b>🤝 Formal</b><small>Trata de usted</small></button>' +
+        '<button type="button" data-watono="alegre"><b>🎉 Alegre</b><small>Con más emojis</small></button></div>' +
+      '<label class="plabel" for="waFrase">Tu frase de bienvenida <span class="wa-opc">(opcional)</span></label>' +
+      '<input class="field" id="waFrase" maxlength="120" placeholder="Ej: Las hamburguesas más jugosas de Buin 🍔">' +
+      '<div class="wa-cnt" id="waCnt">0 / 120</div>' +
+      '<label class="plabel" for="waInfo">Lo que tu asistente debe saber <span class="wa-opc">(opcional)</span></label>' +
+      '<textarea class="field" id="waInfo" maxlength="400" placeholder="Ej: Las papas son caseras. Tenemos opción vegana. El pan es sin gluten a pedido."></textarea>' +
+      '<p class="pnota" style="font-size:12px;margin:4px 0 0">Lo usa para responder preguntas de tus clientes. Tu menú, horario, zonas de envío y formas de pago ya los conoce. No se permiten links ni teléfonos.</p>' +
+      '<div class="wa-pv"><small>Así saluda a tus clientes</small><div class="wa-burbuja" id="waPv"></div></div>' +
+      '<div class="wa-btns"><button type="button" class="pill pill-solid pill-sm" id="waGuardar">Guardar</button></div>';
     var ref = qs("#pWhats"), card = ref && ref.closest(".pcard");
     if (card && card.parentNode === sec) sec.insertBefore(box, card.nextSibling); else sec.insertBefore(box, sec.firstChild);
-    var tx = qs("#waTxt");
-    tx.addEventListener("input", function(){ tx._tocado = true; waVista(); });
-    qs("#waChips").addEventListener("click", function(e){
-      var b = e.target.closest("[data-wains]"); if (!b) return;
-      var t = b.getAttribute("data-wains"), a = tx.selectionStart != null ? tx.selectionStart : tx.value.length, z = tx.selectionEnd != null ? tx.selectionEnd : a;
-      tx.value = (tx.value.slice(0, a) + t + tx.value.slice(z)).slice(0, 600); tx._tocado = true;
-      try { tx.focus(); tx.setSelectionRange(a + t.length, a + t.length); } catch(x){}
-      waVista();
-    });
-    qs("#waGuardar").addEventListener("click", async function(){
-      var v = String(tx.value || "").replace(/\r/g, "").trim().slice(0, 600);
-      if (v === _waBase()) v = "";
-      var ok = await saveConfig("waSaludo", v);
-      if (ok !== false){ tx._tocado = false; if (typeof toast === "function") toast("✅ Mensaje guardado"); }
+    var fr = qs("#waFrase"), inf = qs("#waInfo");
+    fr.addEventListener("input", function(){ fr._tocado = true; waVista(); });
+    inf.addEventListener("input", function(){ inf._tocado = true; });
+    qs("#waTonos").addEventListener("click", async function(e){
+      var b = e.target.closest("[data-watono]"); if (!b) return;
+      var v = b.getAttribute("data-watono");
+      var ok = await saveConfig("waTono", v);
+      if (ok !== false && typeof toast === "function") toast("✅ Estilo guardado");
       waPintar();
     });
-    qs("#waRest").addEventListener("click", async function(){
-      var ok = await saveConfig("waSaludo", "");
-      if (ok !== false){ tx._tocado = false; if (typeof toast === "function") toast("Mensaje original restaurado"); }
+    qs("#waGuardar").addEventListener("click", async function(){
+      var f = waLimpiar(fr.value, 120, true), i = waLimpiar(inf.value, 400, false);
+      var ok1 = await saveConfig("waFrase", f), ok2 = await saveConfig("waInfo", i);
+      if (ok1 !== false && ok2 !== false){ fr._tocado = false; inf._tocado = false; if (typeof toast === "function") toast("✅ Guardado"); }
       waPintar(true);
     });
     qs("#waOn").addEventListener("change", async function(){
@@ -9381,26 +9385,41 @@ async function waCargar(){
   waPintar();
 }
 function _waFmt(n){ return Number(n || 0).toLocaleString("es-CL"); }
-function waTextoVista(base){
+/* mismas reglas que el servidor (_waBot.js limpiarTextoDueno / whatsapp.js textoSaludo) */
+function waLimpiar(s, max, unaLinea){
+  var t = String(s || "").replace(/\r/g, "");
+  t = t.replace(/\{[^}]*\}/g, "").replace(/https?:\/\/\S+|www\.\S+|\b[\w-]+\.(cl|com|net|org|store|app|io|link|me)\b\S*/gi, "")
+       .replace(/\+?\d[\d\s().-]{7,}\d/g, "").replace(/[*_~`{}<>\[\]|\\]/g, "");
+  t = unaLinea ? t.replace(/\s+/g, " ") : t.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n");
+  return t.trim().slice(0, max);
+}
+var WA_SALUDOS = {
+  cercano: ["¡Hola {cliente}! 👋 Gracias por escribir a *{tienda}*.", "🛒 Haz tu pedido aquí: {link}"],
+  formal:  ["Hola {cliente}, gracias por comunicarse con *{tienda}*.", "Puede hacer su pedido aquí: {link}"],
+  alegre:  ["¡Holaa {cliente}! 🙌 Qué bueno que escribes a *{tienda}*.", "🍽️ Pide aquí en un toque: {link}"]
+};
+function waTono(){ var t = (state.config || {}).waTono; return WA_SALUDOS[t] ? t : "cercano"; }
+function waTextoVista(){
   var c = state.config || {}, e = typeof hrEstado === "function" ? hrEstado() : { abierta: true };
   var est = c.abierto === false ? "🔴 En este momento estamos cerrados." : e.abierta ? "🟢 Estamos abiertos y recibiendo pedidos." : "🔴 Ahora estamos cerrados" + (e.abre ? "; abrimos " + e.abre + "." : ".");
+  var fr = qs("#waFrase"), frase = waLimpiar(fr ? fr.value : c.waFrase, 120, true), t = WA_SALUDOS[waTono()];
   var dom = c.dominioPrincipal || location.host;
-  return String(base).replace(/\{cliente\}/g, "María").replace(/\{tienda\}/g, c.nombre || "tu tienda")
-    .replace(/\{link\}/g, "https://" + dom).replace(/\{estado\}/g, est).replace(/[ \t]+([!?,.])/g, "$1");
+  return (t[0] + (frase ? "\n" + frase : "") + "\n\n" + t[1] + "\n" + est).replace(/\{cliente\}/g, "María").replace(/\{tienda\}/g, c.nombre || "tu tienda").replace(/\{link\}/g, "https://" + dom);
 }
 function waVista(){
-  var tx = qs("#waTxt"), pv = qs("#waPv"); if (!tx || !pv) return;
-  var t = waTextoVista(tx.value || "");
-  pv.innerHTML = esc(t).replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/(https?:\/\/[^\s<]+)/g, "<a>$1</a>").replace(/\n/g, "<br>") || '<span style="color:#999">(vacío)</span>';
-  qs("#waCnt").textContent = tx.value.length + " / 600";
+  var pv = qs("#waPv"), fr = qs("#waFrase"); if (!pv) return;
+  pv.innerHTML = esc(waTextoVista()).replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/(https?:\/\/[^\s<]+)/g, "<a>$1</a>").replace(/\n/g, "<br>");
+  if (fr) qs("#waCnt").textContent = fr.value.length + " / 120";
+  var tn = waTono(); document.querySelectorAll("#waTonos [data-watono]").forEach(function(b){ b.classList.toggle("sel", b.getAttribute("data-watono") === tn); });
 }
 function waPintar(conTexto){
   var box = qs("#waPanel"); if (!box) return;
-  var c = state.config || {}, s = _wa.estado, tx = qs("#waTxt");
+  var c = state.config || {}, s = _wa.estado, fr = qs("#waFrase"), inf = qs("#waInfo");
   var on = c.waActivo !== false;
   qs("#waOn").checked = on;
   var ped = qs("#waPed"); if (ped){ ped.checked = c.waPedidos !== false; ped.disabled = !on; ped.closest(".wa-ped").style.opacity = on ? "" : ".55"; }
-  if (conTexto || (tx && !tx._tocado && document.activeElement !== tx)) tx.value = String(c.waSaludo || "").trim() || _waBase();
+  if (fr && (conTexto || (!fr._tocado && document.activeElement !== fr))) fr.value = String(c.waFrase || "");
+  if (inf && (conTexto || (!inf._tocado && document.activeElement !== inf))) inf.value = String(c.waInfo || "");
   waVista();
   var h = "", res = "";
   if (_wa.cargando && !s) h = '<div class="wa-est"><span class="wa-ico">⏳</span><span>Revisando tu conexión…</span></div>';

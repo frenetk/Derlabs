@@ -21,6 +21,7 @@
 import { admin, getDb, corsHeaders, getStoreConfig } from "./_firebase.js";
 import { enviarCorreosPedido } from "./enviarEmails.js";
 import { notificar } from "./notificar.js";
+import { avisarPagoWA } from "./_waAviso.js";
 import { moverInsumos } from "./inventario.js";
 
 const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -175,6 +176,7 @@ async function confirmarPedidoFlow(db, env, storeId, pedidoId, estadoFlow, orige
       body: JSON.stringify({ storeId, pedidoId, cliente: ped.cliente || {}, total: ped.total, items: ped.items || [] })
     }), env);
   } catch (e) { console.warn("No se pudo disparar la notificación push:", e.message); }
+  await avisarPagoWA(db, env, storeId, ped);   /* P67: pedido del asistente de WhatsApp */
   return "creado";
 }
 

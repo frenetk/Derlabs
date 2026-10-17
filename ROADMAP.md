@@ -1415,3 +1415,22 @@ idéntico pixel a pixel.
 - **Hablar con alguien**: el bot se calla 2 h en ese chat y le llega un aviso al dueño.
 - Topes: 40 mensajes por hora por persona mientras conversa; cada respuesta cuenta en el tope del mes; el panel muestra
   los pedidos por chat del mes (`uso.pedidos`).
+
+## 38. WhatsApp: pago online, la IA contesta, listas limpias y estilo del asistente (P67) — ✅ hecho
+
+- **Listas**: las categorías van sin descripción (la burbuja del cliente queda solo "Hamburguesas") y los productos
+  solo con el precio. Al abrir una categoría llega también la carta en texto con precios.
+- **Pedir varias cosas de una vez**: el menú, "Agregar más" y "¿algo más?" invitan a escribir todo junto
+  ("2 crispy y 1 monster"); la IA (o el buscador) lo arma y pregunta solo lo que falta.
+- **La IA contesta preguntas** en cualquier paso (pago, horario, envío a una comuna, locales, ingredientes) con los
+  datos de la tienda (`infoTienda`) y vuelve al paso en que iba el cliente. Si no está el dato, no inventa: ofrece
+  "Hablar con alguien". Sin Gemini hay respuestas básicas (pagos, horario, envío, locales, tiempo). Links ajenos se
+  borran de la respuesta. El diagnóstico (`?diag=`) ahora prueba también la clave de Gemini (`pruebaGemini`).
+- **Pago online** con las pasarelas activas de la tienda (`mpActivo` / `flowActivo`): en el resumen
+  "💵 Efectivo / 💳 Pagar online"; con las dos, elige MercadoPago o Webpay (Webpay pide el correo). Se usa `crearPago`
+  (mismas validaciones que la web) y el bot manda un botón con el link. El pedido se crea cuando la pasarela confirma
+  (`webhookPago` / `flow.js`) y `_waAviso.js` le escribe al cliente "✅ Pago recibido" desde el número de la tienda.
+  El cliente queda con `origen: "whatsapp"` y `waId`, y el gestor muestra la etiqueta 💬 WhatsApp también en esos.
+- **Estilo del asistente** (panel del dueño): ya no se edita el mensaje completo. El dueño elige tono
+  (`waTono`: cercano / formal / alegre), una frase de bienvenida de 120 caracteres (`waFrase`) y lo que el asistente
+  debe saber (`waInfo`, 400). El servidor quita links, teléfonos, formato y llaves; `waSaludo` ya no se usa.

@@ -1,5 +1,5 @@
 import { getDb, estadoHorario, uidDesdeToken } from "./_firebase.js";
-import { atender } from "./_waBot.js";
+import { atender, limpiarTextoDueno, tonoDe } from "./_waBot.js";
 import { notificar } from "./notificar.js";
 /* cloudflare/functions/whatsapp.js — WhatsApp de DerLabs (P62 · P63 · P64 · P65 · P66)
    P66: con la tienda abierta y "tomar pedidos" encendido (config.waPedidos, por defecto sí),
@@ -18,7 +18,7 @@ import { notificar } from "./notificar.js";
                                    uso: { mes, recibidos, enviados, bloqueados, pedidos }, calidad, ultimoError }
    · waSolicitudes/{storeId}     el dueño pidió conectar su número (desde el panel)
    · tiendas/{storeId}/waChats/{numero}   cada conversación
-   · tiendas/{storeId}/config/general     waActivo (el dueño apaga o prende el bot), waSaludo (su mensaje)
+   · tiendas/{storeId}/config/general     waActivo, waPedidos (interruptores), waTono, waFrase, waInfo (P67)
 
    Protecciones para que un cliente no afecte a los demás ni genere costos:
    · tope de respuestas automáticas al mes por número (limiteMes, 2.000 por defecto; DerLabs lo cambia)
@@ -33,7 +33,6 @@ const CADA_SALUDO_MS = 12 * 3600 * 1000;
 export const LIMITE_MES_DEF = 2000;
 const MAX_POR_CLIENTE_HORA = 12;
 const MAX_CONV_HORA = 40;   /* P66: tomando pedidos, una conversación tiene más idas y vueltas */
-export const SALUDO_DEF = "¡Hola {cliente}! 👋 Gracias por escribir a *{tienda}*.\n\n🛒 Haz tu pedido aquí: {link}\n{estado}";
 const ERR_BLOQUEO = [368, 131031];                    /* Meta bloqueó el número o la cuenta: se pausa solo */
 const ERR_LIMITE = [130429, 131048, 131056, 80007];   /* Meta frenó por volumen o spam */
 
@@ -81,7 +80,14 @@ export function limpiarToken(t){
   return String(t || "").replace(/^\s*["']?\s*(Bearer\s+)?/i, "").replace(/["']?\s*$/, "").replace(/\s+/g, "");
 }
 
-/* ── Mensaje de bienvenida: el que escribió el dueño (config.waSaludo) o el de siempre ── */
+/* ── Mensaje de bienvenida (P67): lo arma el sistema; el dueño solo elige el tono
+   (config.waTono: cercano | formal | alegre) y una frase corta (config.waFrase, sin links ni
+   teléfonos). El link, el horario y el formato los pone siempre el sistema. ── */
+export const SALUDOS = {
+  cercano: { hola: "¡Hola {cliente}! 👋 Gracias por escribir a *{tienda}*.", pedir: "🛒 Haz tu pedido aquí: {link}" },
+  formal:  { hola: "Hola {cliente}, gracias por comunicarse con *{tienda}*.", pedir: "Puede hacer su pedido aquí: {link}" },
+  alegre:  { hola: "¡Holaa {cliente}! 🙌 Qué bueno que escribes a *{tienda}*.", pedir: "🍽️ Pide aquí en un toque: {link}" }
+};
 export function textoSaludo(cfg, nombreCliente, dominio, fecha){
   cfg = cfg || {};
   const tienda = String(cfg.nombre || "nuestra tienda").trim();
@@ -92,13 +98,14 @@ export function textoSaludo(cfg, nombreCliente, dominio, fecha){
   if (e.abierta) estado = "🟢 Estamos abiertos y recibiendo pedidos.";
   else if (e.manual) estado = "🔴 En este momento estamos cerrados.";
   else estado = "🔴 Ahora estamos cerrados" + (e.abre ? "; abrimos " + e.abre + "." : ".");
-  const propio = String(cfg.waSaludo || "").trim();
-  const base = propio ? propio.slice(0, 600) : SALUDO_DEF;
-  return base
-    .replace(/\{cliente\}/g, quien).replace(/\{tienda\}/g, tienda)
-    .replace(/\{link\}/g, url).replace(/\{estado\}/g, estado)
+  const t = SALUDOS[tonoDe(cfg)];
+  const frase = limpiarTextoDueno(cfg.waFrase, 120, true);
+  return (t.hola + (frase ? "\n" + frase : "") + (url ? "\n\n" + t.pedir : "") + "\n" + estado)
+    .replace(/\{cliente\}/g, quien).replace(/\{tienda\}/g, tienda).replace(/\{link\}/g, url)
     .replace(/[ \t]+([!?,.])/g, "$1").replace(/[ \t]{2,}/g, " ").trim();
 }
+/* para la vista previa del panel */
+export const SALUDO_DEF = SALUDOS.cercano.hola + "\n\n" + SALUDOS.cercano.pedir + "\n{estado}";
 
 async function enviar(env, phoneId, cuerpo){
   const token = limpiarToken(env.WA_TOKEN);
@@ -330,7 +337,19 @@ export async function whatsapp(request, env, ahora){
         prueba = r.ok ? "token válido (" + (jj.name || jj.id || "ok") + ")" : "Meta rechaza el token: " + ((jj.error && jj.error.message) || r.status);
       } catch(e){ prueba = "no se pudo probar: " + e.message; }
     }
-    const conf = { WA_TOKEN: !!env.WA_TOKEN, tokenLargo: tk.length, tokenEmpieza: tk.slice(0, 4), tokenTraiaEspacios: crudo !== tk, pruebaToken: prueba,
+    /* P67: prueba la clave de Gemini con una pregunta mínima */
+    let gemini = "sin GEMINI_API_KEY (el bot usa el buscador simple)";
+    if (String(env.GEMINI_API_KEY || "").trim()){
+      try {
+        const mo = String(env.GEMINI_MODEL || "gemini-2.5-flash").trim();
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(mo) + ":generateContent", { method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": String(env.GEMINI_API_KEY).trim() },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Responde solo: ok" }] }], generationConfig: { maxOutputTokens: 5, thinkingConfig: { thinkingBudget: 0 } } }) });
+        const jj = await r.json().catch(() => ({}));
+        gemini = r.ok ? "Gemini responde (" + mo + ")" : "Gemini rechaza la clave: " + ((jj.error && jj.error.message) || r.status);
+      } catch(e){ gemini = "no se pudo probar Gemini: " + e.message; }
+    }
+    const conf = { pruebaGemini: gemini, WA_TOKEN: !!env.WA_TOKEN, tokenLargo: tk.length, tokenEmpieza: tk.slice(0, 4), tokenTraiaEspacios: crudo !== tk, pruebaToken: prueba,
       WA_APP_SECRET: !!env.WA_APP_SECRET, WA_VERIFY_TOKEN: !!env.WA_VERIFY_TOKEN, ADMIN_SECRET: !!env.ADMIN_SECRET, WA_DOMINIO: String(env.WA_DOMINIO || ""), FIREBASE: !!env.FIREBASE_SERVICE_ACCOUNT, KV: !!env.LANDING };
     return new Response(JSON.stringify({ configuracion: conf, ultimosAvisos: lista.length ? lista : "Todavía no llega ningún aviso de Meta" }, null, 2), { headers: { "Content-Type": "application/json; charset=utf-8" } });
   }

@@ -2,21 +2,27 @@ import { validarItemsCatalogo, validarPedidoCompleto, estadoHorario } from "./_f
 import { moverInsumos } from "./inventario.js";
 import { enviarCorreosPedido } from "./enviarEmails.js";
 import { notificar } from "./notificar.js";
-/* cloudflare/functions/_waBot.js — P66 · El asistente de WhatsApp toma pedidos.
+import { crearPago } from "./crearPago.js";
+/* cloudflare/functions/_waBot.js — P66 · P67 · El asistente de WhatsApp toma pedidos.
 
-   Conversación por pasos. La IA (Gemini) solo ENTIENDE lo que escribe el cliente
-   ("2 clásicas y una coca") y devuelve ids del catálogo; todo lo demás (preguntas de
-   variantes, extras obligatorios, entrega, comuna, precios, total) lo hace el servidor
-   con los datos de la tienda, igual que la web. Sin GEMINI_API_KEY funciona con un
-   buscador simple por nombre.
+   Conversación por pasos. La IA (Gemini) ENTIENDE lo que escribe el cliente ("2 clásicas y
+   una coca" → ids del catálogo) y CONTESTA preguntas con los datos de la tienda (horario,
+   envío, pagos, locales, productos y lo que el dueño escribió para el asistente). Todo lo
+   que cuesta plata (precios, envío, total, pago) lo calcula el servidor igual que la web.
+   Sin GEMINI_API_KEY funciona con un buscador por nombre y respuestas básicas.
 
-   Estado de la conversación: tiendas/{storeId}/waChats/{numero}.conv (vence a las 2 h).
-   El pedido se valida con validarPedidoCompleto (horario, stock, precios) y queda en
-   tiendas/{storeId}/pedidos con origen "whatsapp" y pago en efectivo. */
+   P67: pago online con las pasarelas de la tienda (MercadoPago / Webpay por Flow): el bot
+   manda un botón con el link; el pedido se crea cuando la pasarela confirma el pago
+   (webhookPago / webhookFlow) y _waAviso.js le avisa al cliente por WhatsApp.
+
+   El dueño elige el tono (config.waTono), una frase corta (config.waFrase) y datos para el
+   asistente (config.waInfo). Los textos del sistema no se pueden editar.
+
+   Estado de la conversación: tiendas/{storeId}/waChats/{numero}.conv (vence a las 2 h). */
 
 export const CONV_VENCE_MS = 2 * 3600 * 1000;
 const HUMANO_MS = 2 * 3600 * 1000;
-const MAX_PROD_IA = 400;
+const MAX_PROD_IA = 300;
 
 /* ── utilidades ── */
 export const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9ñ]+/g, " ").trim();
@@ -24,9 +30,22 @@ export const plata = n => "$" + String(Math.round(Number(n) || 0)).replace(/\B(?
 const corto = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1).trim() + "…" : s; };
 const NUM = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, par: 2 };
 const VACIAS = new Set("de del la las el los un una uno unos unas y con sin para por al a en mi me quiero quisiera pedir dame porfa por favor gracias hola buenas tardes noches dias mas tambien otra otro".split(" "));
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+/* Texto que escribe el dueño (frase, datos para el asistente): sin links, teléfonos, formato ni llaves */
+export function limpiarTextoDueno(s, max, unaLinea){
+  let t = String(s || "").replace(/\r/g, "");
+  t = t.replace(/\{[^}]*\}/g, "").replace(/https?:\/\/\S+|www\.\S+|\b[\w-]+\.(cl|com|net|org|store|app|io|link|me)\b\S*/gi, "")
+       .replace(/\+?\d[\d\s().-]{7,}\d/g, "")
+       .replace(/[*_~`{}<>\[\]|\\]/g, "");
+  t = unaLinea ? t.replace(/\s+/g, " ") : t.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n");
+  return t.trim().slice(0, max);
+}
+export function tonoDe(cfg){ return ["cercano", "formal", "alegre"].includes(cfg && cfg.waTono) ? cfg.waTono : "cercano"; }
 
 /* ── mensajes para Meta ── */
-const txt = body => ({ type: "text", text: { preview_url: true, body: String(body).slice(0, 4096) } });
+const txt = body => ({ type: "text", text: { preview_url: false, body: String(body).slice(0, 4096) } });
 function botones(body, lista){
   return { type: "interactive", interactive: { type: "button", body: { text: String(body).slice(0, 1024) },
     action: { buttons: lista.slice(0, 3).map(b => ({ type: "reply", reply: { id: String(b[0]).slice(0, 256), title: corto(b[1], 20) } })) } } };
@@ -35,15 +54,20 @@ function listado(body, boton, filas, titulo){
   return { type: "interactive", interactive: { type: "list", body: { text: String(body).slice(0, 1024) },
     action: { button: corto(boton, 20), sections: [{ title: corto(titulo || "Opciones", 24), rows: filas.slice(0, 10).map(f => Object.assign({ id: String(f[0]).slice(0, 200), title: corto(f[1], 24) }, f[2] ? { description: corto(f[2], 72) } : {})) }] } } };
 }
+function botonLink(body, texto, url){
+  return { type: "interactive", interactive: { type: "cta_url", body: { text: String(body).slice(0, 1024) },
+    action: { name: "cta_url", parameters: { display_text: corto(texto, 20), url } } } };
+}
+const BT_INICIO = [["menu", "📋 Ver menú"], ["humano", "🙋 Hablar con alguien"]];
 
 /* ── catálogo (se guarda 2 minutos en el KV para no leer Firestore en cada mensaje) ── */
 export async function catalogo(db, env, storeId){
-  const k = "wa_cat_" + storeId;
+  const k = "wa_cat2_" + storeId;
   try { if (env.LANDING){ const c = await env.LANDING.get(k); if (c) return JSON.parse(c); } } catch(e){}
   const q = await db.collection("tiendas/" + storeId + "/productos").get();
   const prods = q.docs.map(d => {
     const p = d.data() || {};
-    return { id: d.id, nombre: String(p.nombre || "").trim(), precio: Number(p.precio) || 0, cat: String(p.categoria || "").trim(), desc: corto(p.descripcion || "", 70),
+    return { id: d.id, nombre: String(p.nombre || "").trim(), precio: Number(p.precio) || 0, cat: String(p.categoria || "").trim(), desc: corto(p.descripcion || "", 160),
       orden: Number(p.orden) || 0, activo: p.activo !== false && p.disponible !== false, agotado: p.stock !== null && p.stock !== undefined && p.stock !== "" && Number(p.stock) <= 0,
       variantes: p.variantesActivas && Array.isArray(p.variantes) ? p.variantes.filter(g => g && g.nombre && Array.isArray(g.opciones) && g.opciones.length).map(g => ({ nombre: String(g.nombre), opciones: g.opciones.map(String).slice(0, 10) })) : [],
       grupos: Array.isArray(p.gruposExtras) ? p.gruposExtras.slice(0, 10) : [] };
@@ -52,6 +76,50 @@ export async function catalogo(db, env, storeId){
   return prods;
 }
 const categorias = prods => { const v = []; prods.forEach(p => { const c = p.cat || "Otros"; if (!v.includes(c)) v.push(c); }); return v; };
+async function localesDe(db, storeId){
+  try {
+    const q = await db.collection("tiendas/" + storeId + "/locales").get();
+    return q.docs.map(d => Object.assign({ id: d.id }, d.data() || {})).filter(l => l.nombre && l.abierto !== false)
+      .map(l => ({ id: l.id, nombre: String(l.nombre), direccion: String(l.direccion || "") }));
+  } catch(e){ return []; }
+}
+export const pagosDe = cfg => ({ mp: cfg.mpActivo === true, flow: cfg.flowActivo === true });
+
+/* ── datos de la tienda para contestar preguntas ── */
+function textoHorario(cfg){
+  const h = cfg.horario;
+  if (!h || h.activo !== true || !h.dias) return "";
+  const v = [];
+  for (let d = 1; d <= 7; d++){ const k = d % 7, t = Array.isArray(h.dias[k]) ? h.dias[k] : (Array.isArray(h.dias[String(k)]) ? h.dias[String(k)] : []);
+    const tr = t.filter(x => x && x.a && x.c).map(x => x.a + " a " + x.c);
+    v.push(DIAS[k] + ": " + (tr.length ? tr.join(" y ") : "cerrado")); }
+  return v.join("; ");
+}
+function textoEnvio(cfg){
+  if (cfg.deliveryActivo === false) return "No hacemos delivery, solo retiro en el local.";
+  const z = Array.isArray(cfg.zonas) ? cfg.zonas : [];
+  if (z.length) return "Delivery a estas comunas: " + z.map(x => String(x.comunas || "").split(",").map(s => s.trim()).filter(Boolean).join(", ") + " (" + (Number(x.costo) ? plata(x.costo) : "gratis") + (Number(x.minGratis) ? ", gratis desde " + plata(x.minGratis) : "") + ")").join("; ") + ". Otras comunas no tienen cobertura.";
+  return "Delivery: " + (Number(cfg.deliveryCosto) ? plata(cfg.deliveryCosto) : "gratis") + (Number(cfg.deliveryMinimo) ? ", gratis desde " + plata(cfg.deliveryMinimo) : "") + ".";
+}
+function textoPagos(cfg){
+  const p = pagosDe(cfg), v = ["efectivo"];
+  if (p.mp) v.push("pago online con MercadoPago (tarjetas)"); if (p.flow) v.push("pago online con Webpay (tarjetas de débito y crédito)");
+  return "Formas de pago por WhatsApp: " + v.join(", ") + ".";
+}
+export function infoTienda(cfg, locs){
+  const eh = estadoHorario(cfg);
+  return [
+    "Tienda: " + (cfg.nombre || ""),
+    "Ahora: " + (eh.abierta ? "abierta" : "cerrada" + (eh.abre ? ", abre " + eh.abre : "")),
+    textoHorario(cfg) ? "Horario: " + textoHorario(cfg) : "",
+    textoEnvio(cfg),
+    cfg.retiroActivo === false ? "No hay retiro en local." : "Retiro en local: " + (locs.length ? locs.map(l => l.nombre + (l.direccion ? " (" + l.direccion + ")" : "")).join("; ") : (cfg.direccion || "sí")),
+    textoPagos(cfg),
+    cfg.tiempoEntrega ? "Tiempo de entrega estimado: " + cfg.tiempoEntrega : "",
+    cfg.dominioPrincipal ? "Página para pedir: https://" + String(cfg.dominioPrincipal).replace(/^https?:\/\//, "").replace(/\/+$/, "") : "",
+    cfg.waInfo ? "Lo que el dueño quiere que sepas: " + limpiarTextoDueno(cfg.waInfo, 500) : ""
+  ].filter(Boolean).join("\n");
+}
 
 /* ── entender el texto: buscador local (siempre disponible) ── */
 const _tokens = s => norm(s).split(" ").filter(Boolean);
@@ -78,76 +146,113 @@ export function buscarLocal(texto, prods){
   }
   return { items, sinEncontrar };
 }
+export function esPregunta(texto){
+  const t = String(texto || "").trim().toLowerCase();
+  return /\?/.test(t) || /^(¿|puedo|pueden|podria|se puede|tienen|tiene|hay|hacen|cuanto|cuánto|cuanta|cuánta|a que hora|a qué hora|donde|dónde|como|cómo|cual|cuál|que tal|aceptan|reciben|llegan|despachan|trabajan|abren|cierran|incluye|viene|lleva)\b/.test(t);
+}
 export function intencionLocal(texto){
   const t = norm(texto);
   if (!t) return "otro";
   if (/\b(cancelar|cancela|anular|anula)\b/.test(t)) return "cancelar";
-  if (/(hablar con|persona|humano|ejecutivo|atencion|alguien real)/.test(t)) return "humano";
-  if (/^(ver )?(el )?(menu|carta|catalogo)\b|que (tienen|hay|venden)|precios?\b/.test(t)) return "menu";
+  if (/(hablar con (alguien|una persona|un humano|el dueno|la duena|un ejecutivo|el local)|persona real|atencion humana|\bhumano\b)/.test(t)) return "humano";
+  if (/^(ver )?(el )?(menu|carta|catalogo)\b|^que (tienen|hay|venden)\b/.test(t)) return "menu";
   if (/^(hola|holi|buenas|buenos dias|buenas tardes|buenas noches|alo|hey|ola)\b/.test(t) && t.split(" ").length <= 4) return "saludo";
   return "otro";
 }
+/* respuestas básicas sin IA */
+export function respuestaLocal(texto, cfg, locs){
+  const t = norm(texto);
+  if (/(pag|tarjeta|transfer|webpay|mercado ?pago|debito|credito|efectivo)/.test(t)) return textoPagos(cfg);
+  if (/(horario|hora|abren|abre|cierran|cierra|atienden|abiertos)/.test(t)){ const h = textoHorario(cfg), eh = estadoHorario(cfg); return (eh.abierta ? "Estamos abiertos 🟢" : "Ahora estamos cerrados") + (h ? ". Horario: " + h : ""); }
+  if (/(delivery|despacho|envio|despachan|llegan|comuna|reparto)/.test(t)) return textoEnvio(cfg);
+  if (/(donde|direccion|ubicad|local|retir)/.test(t)) return cfg.retiroActivo === false ? "No tenemos retiro en local." : "Puedes retirar en: " + (locs.length ? locs.map(l => l.nombre + (l.direccion ? " (" + l.direccion + ")" : "")).join("; ") : (cfg.direccion || "nuestro local")) + ".";
+  if (/(demora|tarda|tiempo|cuanto se)/.test(t) && cfg.tiempoEntrega) return "El tiempo estimado es " + cfg.tiempoEntrega + ".";
+  return "";
+}
 
-/* ── entender el texto con Gemini (solo nombres y categorías, nunca el catálogo completo) ── */
-export async function interpretarIA(env, tienda, texto, prods){
+/* ── Gemini: entiende el pedido y contesta preguntas (solo con los datos de la tienda) ── */
+const TONO_IA = {
+  cercano: "Tono cercano y amable, tutea al cliente, 0 a 1 emoji.",
+  formal: "Tono formal y cordial, trata al cliente de usted, sin emojis.",
+  alegre: "Tono alegre y entusiasta, tutea al cliente, 1 a 2 emojis."
+};
+const PASOS = { pedido: "eligiendo productos", mas: "decidiendo si agrega algo más", preguntas: "eligiendo una opción del producto", entrega: "eligiendo delivery o retiro",
+  direccion: "escribiendo su dirección", comuna: "eligiendo su comuna", local: "eligiendo el local", resumen: "revisando el resumen antes de confirmar", pasarela: "eligiendo cómo pagar online",
+  email: "escribiendo su correo para pagar", pagando: "pagando con el link", "": "recién empieza" };
+export async function interpretarIA(env, cfg, info, texto, prods, paso){
   const key = String(env.GEMINI_API_KEY || "").trim();
   if (!key) return null;
   const modelo = String(env.GEMINI_MODEL || "gemini-2.5-flash").trim();
-  const lineas = prods.slice(0, MAX_PROD_IA).map(p => p.id + "|" + p.nombre + "|" + (p.cat || "") + "|" + p.precio).join("\n");
-  const prompt = "Eres el asistente de pedidos por WhatsApp de \"" + tienda + "\". Solo tomas pedidos de este catálogo.\n" +
-    "CATÁLOGO (id|nombre|categoría|precio):\n" + lineas + "\n\nMENSAJE DEL CLIENTE: «" + String(texto).slice(0, 500) + "»\n\n" +
-    "Responde SOLO con JSON: {\"intencion\":\"pedir|menu|humano|cancelar|saludo|otro\",\"items\":[{\"id\":\"id exacto del catálogo\",\"cantidad\":1,\"nota\":\"detalle que pidió, corto\"}],\"noEncontrado\":[\"lo que pidió y no está en el catálogo\"]}. " +
-    "Usa solo ids del catálogo. No inventes productos ni precios. Si el mensaje no pide productos, items va vacío.";
+  const lineas = prods.slice(0, MAX_PROD_IA).map(p => p.id + "|" + p.nombre + "|" + (p.cat || "") + "|" + p.precio + (p.desc ? "|" + p.desc : "")).join("\n");
+  const prompt = "Eres el asistente de WhatsApp de la tienda \"" + (cfg.nombre || "") + "\" (Chile). Ayudas a pedir y respondes dudas.\n" +
+    "DATOS DE LA TIENDA:\n" + info + "\n\nCATÁLOGO (id|nombre|categoría|precio|descripción):\n" + lineas +
+    "\n\nEl cliente está " + (PASOS[paso || ""] || "conversando") + ".\nMENSAJE DEL CLIENTE: «" + String(texto).slice(0, 500) + "»\n\n" +
+    "Responde SOLO con JSON: {\"intencion\":\"pedir|menu|pregunta|humano|cancelar|saludo|otro\",\"items\":[{\"id\":\"id exacto del catálogo\",\"cantidad\":1,\"nota\":\"detalle que pidió, corto\"}],\"noEncontrado\":[\"lo que pidió y no está en el catálogo\"],\"respuesta\":\"\"}.\n" +
+    "Reglas: items solo con ids del catálogo, nunca inventes productos. Si hace una pregunta, intencion=pregunta y en respuesta contéstale en 1 a 3 frases cortas en español de Chile (sin voseo), usando SOLO los DATOS DE LA TIENDA y el CATÁLOGO. " +
+    "Si el dato no está, deja respuesta vacía. No inventes precios, descuentos, promociones, ingredientes ni horarios. No confirmes pedidos ni pagos: de eso se encarga el sistema. No escribas links salvo el de la página de la tienda. " +
+    TONO_IA[tonoDe(cfg)] + " Si pide hablar con una persona, intencion=humano.";
   const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 9000);
   try {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(modelo) + ":generateContent", {
       method: "POST", signal: ctrl.signal,
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0, responseMimeType: "application/json", maxOutputTokens: 600 } })
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, responseMimeType: "application/json", maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 0 } } })
     });
     if (!r.ok) throw new Error("Gemini " + r.status);
     const j = await r.json();
-    const t = (((j.candidates || [])[0] || {}).content || {}).parts;
-    const out = JSON.parse(String(t && t[0] && t[0].text || "{}").replace(/^```(json)?|```$/g, ""));
+    const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+    const out = JSON.parse(String(parts.map(p => p.text || "").join("") || "{}").replace(/^```(json)?|```$/g, ""));
     const ids = new Set(prods.map(p => p.id));
+    const link = cfg.dominioPrincipal ? String(cfg.dominioPrincipal).replace(/^https?:\/\//, "").replace(/\/+$/, "") : "";
+    let resp = corto(String(out.respuesta || ""), 700).replace(/https?:\/\/\S+/gi, u => link && u.includes(link) ? u : "");
+    resp = resp.replace(/[ \t]{2,}/g, " ");
     return {
-      intencion: ["pedir", "menu", "humano", "cancelar", "saludo", "otro"].includes(out.intencion) ? out.intencion : "otro",
+      intencion: ["pedir", "menu", "pregunta", "humano", "cancelar", "saludo", "otro"].includes(out.intencion) ? out.intencion : "otro",
       items: (Array.isArray(out.items) ? out.items : []).filter(i => i && ids.has(String(i.id))).slice(0, 15)
         .map(i => ({ id: String(i.id), cantidad: Math.min(Math.max(Math.floor(Number(i.cantidad) || 1), 1), 20), nota: corto(i.nota || "", 100) })),
-      noEncontrado: (Array.isArray(out.noEncontrado) ? out.noEncontrado : []).map(s => corto(s, 60)).slice(0, 5),
+      noEncontrado: (Array.isArray(out.noEncontrado) ? out.noEncontrado : []).map(s => corto(s, 60)).filter(Boolean).slice(0, 5),
+      respuesta: resp.trim(),
       tokens: (j.usageMetadata && j.usageMetadata.totalTokenCount) || 0
     };
   } catch(e){ console.warn("gemini:", e.message); return null; }
   finally { clearTimeout(timer); }
 }
-async function entender(env, tienda, texto, prods){
-  const ia = await interpretarIA(env, tienda, texto, prods);
-  if (ia) return Object.assign({ fuente: "ia" }, ia);
-  const b = buscarLocal(texto, prods), i = intencionLocal(texto);
-  return { fuente: "local", intencion: b.items.length ? "pedir" : i, items: b.items, noEncontrado: b.items.length ? b.sinEncontrar : [] };
-}
 
-/* ── costo de envío: mismas reglas que la tienda (zonas por comuna o costo fijo) ── */
-export function costoEnvio(cfg, comuna, subtotal){
-  const zonas = Array.isArray(cfg.zonas) ? cfg.zonas : [];
-  if (zonas.length){
-    const c = norm(comuna);
-    const z = zonas.find(z => String(z.comunas || "").split(",").map(norm).filter(Boolean).includes(c));
-    if (!z) return { cobertura: false };
-    const min = Number(z.minGratis) || 0;
-    return { cobertura: true, zona: z.nombre || "", costo: min > 0 && subtotal >= min ? 0 : (Number(z.costo) || 0) };
-  }
-  const min = Number(cfg.deliveryMinimo) || 0;
-  return { cobertura: true, costo: min > 0 && subtotal >= min ? 0 : (Number(cfg.deliveryCosto) || 0) };
+/* ── textos ── */
+function lineaItem(it){
+  const det = [].concat(Object.values(it.variantes || {}), it.detalle || []).filter(Boolean);
+  return "• " + it.cantidad + "x " + it.nombre + (det.length ? " (" + det.join(", ") + ")" : "") + (it.nota ? " — " + it.nota : "");
 }
-function comunasDe(cfg){
-  const v = [];
-  (Array.isArray(cfg.zonas) ? cfg.zonas : []).forEach(z => String(z.comunas || "").split(",").map(s => s.trim()).filter(Boolean).forEach(c => { if (!v.includes(c)) v.push(c); }));
-  return v;
+const subtotalAprox = conv => conv.carrito.reduce((s, it) => s + (it.precio + (it.precioExtra || 0)) * it.cantidad, 0);
+function ejemplo(prods){
+  const a = prods[0], b = prods.find(p => p.cat !== (a && a.cat)) || prods[1];
+  if (!a) return "2 hamburguesas y 1 bebida";
+  return "2 " + a.nombre.toLowerCase() + (b ? " y 1 " + b.nombre.toLowerCase() : "");
 }
-function comunaEnTexto(cfg, texto){
-  const t = " " + norm(texto) + " ";
-  return comunasDe(cfg).find(c => t.includes(" " + norm(c) + " ")) || "";
+function menuCategorias(prods, body){
+  const cats = categorias(prods);
+  if (cats.length <= 1) return menuProductos(prods, cats[0] || "", 0, body);
+  return listado(body || "¿Qué se te antoja? Elige una categoría 👇\n\n✍️ O escríbeme todo junto, por ejemplo: «" + ejemplo(prods) + "»", "Ver menú", cats.slice(0, 10).map(c => ["cat:" + c.slice(0, 60), c]), "Menú");
+}
+function menuProductos(prods, cat, pag){
+  const lista = prods.filter(p => !cat || (p.cat || "Otros") === cat);
+  const desde = pag * 9, pagina = lista.slice(desde, desde + 9);
+  const filas = pagina.map(p => ["p:" + p.id, p.nombre, plata(p.precio)]);
+  if (lista.length > desde + 9) filas.push(["catp:" + (pag + 1) + ":" + cat.slice(0, 60), "Ver más ▸"]);
+  let carta = "";
+  for (const p of pagina){ const l = "• " + p.nombre + " — " + plata(p.precio) + "\n"; if ((carta + l).length > 760) break; carta += l; }
+  const body = (cat ? "*" + cat + "*\n" : "") + carta + "\nToca uno para agregarlo, o escríbeme todo junto, por ejemplo: «" + ejemplo(pagina.length ? pagina : prods) + "» ✍️";
+  return listado(body, "Elegir producto", filas, cat || "Productos");
+}
+function pedirMas(conv, prods){
+  const body = "🛒 *Tu pedido:*\n" + conv.carrito.map(lineaItem).join("\n") + "\n\nSubtotal: " + plata(subtotalAprox(conv)) + "\n\n¿Agregas algo más? Puedes escribirlo directo 🙂";
+  const bebidas = prods.filter(p => /bebida|refresco|jugo|bebestible/i.test(p.cat));
+  const tieneBebida = conv.carrito.some(it => /bebida|refresco|jugo|bebestible/i.test(it.cat || ""));
+  const bts = [["mas", "➕ Agregar más"]];
+  if (bebidas.length && !tieneBebida) bts.push(["beb", "🥤 Ver bebidas"]);
+  bts.push(["listo", "✅ Eso es todo"]);
+  return botones(body, bts);
 }
 
 /* ── preguntas de cada producto: variantes y extras obligatorios ── */
@@ -181,36 +286,6 @@ function responderPregunta(conv, entrada){
   conv.preguntas.shift();
   return true;
 }
-
-/* ── textos ── */
-function lineaItem(it){
-  const det = [].concat(Object.values(it.variantes || {}), it.detalle || []).filter(Boolean);
-  return "• " + it.cantidad + "x " + it.nombre + (det.length ? " (" + det.join(", ") + ")" : "") + (it.nota ? " — " + it.nota : "");
-}
-const subtotalAprox = conv => conv.carrito.reduce((s, it) => s + (it.precio + (it.precioExtra || 0)) * it.cantidad, 0);
-function menuCategorias(prods, body){
-  const cats = categorias(prods);
-  if (cats.length <= 1) return menuProductos(prods, cats[0] || "", 0, body);
-  return listado(body || "¿Qué se te antoja? Elige una categoría 👇", "Ver menú", cats.slice(0, 10).map(c => ["cat:" + c.slice(0, 60), c, prods.filter(p => (p.cat || "Otros") === c).length + " productos"]), "Menú");
-}
-function menuProductos(prods, cat, pag, body){
-  const lista = prods.filter(p => !cat || (p.cat || "Otros") === cat);
-  const desde = pag * 9, filas = lista.slice(desde, desde + 9).map(p => ["p:" + p.id, p.nombre, plata(p.precio) + (p.desc ? " · " + p.desc : "")]);
-  if (lista.length > desde + 9) filas.push(["catp:" + (pag + 1) + ":" + cat.slice(0, 60), "Ver más ▸", "Más productos de " + (cat || "la tienda")]);
-  return listado(body || (cat ? cat + ": toca lo que quieras agregar" : "Toca lo que quieras agregar"), "Ver productos", filas, cat || "Productos");
-}
-function pedirMas(conv, prods){
-  const sub = subtotalAprox(conv);
-  const body = "🛒 *Tu pedido:*\n" + conv.carrito.map(lineaItem).join("\n") + "\n\nSubtotal: " + plata(sub) + "\n\n¿Agregas algo más?";
-  const bebidas = prods.filter(p => /bebida|refresco|jugo|bebestible/i.test(p.cat));
-  const tieneBebida = conv.carrito.some(it => /bebida|refresco|jugo|bebestible/i.test(it.cat || ""));
-  const bts = [["mas", "➕ Agregar más"]];
-  if (bebidas.length && !tieneBebida) bts.push(["beb", "🥤 Ver bebidas"]);
-  bts.push(["listo", "✅ Eso es todo"]);
-  return botones(body, bts);
-}
-
-/* agrega lo que entendió y sigue: preguntas pendientes o "¿algo más?" */
 function agregar(conv, items, prods, lib){
   const nuevos = [];
   for (const x of items){
@@ -222,51 +297,21 @@ function agregar(conv, items, prods, lib){
   }
   return nuevos;
 }
-function siguiente(conv, prods, prefijo){
-  const out = [];
-  if (prefijo) out.push(txt(prefijo));
-  if (conv.preguntas && conv.preguntas.length){ conv.paso = "preguntas"; out.push(preguntar(conv)); }
-  else { conv.paso = "mas"; out.push(pedirMas(conv, prods)); }
-  return out;
-}
-function pedirEntrega(conv, cfg){
-  const del = cfg.deliveryActivo !== false, ret = cfg.retiroActivo !== false;
-  if (del && ret){ conv.paso = "entrega"; return [botones("¿Cómo lo quieres recibir?", [["delivery", "🛵 Delivery"], ["retiro", "🏪 Retiro en local"]])]; }
-  conv.tipo = del ? "delivery" : "retiro";
-  return conv.tipo === "delivery" ? pedirDireccion(conv) : null;
-}
-function pedirDireccion(conv){ conv.paso = "direccion"; return [txt("📍 ¿A qué dirección te lo llevamos? Escribe calle, número y comuna.")]; }
-
-async function armarResumen(db, storeId, cfg, conv, nombre){
-  const v = await validarItemsCatalogo(db, storeId, itemsParaValidar(conv));
-  if (!v.ok){ conv.paso = "mas"; return { error: v.error }; }
-  conv.subtotal = v.subtotal;
-  let envio = 0;
-  if (conv.tipo === "delivery"){
-    const c = costoEnvio(cfg, conv.comuna, v.subtotal);
-    if (!c.cobertura) return { sinCobertura: true };
-    envio = c.costo;
-  }
-  conv.envio = envio; conv.total = v.subtotal + envio; conv.paso = "resumen";
-  const lineas = v.itemsValidados.map(it => "• " + it.cantidad + "x " + it.nombre + (it.variantes ? " (" + Object.values(it.variantes).join(", ") + ")" : "") + " — " + plata(it.precio * it.cantidad)).join("\n");
-  const entrega = conv.tipo === "delivery" ? "🛵 Delivery a " + conv.direccion + (conv.comuna && !norm(conv.direccion).includes(norm(conv.comuna)) ? ", " + conv.comuna : "") : "🏪 Retiro en " + (conv.local || "el local");
-  const body = "📝 *Revisa tu pedido*\n\n" + lineas + "\n\nSubtotal: " + plata(v.subtotal) + (conv.tipo === "delivery" ? "\nEnvío: " + (envio ? plata(envio) : "gratis") : "") +
-    "\n*Total: " + plata(conv.total) + "*\n\n" + entrega + "\n💵 Pago en efectivo al " + (conv.tipo === "delivery" ? "recibir" : "retirar") + "\n👤 " + (nombre || "Cliente") +
-    (cfg.tiempoEntrega && conv.tipo === "delivery" ? "\n⏱️ Tiempo estimado: " + cfg.tiempoEntrega : "");
-  return { msg: botones(body, [["ok", "✅ Confirmar"], ["cambiar", "✏️ Empezar de nuevo"], ["cancelar", "❌ Cancelar"]]) };
-}
 function itemsParaValidar(conv){
   return conv.carrito.map(it => ({ id: it.id, cantidad: it.cantidad, variantes: Object.keys(it.variantes || {}).length ? it.variantes : null, extras: Object.keys(it.extras || {}).length ? it.extras : null, notaPersonal: it.nota || null }));
 }
+function datosCliente(conv, nombre, waId, metodo){
+  return { nombre: nombre || "Cliente WhatsApp", telefono: "+" + waId, email: conv.email || "", direccion: conv.tipo === "delivery" ? (conv.direccion || "") : "", comuna: conv.tipo === "delivery" ? (conv.comuna || "") : "",
+    local: conv.tipo === "retiro" ? (conv.local || "") : "", referencias: "", notas: "Pedido por WhatsApp", tipo: conv.tipo, metodoPago: metodo, efectivo: "", uid: null, lat: null, lng: null, origen: "whatsapp", waId };
+}
 
-/* ── crea el pedido en la tienda (mismo formato que un pedido en efectivo de la web) ── */
+/* ── crea el pedido en efectivo (mismo formato que la web) ── */
 export async function crearPedidoWA(db, env, storeId, cfg, conv, nombre, waId, origin){
   const val = await validarPedidoCompleto(db, storeId, itemsParaValidar(conv), conv.envio || 0, null, null);
   if (!val.ok) return { ok: false, error: val.error };
   const id = "WA" + Date.now().toString().slice(-6) + Math.floor(Math.random() * 10);
   const ahora = new Date().toISOString();
-  const cliente = { nombre: nombre || "Cliente WhatsApp", telefono: "+" + waId, email: "", direccion: conv.tipo === "delivery" ? conv.direccion : "", comuna: conv.tipo === "delivery" ? (conv.comuna || "") : "",
-    local: conv.tipo === "retiro" ? (conv.local || "") : "", referencias: "", notas: "Pedido por WhatsApp", tipo: conv.tipo, metodoPago: "efectivo", efectivo: "", uid: null, lat: null, lng: null };
+  const cliente = datosCliente(conv, nombre, waId, "efectivo");
   const ped = { id, storeId, tipo: conv.tipo, cliente, seguimiento: crypto.randomUUID().replace(/-/g, ""), uid: null,
     items: val.itemsValidados, subtotal: val.subtotal, descuento: 0, cuponAplicado: null, costoDelivery: val.costoDelivery, total: val.total,
     metodoPago: "efectivo", estado: "nuevo", fecha: ahora, origen: "whatsapp", waId,
@@ -281,8 +326,22 @@ export async function crearPedidoWA(db, env, storeId, cfg, conv, nombre, waId, o
   try { await moverInsumos(db, storeId, val.itemsValidados, -1, { pedidoId: id, lugar: "Pedido WhatsApp" }); } catch(e){ console.warn("insumos wa:", e.message); }
   try { await enviarCorreosPedido(db, env, storeId, ped, origin); } catch(e){ console.warn("correo wa:", e.message); }
   try { await notificar(new Request(origin + "/api/notificar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ storeId, pedidoId: id, cliente, total: ped.total, items: ped.items }) }), env); } catch(e){ console.warn("push wa:", e.message); }
-  try { if (env.LANDING) await env.LANDING.delete("wa_cat_" + storeId); } catch(e){}
+  try { if (env.LANDING) await env.LANDING.delete("wa_cat2_" + storeId); } catch(e){}
   return { ok: true, pedido: ped };
+}
+
+/* ── pago online: link de MercadoPago o Webpay (Flow) con las mismas reglas de la web ── */
+export async function linkPagoWA(env, storeId, conv, nombre, waId, origin, pasarela){
+  const id = "WA" + Date.now().toString().slice(-6) + Math.floor(Math.random() * 10);
+  const cuerpo = { storeId, items: itemsParaValidar(conv), cliente: datosCliente(conv, nombre, waId, pasarela === "flow" ? "flow" : "mercadopago"),
+    pedidoId: id, tipo: conv.tipo, costoDelivery: conv.envio || 0, cuponAplicado: null };
+  if (pasarela === "flow") cuerpo.pasarela = "flow";
+  try {
+    const r = await crearPago(new Request(origin + "/api/crearPago", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) }), env);
+    const j = await r.json().catch(() => ({}));
+    if (!j.ok || !(j.init_point || j.payment_link)) return { ok: false, error: j.error || "la pasarela no respondió" };
+    return { ok: true, id: j.pedidoId || id, url: j.init_point || j.payment_link };
+  } catch(e){ return { ok: false, error: e.message }; }
 }
 
 /* ── la conversación ──
@@ -293,154 +352,272 @@ export async function atender(ctx){
   const prods = await catalogo(db, env, storeId);
   const lib = Array.isArray(cfg.gruposExtras) ? cfg.gruposExtras : [];
   const tienda = String(cfg.nombre || "la tienda");
+  const formal = tonoDe(cfg) === "formal";
   const link = cfg.dominioPrincipal ? "https://" + String(cfg.dominioPrincipal).replace(/^https?:\/\//, "").replace(/\/+$/, "") : "";
+  const pagos = pagosDe(cfg), online = pagos.mp || pagos.flow;
   let conv = chat.conv && chat.conv.en && ahora - Date.parse(chat.conv.en) < CONV_VENCE_MS ? JSON.parse(JSON.stringify(chat.conv)) : null;
   const id = entrada.id || "", texto = String(entrada.texto || "").trim();
   const fin = (salida, c) => ({ salida, conv: c ? Object.assign(c, { en: new Date(ahora).toISOString() }) : null });
+  const nueva = () => ({ paso: "pedido", carrito: [], preguntas: [] });
+  let _locs = null; const locales = async () => (_locs = _locs || await localesDe(db, storeId));
+
+  /* entender: IA si hay clave, si no el buscador y respuestas básicas */
+  const entender = async (paso) => {
+    const locs = await locales();
+    const ia = await interpretarIA(env, cfg, infoTienda(cfg, locs), texto, prods, paso);
+    if (ia){ if (ia.intencion === "pregunta" && !ia.respuesta) ia.respuesta = respuestaLocal(texto, cfg, locs); return Object.assign({ fuente: "ia" }, ia); }
+    const b = buscarLocal(texto, prods), pregunta = esPregunta(texto);
+    const intencion = pregunta ? "pregunta" : b.items.length ? "pedir" : intencionLocal(texto);
+    return { fuente: "local", intencion, items: pregunta ? [] : b.items, noEncontrado: b.items.length ? b.sinEncontrar : [], respuesta: pregunta ? respuestaLocal(texto, cfg, locs) : "" };
+  };
+  const contestar = e => e.respuesta ? [txt(e.respuesta)] : [botones((formal ? "Disculpe, no tengo ese dato 🙏 ¿Desea" : "Uy, no tengo ese dato 🙏 ¿Quieres") + " que te comunique con alguien del equipo?", [["humano", "🙋 Hablar con alguien"]])];
+
+  /* vuelve a mostrar lo que el cliente tenía pendiente */
+  const repetir = async () => {
+    if (!conv) return [botones("¿Qué te gustaría pedir?", BT_INICIO)];
+    switch (conv.paso){
+      case "preguntas": return [preguntar(conv)];
+      case "mas": return [pedirMas(conv, prods)];
+      case "entrega": return [botones("¿Cómo lo quieres recibir?", [["delivery", "🛵 Delivery"], ["retiro", "🏪 Retiro en local"]])];
+      case "direccion": return [txt("📍 Cuando quieras, escríbeme la dirección: calle, número y comuna.")];
+      case "comuna": return [listaComunas()];
+      case "local": return [listaLocales(await locales())];
+      case "resumen": { const r = await armarResumen(); return r.msg ? [r.msg] : []; }
+      case "pasarela": return [botonesPasarela()];
+      case "email": return [txt("📧 Escríbeme tu correo para enviarte el link de Webpay.")];
+      case "pagando": return conv.linkPago ? [botonLink("Tu link de pago sigue activo 👇 Cuando pagues te confirmo por aquí.", "💳 Pagar " + plata(conv.total), conv.linkPago)] : [];
+      default: return conv.carrito.length ? [pedirMas(conv, prods)] : [botones("¿Qué te gustaría pedir?", BT_INICIO)];
+    }
+  };
+  /* texto que no calza con el paso: si es pregunta la contesta y repite el paso */
+  const siPregunta = async () => {
+    if (!texto) return null;
+    const e = await entender(conv && conv.paso);
+    if (e.intencion === "humano") return "humano";
+    if (e.intencion !== "pregunta" && !esPregunta(texto)) return null;
+    return contestar(e).concat(await repetir());
+  };
+
+  const siguiente = (prefijo) => {
+    const out = [];
+    if (prefijo) out.push(txt(prefijo));
+    if (conv.preguntas && conv.preguntas.length){ conv.paso = "preguntas"; out.push(preguntar(conv)); }
+    else { conv.paso = "mas"; out.push(pedirMas(conv, prods)); }
+    return out;
+  };
+  const pedirEntrega = async () => {
+    const del = cfg.deliveryActivo !== false, ret = cfg.retiroActivo !== false;
+    if (del && ret){ conv.paso = "entrega"; return [botones("¿Cómo lo quieres recibir?", [["delivery", "🛵 Delivery"], ["retiro", "🏪 Retiro en local"]])]; }
+    if (del){ conv.tipo = "delivery"; return pedirDireccion(); }
+    return elegirRetiro();
+  };
+  const pedirDireccion = () => { conv.tipo = "delivery"; conv.paso = "direccion"; return [txt("📍 ¿A qué dirección te lo llevamos? Escribe calle, número y comuna.")]; };
+  const listaComunas = () => listado("¿En qué comuna queda?", "Elegir comuna", comunasDe(cfg).slice(0, 9).map(c => ["com:" + c.slice(0, 60), c]).concat([["com:__otra", "Otra comuna"]]), "Comunas");
+  const listaLocales = locs => listado("¿En qué local lo retiras?", "Elegir local", locs.slice(0, 10).map(l => ["loc:" + l.id, l.nombre, l.direccion]), "Locales");
+  const elegirRetiro = async () => {
+    conv.tipo = "retiro";
+    const locs = await locales();
+    if (locs.length > 1){ conv.paso = "local"; return [listaLocales(locs)]; }
+    conv.local = locs[0] ? locs[0].nombre + (locs[0].direccion ? " (" + locs[0].direccion + ")" : "") : (cfg.direccion || "");
+    return resumenOError();
+  };
+  const sinCobertura = () => { conv.paso = "entrega"; return [botones("😕 Por ahora no llegamos a " + (conv.comuna || "esa dirección") + ". ¿Prefieres retirarlo en el local?", cfg.retiroActivo === false ? [["cancelar", "❌ Cancelar"]] : [["retiro", "🏪 Retiro en local"], ["cancelar", "❌ Cancelar"]])]; };
+  const armarResumen = async () => {
+    const v = await validarItemsCatalogo(db, storeId, itemsParaValidar(conv));
+    if (!v.ok){ conv.paso = "mas"; return { error: v.error }; }
+    let envio = 0;
+    if (conv.tipo === "delivery"){ const c = costoEnvio(cfg, conv.comuna, v.subtotal); if (!c.cobertura) return { sinCobertura: true }; envio = c.costo; }
+    conv.subtotal = v.subtotal; conv.envio = envio; conv.total = v.subtotal + envio; conv.paso = "resumen";
+    const lineas = v.itemsValidados.map(it => "• " + it.cantidad + "x " + it.nombre + (it.variantes ? " (" + Object.values(it.variantes).join(", ") + ")" : "") + " — " + plata(it.precio * it.cantidad)).join("\n");
+    const entrega = conv.tipo === "delivery" ? "🛵 Delivery a " + conv.direccion + (conv.comuna && !norm(conv.direccion).includes(norm(conv.comuna)) ? ", " + conv.comuna : "") : "🏪 Retiro en " + (conv.local || "el local");
+    const body = "📝 *Revisa tu pedido*\n\n" + lineas + "\n\nSubtotal: " + plata(v.subtotal) + (conv.tipo === "delivery" ? "\nEnvío: " + (envio ? plata(envio) : "gratis") : "") +
+      "\n*Total: " + plata(conv.total) + "*\n\n" + entrega + "\n👤 " + (nombre || "Cliente") + (cfg.tiempoEntrega && conv.tipo === "delivery" ? "\n⏱️ Tiempo estimado: " + cfg.tiempoEntrega : "") +
+      (online ? "\n\n¿Cómo quieres pagar? (para cambiar algo escribe *cambiar*)" : "\n💵 Pago en efectivo al " + (conv.tipo === "delivery" ? "recibir" : "retirar"));
+    return { msg: online ? botones(body, [["ef", "💵 Efectivo"], ["online", "💳 Pagar online"], ["cancelar", "❌ Cancelar"]])
+                         : botones(body, [["ok", "✅ Confirmar"], ["cambiar", "✏️ Empezar de nuevo"], ["cancelar", "❌ Cancelar"]]) };
+  };
+  const resumenOError = async () => {
+    const r = await armarResumen();
+    if (r.sinCobertura) return sinCobertura();
+    if (r.error) return [txt("⚠️ " + r.error + ". Revisemos tu pedido."), pedirMas(conv, prods)];
+    return [r.msg];
+  };
+  const botonesPasarela = () => botones("¿Con qué quieres pagar?", [["mp", "MercadoPago"], ["flow", "Webpay"], ["ef", "💵 Mejor efectivo"]]);
+  const confirmarEfectivo = async () => {
+    const r = await crearPedidoWA(db, env, storeId, cfg, conv, nombre, waId, origin);
+    if (!r.ok) return fin([txt("⚠️ No pude registrar el pedido: " + r.error + (link ? "\nPuedes intentarlo en " + link : ""))], null);
+    const p = r.pedido;
+    return Object.assign(fin([txt("✅ ¡Listo" + (nombre ? ", " + String(nombre).split(" ")[0] : "") + "! Tu pedido *#" + p.id + "* quedó registrado y *" + tienda + "* ya lo está viendo.\n\nTotal: *" + plata(p.total) + "* — pagas en efectivo al " + (p.tipo === "delivery" ? "recibir" : "retirar") + "." +
+      (cfg.tiempoEntrega && p.tipo === "delivery" ? "\n⏱️ Tiempo estimado: " + cfg.tiempoEntrega : "") + "\n\n¡Gracias por tu compra! 🙌")], null), { pedidoId: p.id });
+  };
+  const pagarOnline = async (pasarela) => {
+    if (pasarela === "flow" && !EMAIL_OK.test(conv.email || "")){ conv.paso = "email"; conv.pasarela = "flow"; return fin([txt("📧 Para pagar con Webpay necesito tu correo (ahí te llega el comprobante). Escríbelo aquí:")], conv); }
+    const r = await linkPagoWA(env, storeId, conv, nombre, waId, origin, pasarela);
+    if (!r.ok){ conv.paso = "resumen"; return fin([txt("⚠️ No pude generar el link de pago (" + r.error + ")."), botones("¿Lo dejamos en efectivo?", [["ef", "💵 Pagar en efectivo"], ["cancelar", "❌ Cancelar"]])], conv); }
+    conv.paso = "pagando"; conv.pedidoId = r.id; conv.linkPago = r.url; conv.pasarela = pasarela;
+    return Object.assign(fin([botonLink("💳 Paga tu pedido *#" + r.id + "* (" + plata(conv.total) + ") con " + (pasarela === "flow" ? "Webpay" : "MercadoPago") + " 👇\n\nApenas se confirme el pago, tu pedido entra a la cocina y te aviso por aquí ✅", "💳 Pagar " + plata(conv.total), r.url)], conv), { pagoPendiente: r.id });
+  };
 
   /* tienda cerrada: no se toman pedidos */
-  const eh = estadoHorario(cfg, new Date(ahora));
-  if (!eh.abierta) return fin([txt(saludo)], null);
+  if (!estadoHorario(cfg, new Date(ahora)).abierta) return fin([txt(saludo)], null);
 
   if (entrada.tipo && entrada.tipo !== "text" && entrada.tipo !== "interactive" && entrada.tipo !== "button")
-    return fin([botones("Por ahora solo leo mensajes de texto 🙂 Escríbeme lo que quieres pedir o mira el menú.", [["menu", "📋 Ver menú"], ["humano", "🙋 Hablar con alguien"]])], conv);
+    return fin([botones("Por ahora solo leo mensajes de texto 🙂 Escríbeme lo que quieres pedir o mira el menú.", BT_INICIO)], conv);
 
   /* órdenes que valen en cualquier momento */
   const intLocal = texto ? intencionLocal(texto) : "";
-  if (id === "humano" || intLocal === "humano")
-    return Object.assign(fin([txt("🙋 Listo, le aviso al equipo de *" + tienda + "*. Te responderán por aquí mismo en cuanto puedan.")], conv), { humanoHasta: new Date(ahora + HUMANO_MS).toISOString(), avisarHumano: true });
+  const humano = () => Object.assign(fin([txt("🙋 Listo, le aviso al equipo de *" + tienda + "*. Te responderán por aquí mismo en cuanto puedan.")], conv), { humanoHasta: new Date(ahora + HUMANO_MS).toISOString(), avisarHumano: true });
+  if (id === "humano" || intLocal === "humano") return humano();
   if (id === "cancelar" || intLocal === "cancelar")
-    return fin([txt("Pedido cancelado 👍 Cuando quieras, escríbeme de nuevo." + (link ? "\nTambién puedes pedir en " + link : ""))], null);
+    return fin([txt((conv && conv.paso === "pagando" ? "Pedido cancelado 👍 No pagues el link que te envié." : "Pedido cancelado 👍") + " Cuando quieras, escríbeme de nuevo." + (link ? "\nTambién puedes pedir en " + link : ""))], null);
+  if (conv && conv.paso === "pagando"){
+    const q = await siPregunta();
+    if (q === "humano") return humano();
+    return fin((q && q.length ? q : await repetir()), conv);
+  }
   if (id === "menu" || (intLocal === "menu" && (!conv || ["pedido", "mas"].includes(conv.paso)))){
-    conv = conv || { paso: "pedido", carrito: [], preguntas: [] };
+    conv = conv || nueva();
     if (conv.paso !== "mas") conv.paso = "pedido";
     return fin([menuCategorias(prods)], conv);
   }
-  if (id.startsWith("cat:")){ conv = conv || { paso: "pedido", carrito: [], preguntas: [] }; return fin([menuProductos(prods, id.slice(4), 0)], conv); }
-  if (id.startsWith("catp:")){ conv = conv || { paso: "pedido", carrito: [], preguntas: [] }; const m = /^catp:(\d+):(.*)$/.exec(id); return fin([menuProductos(prods, m ? m[2] : "", m ? Number(m[1]) : 0)], conv); }
+  if (id.startsWith("cat:")){ conv = conv || nueva(); return fin([menuProductos(prods, id.slice(4), 0)], conv); }
+  if (id.startsWith("catp:")){ conv = conv || nueva(); const m = /^catp:(\d+):(.*)$/.exec(id); return fin([menuProductos(prods, m ? m[2] : "", m ? Number(m[1]) : 0)], conv); }
   if (id === "beb"){ const cat = categorias(prods).find(c => /bebida|refresco|jugo|bebestible/i.test(c)); return fin([menuProductos(prods, cat || "", 0)], conv); }
   if (id.startsWith("p:")){
-    conv = conv || { paso: "pedido", carrito: [], preguntas: [] };
-    if (["preguntas", "resumen", "direccion", "comuna", "entrega", "local"].includes(conv.paso)) conv.paso = "pedido";
+    conv = conv || nueva();
+    if (!["pedido", "mas"].includes(conv.paso)) conv.paso = "pedido";
     const n = agregar(conv, [{ id: id.slice(2), cantidad: 1 }], prods, lib);
-    return fin(n.length ? siguiente(conv, prods) : [txt("Ese producto ya no está disponible 😕"), menuCategorias(prods)], conv);
+    return fin(n.length ? siguiente() : [txt("Ese producto ya no está disponible 😕"), menuCategorias(prods)], conv);
   }
 
   /* conversación nueva */
   if (!conv){
-    if (!texto && !id) return fin([botones(saludo, [["menu", "📋 Ver menú"], ["humano", "🙋 Hablar con alguien"]])], { paso: "pedido", carrito: [], preguntas: [] });
-    const e = texto ? await entender(env, tienda, texto, prods) : { items: [], intencion: "otro" };
-    conv = { paso: "pedido", carrito: [], preguntas: [], ia: e.fuente };
+    conv = nueva();
+    if (!texto) return fin([botones(saludo, BT_INICIO)], conv);
+    const e = await entender("");
+    conv.ia = e.fuente;
+    if (e.intencion === "humano") return humano();
     if (e.items.length){
       agregar(conv, e.items, prods, lib);
-      return fin(siguiente(conv, prods, e.noEncontrado && e.noEncontrado.length ? "No encontré: " + e.noEncontrado.join(", ") + ". Te anoto lo demás 👇" : ""), conv);
+      return fin(siguiente(e.noEncontrado.length ? "No encontré: " + e.noEncontrado.join(", ") + ". Te anoto lo demás 👇" : ""), conv);
     }
+    if (e.intencion === "pregunta") return fin(contestar(e).concat([botones("¿Te ayudo con tu pedido? Escríbeme lo que quieres o mira el menú.", BT_INICIO)]), conv);
     if (e.intencion === "menu") return fin([menuCategorias(prods)], conv);
-    return fin([botones(saludo + "\n\nEscríbeme lo que quieres (por ejemplo «2 " + (prods[0] ? prods[0].nombre.toLowerCase() : "hamburguesas") + "») o toca *Ver menú*.", [["menu", "📋 Ver menú"], ["humano", "🙋 Hablar con alguien"]])], conv);
+    return fin([botones(saludo + "\n\nEscríbeme lo que quieres (por ejemplo «" + ejemplo(prods) + "») o toca *Ver menú*.", BT_INICIO)], conv);
   }
 
   switch (conv.paso){
     case "preguntas": {
-      if (!responderPregunta(conv, { id, texto })){
-        conv.fallos = (conv.fallos || 0) + 1;
-        return fin([txt("No te entendí 😅 Elige una de las opciones:"), preguntar(conv)], conv);
-      }
-      conv.fallos = 0;
-      return fin(siguiente(conv, prods), conv);
+      if (responderPregunta(conv, { id, texto })){ conv.fallos = 0; return fin(siguiente(), conv); }
+      const q = await siPregunta(); if (q === "humano") return humano(); if (q) return fin(q, conv);
+      return fin([txt("No te entendí 😅 Elige una de las opciones:"), preguntar(conv)], conv);
     }
+    case "pedido":
     case "mas": {
-      if (id === "listo" || /^(eso es todo|nada mas|nada|listo|no|no gracias|eso)$/.test(norm(texto))){
-        const p = pedirEntrega(conv, cfg);
-        if (p) return fin(p, conv);
-        const r = await armarResumen(db, storeId, cfg, conv, nombre);
-        return fin(r.error ? [txt("⚠️ " + r.error + ". Revisemos tu pedido."), pedirMas(conv, prods)] : [r.msg], conv);
+      if (id === "listo" || (conv.paso === "mas" && /^(eso es todo|eso seria|eso seria todo|nada mas|nada|listo|no|no gracias|eso|es todo|solo eso)$/.test(norm(texto)))){
+        if (!conv.carrito.length) return fin([menuCategorias(prods)], conv);
+        return fin(await pedirEntrega(), conv);
       }
-      if (id === "mas"){ conv.paso = "pedido"; return fin([botones("¿Qué más quieres? Escríbelo o mira el menú.", [["menu", "📋 Ver menú"], ["listo", "✅ Eso es todo"]])], conv); }
+      if (id === "mas"){ conv.paso = "pedido"; return fin([botones("¿Qué más quieres? Escríbelo todo junto (por ejemplo «" + ejemplo(prods) + "») o mira el menú.", conv.carrito.length ? [["menu", "📋 Ver menú"], ["listo", "✅ Eso es todo"]] : BT_INICIO)], conv); }
       if (texto){
-        const e = await entender(env, tienda, texto, prods);
-        if (e.items.length){ agregar(conv, e.items, prods, lib); return fin(siguiente(conv, prods), conv); }
-      }
-      return fin([txt("No encontré eso en el menú 😕"), pedirMas(conv, prods)], conv);
-    }
-    case "pedido": {
-      if (id === "listo" && conv.carrito.length){ conv.paso = "mas"; return atender(Object.assign({}, ctx, { chat: { conv }, entrada: { id: "listo" } })); }
-      if (texto){
-        const e = await entender(env, tienda, texto, prods);
-        if (e.items.length){ agregar(conv, e.items, prods, lib); return fin(siguiente(conv, prods, e.noEncontrado && e.noEncontrado.length ? "No encontré: " + e.noEncontrado.join(", ") + "." : ""), conv); }
-        if (e.intencion === "saludo") return fin([botones(saludo, [["menu", "📋 Ver menú"], ["humano", "🙋 Hablar con alguien"]])], conv);
+        const e = await entender(conv.paso);
+        if (e.intencion === "humano") return humano();
+        if (e.items.length){ agregar(conv, e.items, prods, lib); return fin(siguiente(e.noEncontrado.length ? "No encontré: " + e.noEncontrado.join(", ") + ". Te anoto lo demás 👇" : ""), conv); }
+        if (e.intencion === "pregunta") return fin(contestar(e).concat(await repetir()), conv);
+        if (e.intencion === "menu") return fin([menuCategorias(prods)], conv);
+        if (e.intencion === "saludo" && !conv.carrito.length) return fin([botones(saludo, BT_INICIO)], conv);
       }
       conv.fallos = (conv.fallos || 0) + 1;
-      return fin([botones("No encontré eso en el menú 😕 Toca *Ver menú* para ver lo que tenemos" + (conv.fallos >= 2 && link ? ", o pide directo en " + link : "") + ".", [["menu", "📋 Ver menú"], ["humano", "🙋 Hablar con alguien"]])], conv);
+      if (conv.carrito.length) return fin([txt("No encontré eso en el menú 😕"), pedirMas(conv, prods)], conv);
+      return fin([botones("No encontré eso en el menú 😕 Toca *Ver menú* para ver lo que tenemos" + (conv.fallos >= 2 && link ? ", o pide directo en " + link : "") + ".", BT_INICIO)], conv);
     }
     case "entrega": {
       const t = norm(texto);
-      if (id === "delivery" || /delivery|despacho|domicilio|envio|enviar|llevar/.test(t)){ conv.tipo = "delivery"; return fin(pedirDireccion(conv), conv); }
-      if (id === "retiro" || /retir|buscar|paso a buscar|local/.test(t)){
-        conv.tipo = "retiro";
-        const locs = await localesDe(db, storeId);
-        if (locs.length > 1){ conv.paso = "local"; return fin([listado("¿En qué local lo retiras?", "Elegir local", locs.slice(0, 10).map(l => ["loc:" + l.id, l.nombre, l.direccion]), "Locales")], conv); }
-        conv.local = locs[0] ? locs[0].nombre + (locs[0].direccion ? " (" + locs[0].direccion + ")" : "") : (cfg.direccion || "");
-        const r = await armarResumen(db, storeId, cfg, conv, nombre);
-        return fin(r.error ? [txt("⚠️ " + r.error + ". Revisemos tu pedido."), pedirMas(conv, prods)] : [r.msg], conv);
+      if (id === "delivery" || (!esPregunta(texto) && /delivery|despacho|domicilio|envio|enviar|llevar/.test(t))){
+        if (cfg.deliveryActivo === false) return fin([txt("Por ahora no hacemos delivery 🙏"), ...(await elegirRetiro())], conv);
+        return fin(pedirDireccion(), conv);
       }
+      if (id === "retiro" || (!esPregunta(texto) && /retir|buscar|paso a buscar|local/.test(t))){
+        if (cfg.retiroActivo === false) return fin([txt("Por ahora no tenemos retiro en local 🙏"), ...pedirDireccion()], conv);
+        return fin(await elegirRetiro(), conv);
+      }
+      const q = await siPregunta(); if (q === "humano") return humano(); if (q) return fin(q, conv);
       return fin([botones("Elige cómo lo quieres recibir:", [["delivery", "🛵 Delivery"], ["retiro", "🏪 Retiro en local"]])], conv);
     }
     case "direccion": {
+      if (esPregunta(texto)){ const q = await siPregunta(); if (q === "humano") return humano(); if (q) return fin(q, conv); }
       if (texto.length < 5) return fin([txt("📍 Escribe la dirección completa: calle, número y comuna.")], conv);
       conv.direccion = corto(texto, 160);
       if (Array.isArray(cfg.zonas) && cfg.zonas.length){
         conv.comuna = comunaEnTexto(cfg, texto);
-        if (!conv.comuna){
-          conv.paso = "comuna";
-          const cs = comunasDe(cfg);
-          return fin([listado("¿En qué comuna queda?", "Elegir comuna", cs.slice(0, 9).map(c => ["com:" + c.slice(0, 60), c]).concat([["com:__otra", "Otra comuna"]]), "Comunas")], conv);
-        }
+        if (!conv.comuna){ conv.paso = "comuna"; return fin([listaComunas()], conv); }
       }
-      return fin(await resumenOSinCobertura(db, storeId, cfg, conv, nombre), conv);
+      return fin(await resumenOError(), conv);
     }
     case "comuna": {
-      let c = id.startsWith("com:") ? id.slice(4) : comunaEnTexto(cfg, texto);
-      if (c === "__otra" || (!c && texto)){
-        conv.paso = "entrega";
-        return fin([botones("😕 Por ahora no llegamos a esa comuna. ¿Prefieres retirarlo en el local?", [["retiro", "🏪 Retiro en local"], ["cancelar", "❌ Cancelar"]])], conv);
-      }
+      const c = id.startsWith("com:") ? id.slice(4) : comunaEnTexto(cfg, texto);
+      if (!c && texto && esPregunta(texto)){ const q = await siPregunta(); if (q === "humano") return humano(); if (q) return fin(q, conv); }
+      if (c === "__otra" || (!c && texto)){ conv.comuna = ""; return fin(sinCobertura(), conv); }
       if (!c) return fin([txt("Elige tu comuna de la lista 👆")], conv);
       conv.comuna = c;
-      return fin(await resumenOSinCobertura(db, storeId, cfg, conv, nombre), conv);
+      return fin(await resumenOError(), conv);
     }
     case "local": {
-      const locs = await localesDe(db, storeId);
+      const locs = await locales();
       const l = id.startsWith("loc:") ? locs.find(x => x.id === id.slice(4)) : locs.find(x => texto && norm(x.nombre).includes(norm(texto)));
-      if (!l) return fin([listado("Elige el local de la lista 👇", "Elegir local", locs.slice(0, 10).map(x => ["loc:" + x.id, x.nombre, x.direccion]), "Locales")], conv);
+      if (!l){ const q = await siPregunta(); if (q === "humano") return humano(); if (q) return fin(q, conv); return fin([listaLocales(locs)], conv); }
       conv.local = l.nombre + (l.direccion ? " (" + l.direccion + ")" : "");
-      const r = await armarResumen(db, storeId, cfg, conv, nombre);
-      return fin(r.error ? [txt("⚠️ " + r.error + ". Revisemos tu pedido."), pedirMas(conv, prods)] : [r.msg], conv);
+      return fin(await resumenOError(), conv);
     }
     case "resumen": {
-      if (id === "ok" || /^(si|confirmo|confirmar|ok|dale|listo)$/.test(norm(texto))){
-        const r = await crearPedidoWA(db, env, storeId, cfg, conv, nombre, waId, origin);
-        if (!r.ok) return fin([txt("⚠️ No pude registrar el pedido: " + r.error + (link ? "\nPuedes intentarlo en " + link : ""))], null);
-        const p = r.pedido;
-        return Object.assign(fin([txt("✅ ¡Listo" + (nombre ? ", " + String(nombre).split(" ")[0] : "") + "! Tu pedido *#" + p.id + "* quedó registrado y *" + tienda + "* ya lo está viendo.\n\nTotal: *" + plata(p.total) + "* — pagas en efectivo al " + (p.tipo === "delivery" ? "recibir" : "retirar") + "." +
-          (cfg.tiempoEntrega && p.tipo === "delivery" ? "\n⏱️ Tiempo estimado: " + cfg.tiempoEntrega : "") + "\n\n¡Gracias por tu compra! 🙌")], null), { pedidoId: p.id });
+      const t = norm(texto);
+      if (id === "ok" || id === "ef" || (!online && /^(si|confirmo|confirmar|ok|dale|listo)$/.test(t)) || /^(efectivo|en efectivo|pago en efectivo)$/.test(t)) return confirmarEfectivo();
+      if (id === "online" || (online && /^(online|pagar online|tarjeta|con tarjeta|webpay|mercado ?pago)$/.test(t))){
+        if (/webpay/.test(t) && pagos.flow) return pagarOnline("flow");
+        if (/mercado/.test(t) && pagos.mp) return pagarOnline("mp");
+        if (pagos.mp && pagos.flow){ conv.paso = "pasarela"; return fin([botonesPasarela()], conv); }
+        return pagarOnline(pagos.flow ? "flow" : "mp");
       }
-      if (id === "cambiar"){ return fin([botones("Ok, empecemos de nuevo 🙂 ¿Qué quieres pedir?", [["menu", "📋 Ver menú"], ["humano", "🙋 Hablar con alguien"]])], { paso: "pedido", carrito: [], preguntas: [] }); }
-      const r = await armarResumen(db, storeId, cfg, conv, nombre);
-      return fin([txt("Toca *Confirmar* para enviar tu pedido, o *Empezar de nuevo* para cambiarlo."), r.msg || txt("⚠️ " + (r.error || ""))], conv);
+      if (id === "cambiar" || /^(cambiar|empezar de nuevo|modificar|cambio)$/.test(t)) return fin([botones("Ok, empecemos de nuevo 🙂 ¿Qué quieres pedir?", BT_INICIO)], nueva());
+      const q = await siPregunta(); if (q === "humano") return humano(); if (q) return fin(q, conv);
+      return fin([txt(online ? "Elige cómo pagar para enviar tu pedido, o escribe *cambiar* para modificarlo." : "Toca *Confirmar* para enviar tu pedido, o *Empezar de nuevo* para cambiarlo.")].concat(await repetir()), conv);
+    }
+    case "pasarela": {
+      if (id === "ef") return confirmarEfectivo();
+      if (id === "mp" || /mercado/.test(norm(texto))) return pagarOnline("mp");
+      if (id === "flow" || /webpay|flow/.test(norm(texto))) return pagarOnline("flow");
+      const q = await siPregunta(); if (q === "humano") return humano(); if (q) return fin(q, conv);
+      return fin([botonesPasarela()], conv);
+    }
+    case "email": {
+      const m = /[^\s@<>]+@[^\s@<>]+\.[^\s@<>]{2,}/.exec(texto);
+      if (!m){ const q = await siPregunta(); if (q === "humano") return humano(); if (q) return fin(q, conv); return fin([txt("Ese correo no me parece válido 🤔 Escríbelo así: nombre@correo.cl")], conv); }
+      conv.email = m[0].toLowerCase();
+      return pagarOnline(conv.pasarela || "flow");
     }
   }
-  return fin([botones(saludo, [["menu", "📋 Ver menú"], ["humano", "🙋 Hablar con alguien"]])], { paso: "pedido", carrito: [], preguntas: [] });
+  return fin([botones(saludo, BT_INICIO)], nueva());
 }
-async function localesDe(db, storeId){
-  try {
-    const q = await db.collection("tiendas/" + storeId + "/locales").get();
-    return q.docs.map(d => Object.assign({ id: d.id }, d.data() || {})).filter(l => l.nombre && l.abierto !== false)
-      .map(l => ({ id: l.id, nombre: String(l.nombre), direccion: String(l.direccion || "") }));
-  } catch(e){ return []; }
+
+/* ── costo de envío: mismas reglas que la tienda (zonas por comuna o costo fijo) ── */
+export function costoEnvio(cfg, comuna, subtotal){
+  const zonas = Array.isArray(cfg.zonas) ? cfg.zonas : [];
+  if (zonas.length){
+    const c = norm(comuna);
+    const z = zonas.find(z => String(z.comunas || "").split(",").map(norm).filter(Boolean).includes(c));
+    if (!z) return { cobertura: false };
+    const min = Number(z.minGratis) || 0;
+    return { cobertura: true, zona: z.nombre || "", costo: min > 0 && subtotal >= min ? 0 : (Number(z.costo) || 0) };
+  }
+  const min = Number(cfg.deliveryMinimo) || 0;
+  return { cobertura: true, costo: min > 0 && subtotal >= min ? 0 : (Number(cfg.deliveryCosto) || 0) };
 }
-async function resumenOSinCobertura(db, storeId, cfg, conv, nombre){
-  const r = await armarResumen(db, storeId, cfg, conv, nombre);
-  if (r.sinCobertura){ conv.paso = "entrega"; return [botones("😕 Por ahora no llegamos a " + (conv.comuna || "esa dirección") + ". ¿Prefieres retirarlo en el local?", [["retiro", "🏪 Retiro en local"], ["cancelar", "❌ Cancelar"]])]; }
-  if (r.error) return [txt("⚠️ " + r.error)];
-  return [r.msg];
+function comunasDe(cfg){
+  const v = [];
+  (Array.isArray(cfg.zonas) ? cfg.zonas : []).forEach(z => String(z.comunas || "").split(",").map(s => s.trim()).filter(Boolean).forEach(c => { if (!v.includes(c)) v.push(c); }));
+  return v;
+}
+function comunaEnTexto(cfg, texto){
+  const t = " " + norm(texto) + " ";
+  return comunasDe(cfg).find(c => t.includes(" " + norm(c) + " ")) || "";
 }

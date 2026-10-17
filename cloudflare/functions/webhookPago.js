@@ -20,6 +20,7 @@ import { admin, getDb, corsHeaders, getStoreConfig } from "./_firebase.js";
 import { enviarCorreosPedido } from "./enviarEmails.js";
 import { notificar } from "./notificar.js";
 import { moverInsumos } from "./inventario.js";
+import { avisarPagoWA } from "./_waAviso.js";
 
 export async function webhookPago(request, env){
   const headers = corsHeaders();
@@ -192,6 +193,8 @@ export async function webhookPago(request, env){
     } catch (e) {
       console.warn("No se pudo disparar la notificación push:", e.message);
     }
+    /* P67: si el pedido vino del asistente de WhatsApp, se le avisa al cliente por ahí */
+    await avisarPagoWA(db, env, storeId, ped);
 
     return new Response("ok", { status: 200, headers });
   } catch (e) {
