@@ -1378,3 +1378,4 @@ idéntico pixel a pixel.
 - P63: diagnóstico en `/api/whatsapp?diag=<WA_VERIFY_TOKEN>` (configuración presente sí/no y los últimos 15 avisos de
   Meta, guardados en el KV `LANDING` como `wa_diag`, con números tapados). `wrangler.toml`: nombre `derlabs` (el del
   panel de Cloudflare) y `[observability] enabled = true` para ver los registros en Observability.
+- P64: el token se limpia solo (espacios, saltos de línea, comillas, "Bearer "); el diagnóstico prueba el token contra Meta (/me) y dice si es válido.

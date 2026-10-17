@@ -82,11 +82,16 @@ export function textoSaludo(cfg, nombreCliente, dominio, fecha){
     (url ? "🛒 Haz tu pedido aquí: " + url + "\n" : "") + estado;
 }
 
+/* el token tal como se pegó en Cloudflare puede traer espacios, saltos de línea, comillas o "Bearer " delante */
+export function limpiarToken(t){
+  return String(t || "").replace(/^\s*["']?\s*(Bearer\s+)?/i, "").replace(/["']?\s*$/, "").replace(/\s+/g, "");
+}
 async function enviar(env, phoneId, cuerpo){
-  if (!env.WA_TOKEN) throw new Error("Falta el secreto WA_TOKEN en Cloudflare");
+  const token = limpiarToken(env.WA_TOKEN);
+  if (!token) throw new Error("Falta el secreto WA_TOKEN en Cloudflare");
   const r = await fetch(GRAPH + phoneId + "/messages", {
     method: "POST",
-    headers: { "Authorization": "Bearer " + env.WA_TOKEN, "Content-Type": "application/json" },
+    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
     body: JSON.stringify(Object.assign({ messaging_product: "whatsapp" }, cuerpo))
   });
   if (!r.ok){
@@ -127,7 +132,16 @@ export async function whatsapp(request, env, ahora){
   if (request.method === "GET" && url.searchParams.has("diag")){
     if (!env.WA_VERIFY_TOKEN || !igualSeguro(url.searchParams.get("diag"), env.WA_VERIFY_TOKEN)) return texto("Prohibido", 403);
     let lista = []; try { lista = JSON.parse((env.LANDING && await env.LANDING.get("wa_diag")) || "[]"); } catch(e){}
-    const conf = { WA_TOKEN: !!env.WA_TOKEN, WA_APP_SECRET: !!env.WA_APP_SECRET, WA_VERIFY_TOKEN: !!env.WA_VERIFY_TOKEN, WA_DOMINIO: String(env.WA_DOMINIO || ""), FIREBASE: !!env.FIREBASE_SERVICE_ACCOUNT, KV: !!env.LANDING };
+    const crudo = String(env.WA_TOKEN || ""), tk = limpiarToken(crudo);
+    let prueba = "sin token";
+    if (tk){
+      try {
+        const r = await fetch(GRAPH + "me?fields=id,name", { headers: { "Authorization": "Bearer " + tk } });
+        const jj = await r.json().catch(() => ({}));
+        prueba = r.ok ? "token válido (" + (jj.name || jj.id || "ok") + ")" : "Meta rechaza el token: " + ((jj.error && jj.error.message) || r.status);
+      } catch(e){ prueba = "no se pudo probar: " + e.message; }
+    }
+    const conf = { WA_TOKEN: !!env.WA_TOKEN, tokenLargo: tk.length, tokenEmpieza: tk.slice(0, 4), tokenTraiaEspacios: crudo !== tk, pruebaToken: prueba, WA_APP_SECRET: !!env.WA_APP_SECRET, WA_VERIFY_TOKEN: !!env.WA_VERIFY_TOKEN, WA_DOMINIO: String(env.WA_DOMINIO || ""), FIREBASE: !!env.FIREBASE_SERVICE_ACCOUNT, KV: !!env.LANDING };
     return new Response(JSON.stringify({ configuracion: conf, ultimosAvisos: lista.length ? lista : "Todavía no llega ningún aviso de Meta" }, null, 2), { headers: { "Content-Type": "application/json; charset=utf-8" } });
   }
   if (request.method === "GET"){
