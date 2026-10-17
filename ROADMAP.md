@@ -1363,3 +1363,15 @@ idéntico pixel a pixel.
     que no deja nada más ancho que la pantalla, títulos que cortan línea y tamaño de títulos para celular; en los
     títulos cambia los espacios duros (`&nbsp;`) que deja el editor por espacios normales. `landing.html` base
     trae la misma regla y el pie con DerLabs SpA · RUT.
+
+## 35. WhatsApp — Fase 1: el Worker recibe mensajes (P62) — ✅ hecho (falta conectarlo en Meta)
+
+- `cloudflare/functions/whatsapp.js`, ruta `/api/whatsapp` (webhook de la Cloud API de Meta).
+  GET: verificación con `WA_VERIFY_TOKEN`. POST: solo con firma válida de Meta (`X-Hub-Signature-256`, HMAC con
+  `WA_APP_SECRET`); a Meta siempre se le contesta 200 para que no reintente.
+- Tienda de cada número: `waNumeros/{phoneNumberId}.storeId`, o para el piloto `WA_DOMINIO` → `dominios/{dominio}`.
+- A quien escribe: saludo con su nombre, el de la tienda, el link y si está abierta (o cuándo abre), una vez cada
+  12 h por persona; marca el mensaje como leído. El mismo mensaje reintentado por Meta no se contesta dos veces.
+- Cada conversación: `tiendas/{storeId}/waChats/{numero}` (nombre, último texto, cantidad, último saludo).
+- Secretos en Cloudflare: `WA_TOKEN` (usuario del sistema), `WA_APP_SECRET`, `WA_VERIFY_TOKEN`; variable `WA_DOMINIO`.
+- Pendiente: avisos de estado del pedido (necesitan una plantilla aprobada por Meta) y Fase 2 (pedidos por chat).

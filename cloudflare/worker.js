@@ -43,6 +43,7 @@ import { reintentarBoletas } from "./functions/boleta.js";
 import { imagen, servirImagen } from "./functions/imagenes.js";
 import { inventario } from "./functions/inventario.js";
 import { video, servirVideo } from "./functions/video.js";
+import { whatsapp } from "./functions/whatsapp.js";
 
 const DOMINIOS_LANDING = ["derlabs.cl", "www.derlabs.cl"];
 
@@ -78,7 +79,8 @@ const FUNCIONES = {
   alta,
   imagen,
   inventario,
-  video
+  video,
+  whatsapp
 };
 
 
