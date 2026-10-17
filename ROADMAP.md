@@ -1379,3 +1379,19 @@ idéntico pixel a pixel.
   Meta, guardados en el KV `LANDING` como `wa_diag`, con números tapados). `wrangler.toml`: nombre `derlabs` (el del
   panel de Cloudflare) y `[observability] enabled = true` para ver los registros en Observability.
 - P64: el token se limpia solo (espacios, saltos de línea, comillas, "Bearer "); el diagnóstico prueba el token contra Meta (/me) y dice si es válido.
+
+## 36. WhatsApp para cada cliente: panel del dueño, administración y topes (P65) — ✅ hecho
+
+- **Panel del dueño** (tienda de comida) → Entrega y mensajes → "🤖 Asistente de WhatsApp" (también una fila en el
+  inicio del panel): interruptor de respuestas automáticas (`config.waActivo`), mensaje de bienvenida propio con
+  botones para agregar {cliente} {tienda} {link} {estado} y vista previa tipo WhatsApp (`config.waSaludo`; vacío = el
+  original), estado de la conexión, consumo del mes y botón "Conectar" que deja una solicitud a DerLabs.
+- **`/whatsapp-admin.html`** (clave de administración, la misma de suscripciones): resumen, solicitudes pendientes
+  (conectar pegando el Phone number ID), números con consumo del mes, calidad que informa Meta, alertas y último
+  error; pausar con motivo, reanudar, cambiar tope, dar de baja un número o una tienda completa, conectar a mano.
+- **Servidor** (`/api/whatsapp?op=tienda|admin`): `waNumeros/{phoneId}` (tienda, estado activo/pausado/baja, tope,
+  uso del mes, calidad, errores) y `waSolicitudes/{storeId}`. Un número dado de baja se puede pasar a otra tienda; uno
+  conectado a otra tienda no.
+- **Protecciones**: tope mensual por número (2.000 por defecto), 12 respuestas por hora por persona, alerta al 80 %,
+  pausa automática si Meta bloquea el número (códigos 368 / 131031), aviso si Meta frena por volumen (130429, 131048,
+  131056, 80007) y registro de la calidad del número (`phone_number_quality_update`).

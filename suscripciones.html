@@ -230,7 +230,7 @@ async function cargarSuscripciones(){
     const j = await res.json().catch(() => ({}));
 
     if (res.status === 401){
-      errorBox.innerHTML = '<div class="error-carga">Clave de administrador incorrecta — recargá la página para ingresarla de nuevo.</div>';
+      errorBox.innerHTML = '<div class="error-carga">Clave de administrador incorrecta — recarga la página para ingresarla de nuevo.</div>';
       listaBox.innerHTML = "";
       sessionStorage.removeItem("adminSecret");
       return;

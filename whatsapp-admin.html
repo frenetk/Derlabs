@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="color-scheme" content="dark light">
+<meta name="robots" content="noindex, nofollow">
+<title>WhatsApp — clientes conectados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/tema.css?v=45">
+<script src="/tema.js?v=45" data-clave="dl_tema_admin"></script>
+<style>
+/* P65 · Administración de WhatsApp de DerLabs: mismo sistema visual que suscripciones.html */
+:root{
+  color-scheme: dark;
+  --rojo:#E53935;--verde:#2E7D32;--amarillo:#F9A825;
+  --bg:#0E0E0E;--bg2:#181818;--bg3:#222222;--card:#1E1E1E;
+  --borde:rgba(255,255,255,.08);--txt:#F5F5F5;--txt2:#A0A0A0;--txt3:#606060;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);font-family:'Nunito',sans-serif;min-height:100vh}
+h1,h2,h3{font-family:'Barlow Condensed',sans-serif;font-weight:700}
+input,select,button,textarea{font-family:'Nunito',sans-serif;color:inherit}
+button{cursor:pointer}
+.wrapper{max-width:820px;margin:0 auto;padding:24px 16px 60px}
+#gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;z-index:100}
+.gate-box{width:100%;max-width:360px;text-align:center}
+.gate-box h2{font-size:24px;margin-bottom:6px}
+.gate-box p{color:var(--txt2);font-size:14px;margin-bottom:20px}
+.gate-box input,.campo{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--borde);background:var(--bg2);color:var(--txt);font-size:15px}
+.gate-box input{margin-bottom:12px}
+.btn{padding:12px 16px;border-radius:12px;border:none;background:var(--rojo);color:#fff;font-weight:800;font-size:14px}
+.btn.sec{background:var(--bg3);color:var(--txt);border:1px solid var(--borde)}
+.btn.ok{background:var(--verde)}
+.btn.chico{padding:8px 12px;font-size:12.5px;border-radius:10px}
+.gate-box .btn{width:100%}
+.gate-err{color:var(--rojo);font-size:13px;margin-top:10px;min-height:18px}
+header{margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+header h1{font-size:28px;margin-bottom:4px}
+header p{color:var(--txt2);font-size:14px}
+.resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:22px}
+.res{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:14px;text-align:center}
+.res .num{font-size:26px;font-weight:900;font-family:'Barlow Condensed',sans-serif}
+.res .lbl{font-size:11.5px;color:var(--txt2);font-weight:700;margin-top:2px}
+.res.alerta .num{color:var(--amarillo)}.res.mal .num{color:var(--rojo)}.res.bien .num{color:var(--verde)}
+h2.sec{font-size:20px;margin:24px 0 10px}
+.ayuda{color:var(--txt2);font-size:13px;line-height:1.5;margin:-4px 0 12px}
+.tarjeta{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.fila{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tarjeta .nombre{font-weight:900;font-size:15.5px;flex:1;min-width:160px}
+.tarjeta .det{color:var(--txt2);font-size:12.5px;margin-top:3px;line-height:1.5}
+.badge{font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px;background:var(--bg3);color:var(--txt2)}
+.badge.activo{background:rgba(46,125,50,.18);color:#5BC46A}
+.badge.pausado{background:rgba(249,168,37,.18);color:var(--amarillo)}
+.badge.baja{background:rgba(229,57,53,.15);color:#FF8A80}
+.barra{height:8px;border-radius:99px;background:var(--bg3);overflow:hidden;margin:10px 0 4px}
+.barra i{display:block;height:100%;background:var(--verde);border-radius:99px}
+.barra.alto i{background:var(--amarillo)}.barra.tope i{background:var(--rojo)}
+.aviso{margin-top:8px;padding:8px 10px;border-radius:10px;font-size:12.5px;line-height:1.45;background:rgba(249,168,37,.12);color:#F5D48A}
+.aviso.mal{background:rgba(229,57,53,.12);color:#FFB4AB}
+.acciones{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.form{display:grid;gap:8px;margin-top:10px}
+.form .dos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vacio{text-align:center;color:var(--txt2);padding:22px;background:var(--card);border-radius:14px;border:1px solid var(--borde);font-size:14px}
+.error-carga{background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.3);border-radius:12px;padding:14px;color:#FF8A80;font-size:14px;margin-bottom:16px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#2A2A2A;color:#fff;padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center;z-index:200}
+#toast.on{opacity:1}
+details.peligro summary{cursor:pointer;color:var(--txt2);font-weight:800;font-size:14px}
+html[data-tema="claro"] .badge.pausado,html[data-tema="claro"] .res.alerta .num{color:#8A5A00}
+html[data-tema="claro"] .badge.baja,html[data-tema="claro"] .error-carga,html[data-tema="claro"] .aviso.mal{color:#B3261E}
+html[data-tema="claro"] .aviso{color:#6B4A00}
+html[data-tema="claro"] .badge.activo{color:#1E6B2E}
+@media (min-width:1024px){.wrapper{max-width:980px;padding:36px 28px 80px}}
+</style>
+</head>
+<body>
+<div id="gate">
+  <div class="gate-box">
+    <h2>🔐 WhatsApp</h2>
+    <p>Acceso restringido — solo administración de DerLabs.</p>
+    <input type="password" id="gateInput" placeholder="Clave de administrador" autocomplete="off">
+    <button class="btn" id="gateBtn">Entrar</button>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+
+<div class="wrapper" id="app" style="display:none">
+  <header>
+    <div><h1>WhatsApp de tus clientes</h1><p>Números conectados, consumo del mes y altas y bajas.</p></div>
+    <button class="btn sec chico" id="btnRecargar">↻ Recargar</button>
+  </header>
+  <div id="errorCarga"></div>
+  <div class="resumen" id="resumen"></div>
+
+  <h2 class="sec">Solicitudes de conexión</h2>
+  <p class="ayuda">Cuando un dueño pide conectar su número desde su panel aparece aquí. Agrega su número en WhatsApp Manager, copia el <b>ID del número</b> (Phone number ID) y pégalo para conectarlo.</p>
+  <div id="solicitudes"></div>
+
+  <h2 class="sec">Números conectados</h2>
+  <p class="ayuda">Ordenados por consumo del mes. El tope mensual frena las respuestas automáticas de ese número sin afectar a los demás.</p>
+  <div id="numeros"></div>
+
+  <h2 class="sec">Conectar un número a mano</h2>
+  <div class="tarjeta">
+    <div class="form">
+      <div class="dos"><input class="campo" id="mPhone" inputmode="numeric" placeholder="ID del número (Phone number ID)"><input class="campo" id="mStore" placeholder="ID de la tienda (storeId)"></div>
+      <div class="dos"><input class="campo" id="mNum" inputmode="numeric" placeholder="Número (56912345678)"><input class="campo" id="mLim" inputmode="numeric" placeholder="Tope al mes (2000)"></div>
+      <button class="btn ok" id="mBtn">Conectar número</button>
+    </div>
+  </div>
+
+  <h2 class="sec">Dar de baja un cliente</h2>
+  <details class="tarjeta peligro">
+    <summary>Apagar el WhatsApp de una tienda que ya no está en DerLabs</summary>
+    <p class="ayuda" style="margin:10px 0">Todos sus números quedan dados de baja: el asistente deja de responder al tiro. El historial se conserva y el número se puede volver a conectar a otra tienda.</p>
+    <div class="form"><input class="campo" id="bStore" placeholder="ID de la tienda (storeId)"><button class="btn" id="bBtn">Dar de baja esta tienda</button></div>
+  </details>
+</div>
+<div id="toast"></div>
+
+<script>
+const qs = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = n => Number(n || 0).toLocaleString("es-CL");
+const fecha = iso => { if (!iso) return "—"; try { return new Date(iso).toLocaleString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch(e){ return iso; } };
+let ADMIN_SECRET = "", DATOS = null;
+function toast(t){ const el = qs("#toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove("on"), 2600); }
+
+function entrar(){
+  const v = qs("#gateInput").value.trim();
+  if (!v){ qs("#gateErr").textContent = "Ingresa la clave"; return; }
+  ADMIN_SECRET = v; sessionStorage.setItem("adminSecret", v);
+  qs("#gate").style.display = "none"; qs("#app").style.display = "block"; cargar();
+}
+qs("#gateBtn").addEventListener("click", entrar);
+qs("#gateInput").addEventListener("keydown", e => { if (e.key === "Enter") entrar(); });
+if (sessionStorage.getItem("adminSecret")){ ADMIN_SECRET = sessionStorage.getItem("adminSecret"); qs("#gate").style.display = "none"; qs("#app").style.display = "block"; cargar(); }
+
+async function api(cuerpo){
+  const r = await fetch("/api/whatsapp?op=admin", { method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Secret": ADMIN_SECRET }, body: JSON.stringify(cuerpo) });
+  const j = await r.json().catch(() => ({ ok: false, error: "Respuesta inválida (HTTP " + r.status + ")" }));
+  if (r.status === 401){ sessionStorage.removeItem("adminSecret"); qs("#errorCarga").innerHTML = '<div class="error-carga">Clave de administrador incorrecta — recarga la página para ingresarla de nuevo.</div>'; }
+  return j;
+}
+async function cargar(){
+  qs("#errorCarga").innerHTML = "";
+  qs("#numeros").innerHTML = '<p class="ayuda" style="text-align:center">Cargando…</p>';
+  let j; try { j = await api({ accion: "listar" }); } catch(e){ j = { ok: false, error: "Sin conexión" }; }
+  if (!j.ok){ if (!qs("#errorCarga").innerHTML) qs("#errorCarga").innerHTML = '<div class="error-carga">' + esc(j.error || "No se pudo cargar") + '</div>'; qs("#numeros").innerHTML = ""; return; }
+  DATOS = j; pintar();
+}
+function pintar(){
+  const nums = DATOS.numeros.filter(n => n.estado !== "baja"), bajas = DATOS.numeros.filter(n => n.estado === "baja");
+  const enviados = nums.reduce((s, n) => s + (n.uso.enviados || 0), 0);
+  const alertas = nums.filter(n => (n.estado === "pausado") || (n.uso.enviados >= n.limiteMes * 0.8) || (n.calidad && /FLAG|DOWNGRADE|RED/i.test(n.calidad.evento))).length;
+  qs("#resumen").innerHTML =
+    '<div class="res bien"><div class="num">' + nums.filter(n => n.estado === "activo").length + '</div><div class="lbl">Números activos</div></div>' +
+    '<div class="res"><div class="num">' + fmt(enviados) + '</div><div class="lbl">Respuestas en ' + esc(DATOS.mes) + '</div></div>' +
+    '<div class="res ' + (DATOS.solicitudes.length ? "alerta" : "") + '"><div class="num">' + DATOS.solicitudes.length + '</div><div class="lbl">Solicitudes</div></div>' +
+    '<div class="res ' + (alertas ? "mal" : "") + '"><div class="num">' + alertas + '</div><div class="lbl">Con alerta</div></div>';
+  qs("#solicitudes").innerHTML = DATOS.solicitudes.length ? DATOS.solicitudes.map(s =>
+    '<div class="tarjeta" data-sol="' + esc(s.storeId) + '"><div class="fila"><div class="nombre">' + esc(s.tienda || s.storeId) + '</div><span class="badge pausado">Pendiente</span></div>' +
+    '<div class="det">Número: <b>' + esc(s.numero) + '</b> · tienda <code>' + esc(s.storeId) + '</code> · pidió el ' + fecha(s.en) + '</div>' +
+    '<div class="form"><div class="dos"><input class="campo" data-solphone inputmode="numeric" placeholder="ID del número (Phone number ID)"><input class="campo" data-sollim inputmode="numeric" placeholder="Tope al mes (2000)"></div>' +
+    '<div class="acciones"><button class="btn ok chico" data-conectar>Conectar</button><button class="btn sec chico" data-rechazar>Descartar solicitud</button></div></div></div>').join("")
+    : '<div class="vacio">No hay solicitudes pendientes.</div>';
+  qs("#numeros").innerHTML = (nums.length ? nums.map(tarjetaNumero).join("") : '<div class="vacio">Todavía no hay números conectados.</div>') +
+    (bajas.length ? '<details class="tarjeta" style="margin-top:10px"><summary style="cursor:pointer;color:var(--txt2);font-weight:800">Dados de baja (' + bajas.length + ')</summary>' + bajas.map(tarjetaNumero).join("") + '</details>' : "");
+}
+function tarjetaNumero(n){
+  const pct = n.limiteMes ? Math.min(100, Math.round(100 * (n.uso.enviados || 0) / n.limiteMes)) : 0;
+  const cal = n.calidad ? '<div class="aviso' + (/FLAG|RED/i.test(n.calidad.evento) ? " mal" : "") + '">Calidad informada por Meta: <b>' + esc(n.calidad.evento) + '</b>' + (n.calidad.limite ? " · límite " + esc(n.calidad.limite) : "") + ' · ' + fecha(n.calidad.en) + '</div>' : "";
+  const ale = n.alerta ? '<div class="aviso">⚠️ ' + esc(n.alerta.tipo) + ' · ' + fecha(n.alerta.en) + '</div>' : "";
+  const err = n.ultimoError ? '<div class="aviso mal">Último error (' + fecha(n.ultimoError.en) + '): ' + esc(n.ultimoError.texto) + '</div>' : "";
+  const pau = n.estado === "pausado" && n.motivoPausa ? '<div class="aviso">Pausado: ' + esc(n.motivoPausa) + '</div>' : "";
+  return '<div class="tarjeta" data-num="' + esc(n.phoneId) + '" data-store="' + esc(n.storeId) + '">' +
+    '<div class="fila"><div class="nombre">' + esc(n.tienda || n.storeId) + '</div><span class="badge ' + esc(n.estado) + '">' + ({ activo: "Activo", pausado: "Pausado", baja: "De baja" }[n.estado] || esc(n.estado)) + '</span></div>' +
+    '<div class="det">' + esc(n.numero || "sin número") + ' · ID ' + esc(n.phoneId) + ' · tienda <code>' + esc(n.storeId) + '</code>' + (n.ultimoMensajeEn ? ' · último mensaje ' + fecha(n.ultimoMensajeEn) : "") + '</div>' +
+    (n.estado !== "baja" ? '<div class="barra' + (pct >= 100 ? " tope" : pct >= 80 ? " alto" : "") + '"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="det">' + fmt(n.uso.enviados) + ' de ' + fmt(n.limiteMes) + ' respuestas este mes · ' + fmt(n.uso.recibidos) + ' recibidos' + (n.uso.bloqueados ? ' · <b>' + fmt(n.uso.bloqueados) + ' sin responder por el tope</b>' : "") + '</div>' : "") +
+    pau + ale + cal + err +
+    '<div class="acciones">' +
+      (n.estado === "activo" ? '<button class="btn sec chico" data-pausar>⏸ Pausar</button>' : "") +
+      (n.estado === "pausado" ? '<button class="btn ok chico" data-reanudar>▶ Reanudar</button>' : "") +
+      (n.estado !== "baja" ? '<button class="btn sec chico" data-limite>Cambiar tope</button><button class="btn chico" data-baja>Dar de baja</button>' : '<button class="btn ok chico" data-reactivar>Reactivar</button>') +
+    '</div></div>';
+}
+async function hacer(cuerpo, okTxt){
+  const j = await api(cuerpo);
+  if (j.ok){ toast(okTxt); await cargar(); } else toast(j.error || "No se pudo");
+  return j;
+}
+document.addEventListener("click", async e => {
+  const t = e.target;
+  const sol = t.closest("[data-sol]"), num = t.closest("[data-num]");
+  if (t.closest("#btnRecargar")) return cargar();
+  if (sol && t.closest("[data-conectar]")){
+    const phone = sol.querySelector("[data-solphone]").value.replace(/\D/g, ""), lim = sol.querySelector("[data-sollim]").value.replace(/\D/g, "");
+    const s = DATOS.solicitudes.find(x => x.storeId === sol.dataset.sol);
+    if (!phone) return toast("Pega el ID del número (Phone number ID)");
+    return hacer({ accion: "vincular", phoneId: phone, storeId: s.storeId, numero: s.numero, limiteMes: lim || undefined }, "✅ Número conectado");
+  }
+  if (sol && t.closest("[data-rechazar]")){ if (confirm("¿Descartar esta solicitud?")) return hacer({ accion: "borrarSolicitud", storeId: sol.dataset.sol }, "Solicitud descartada"); return; }
+  if (!num) return;
+  const id = num.dataset.num;
+  if (t.closest("[data-pausar]")){ const m = prompt("Motivo de la pausa (lo ve el dueño en su panel):", "Pausado por DerLabs"); if (m !== null) hacer({ accion: "estado", phoneId: id, estado: "pausado", motivo: m }, "Número pausado"); return; }
+  if (t.closest("[data-reanudar]") || t.closest("[data-reactivar]")) return hacer({ accion: "estado", phoneId: id, estado: "activo" }, "✅ Número activo");
+  if (t.closest("[data-limite]")){ const v = prompt("Nuevo tope de respuestas automáticas al mes:", "2000"); if (v) hacer({ accion: "limite", phoneId: id, limiteMes: Number(String(v).replace(/\D/g, "")) }, "Tope actualizado"); return; }
+  if (t.closest("[data-baja]")){ if (confirm("¿Dar de baja este número? El asistente deja de responder al tiro.")) hacer({ accion: "estado", phoneId: id, estado: "baja" }, "Número dado de baja"); return; }
+});
+qs("#mBtn").addEventListener("click", () => {
+  const phone = qs("#mPhone").value.replace(/\D/g, ""), store = qs("#mStore").value.trim();
+  if (!phone || !store) return toast("Faltan el ID del número y el ID de la tienda");
+  hacer({ accion: "vincular", phoneId: phone, storeId: store, numero: qs("#mNum").value.replace(/\D/g, ""), limiteMes: Number(qs("#mLim").value.replace(/\D/g, "")) || undefined }, "✅ Número conectado");
+});
+qs("#bBtn").addEventListener("click", async () => {
+  const store = qs("#bStore").value.trim();
+  if (!store) return toast("Escribe el ID de la tienda");
+  if (!confirm("¿Dar de baja el WhatsApp de la tienda «" + store + "»?")) return;
+  const j = await hacer({ accion: "bajaTienda", storeId: store }, "Tienda dada de baja");
+  if (j.ok) toast("Tienda dada de baja (" + j.numeros + " número" + (j.numeros === 1 ? "" : "s") + ")");
+});
+</script>
+</body>
+</html>

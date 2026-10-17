@@ -1151,6 +1151,7 @@ function renderAll(){
   renderInicio();
   try { hsRender(); hsPanelPintar(); } catch(e){ console.warn("historia:", e); }
   vocAplicar(); vocPanelPintar(); secAplicar();
+  try { waPanel(); } catch(e){}
   renderMenu();
   renderCupones();
   renderLocales();
@@ -9249,6 +9250,177 @@ function secPanel(){
 }
 
 /* ════════════════════════════════════════════════════════════════
+   P65 — ASISTENTE DE WHATSAPP (panel del dueño, tienda de comida)
+   Panel → Entrega y mensajes → "Asistente de WhatsApp" (también desde el
+   inicio del panel). El dueño:
+   · prende o apaga las respuestas automáticas  → config.waActivo
+   · escribe su mensaje de bienvenida con datos que se completan solos
+     ({cliente} {tienda} {link} {estado})         → config.waSaludo
+   · pide conectar su número (DerLabs lo conecta) y ve cuántas respuestas
+     lleva en el mes. Eso lo responde /api/whatsapp?op=tienda.
+   ════════════════════════════════════════════════════════════════ */
+var _wa = { estado: null, cargando: false, error: "" };
+function _waBase(){ return (_wa.estado && _wa.estado.saludoBase) || "¡Hola {cliente}! 👋 Gracias por escribir a *{tienda}*.\n\n🛒 Haz tu pedido aquí: {link}\n{estado}"; }
+function waCss(){
+  if (qs("#wa-css")) return;
+  var st = document.createElement("style"); st.id = "wa-css";
+  st.textContent = [
+    "#waPanel .wa-est{display:flex;align-items:flex-start;gap:10px;margin:12px 0 0;padding:12px;border-radius:12px;background:#F7F5F3;font-size:13.5px;line-height:1.45}",
+    "#waPanel .wa-est b{display:block;font-size:14px}",
+    "#waPanel .wa-est.ok{background:#EAF6EE}#waPanel .wa-est.pausa{background:#FDF3E3}#waPanel .wa-est.err{background:#FDECEC}",
+    "#waPanel .wa-ico{font-size:18px;line-height:1.2;flex:none}",
+    "#waPanel .wa-barra{height:8px;border-radius:99px;background:#E6E1DD;overflow:hidden;margin:8px 0 2px}",
+    "#waPanel .wa-barra i{display:block;height:100%;background:#1E7B3C;border-radius:99px}",
+    "#waPanel .wa-barra.alto i{background:#C98A00}#waPanel .wa-barra.tope i{background:#B3261E}",
+    "#waPanel .wa-sol{display:flex;gap:8px;margin-top:8px}#waPanel .wa-sol .field{margin:0;flex:1;min-width:0}#waPanel .wa-sol button{flex:none;margin:0}",
+    "#waPanel textarea.field{min-height:120px;resize:vertical;line-height:1.5;font-family:inherit}",
+    "#waPanel .wa-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}",
+    "#waPanel .wa-chips button{border:1.5px solid #E6E1DD;background:#fff;border-radius:999px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;color:#1A1A1A}",
+    "#waPanel .wa-cnt{font-size:11.5px;font-weight:700;color:#8A8580;text-align:right;margin:4px 0 0}",
+    "#waPanel .wa-pv{margin:12px 0 0;padding:14px;border-radius:14px;background:#E7DED4}",
+    "#waPanel .wa-pv small{display:block;font-size:11px;font-weight:800;color:#6B5E52;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px}",
+    "#waPanel .wa-burbuja{background:#fff;border-radius:4px 14px 14px 14px;padding:10px 12px;font-size:14px;line-height:1.45;color:#111;max-width:92%;box-shadow:0 1px 1px rgba(0,0,0,.08);overflow-wrap:anywhere}",
+    "#waPanel .wa-burbuja a{color:#027EB5;text-decoration:none}",
+    "#waPanel .wa-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}#waPanel .wa-btns button{margin:0}"
+  ].join("\n");
+  document.head.appendChild(st);
+}
+function waPanel(){
+  try {
+    if (typeof v28EsComida !== "function" || !v28EsComida() || qs("#waPanel")) return;
+    var sec = qs("#pt-envio"); if (!sec) return;
+    waCss();
+    var box = document.createElement("div"); box.id = "waPanel"; box.className = "pcard";
+    box.innerHTML = '<div class="pcard-h"><div><b>🤖 Asistente de WhatsApp</b><small id="waResumen">Responde solo a quien te escribe</small></div>' +
+      '<label class="switch"><input type="checkbox" id="waOn" aria-label="Respuestas automáticas por WhatsApp"><span class="slider"></span></label></div>' +
+      '<p class="pnota" style="font-size:12.5px;margin:8px 0 0">Cuando un cliente escribe a tu WhatsApp, recibe al instante tu link, tu horario y si estás abierto. Tú sigues usando tu WhatsApp como siempre.</p>' +
+      '<div id="waConn"></div>' +
+      '<label class="plabel" for="waTxt">Mensaje de bienvenida</label>' +
+      '<textarea class="field" id="waTxt" maxlength="600"></textarea>' +
+      '<div class="wa-chips" id="waChips"><span class="pnota" style="margin:0;align-self:center;font-size:12px">Agregar:</span>' +
+        '<button type="button" data-wains="{cliente}">👤 Nombre del cliente</button><button type="button" data-wains="{tienda}">🏪 Tu tienda</button>' +
+        '<button type="button" data-wains="{link}">🔗 Link para pedir</button><button type="button" data-wains="{estado}">🟢 Abierto o cerrado</button></div>' +
+      '<div class="wa-cnt" id="waCnt">0 / 600</div>' +
+      '<div class="wa-pv"><small>Así lo verá tu cliente</small><div class="wa-burbuja" id="waPv"></div></div>' +
+      '<div class="wa-btns"><button type="button" class="pill pill-solid pill-sm" id="waGuardar">Guardar mensaje</button>' +
+      '<button type="button" class="pill pill-outline-muted pill-sm" id="waRest">Usar el mensaje original</button></div>';
+    var ref = qs("#pWhats"), card = ref && ref.closest(".pcard");
+    if (card && card.parentNode === sec) sec.insertBefore(box, card.nextSibling); else sec.insertBefore(box, sec.firstChild);
+    var tx = qs("#waTxt");
+    tx.addEventListener("input", function(){ tx._tocado = true; waVista(); });
+    qs("#waChips").addEventListener("click", function(e){
+      var b = e.target.closest("[data-wains]"); if (!b) return;
+      var t = b.getAttribute("data-wains"), a = tx.selectionStart != null ? tx.selectionStart : tx.value.length, z = tx.selectionEnd != null ? tx.selectionEnd : a;
+      tx.value = (tx.value.slice(0, a) + t + tx.value.slice(z)).slice(0, 600); tx._tocado = true;
+      try { tx.focus(); tx.setSelectionRange(a + t.length, a + t.length); } catch(x){}
+      waVista();
+    });
+    qs("#waGuardar").addEventListener("click", async function(){
+      var v = String(tx.value || "").replace(/\r/g, "").trim().slice(0, 600);
+      if (v === _waBase()) v = "";
+      var ok = await saveConfig("waSaludo", v);
+      if (ok !== false){ tx._tocado = false; if (typeof toast === "function") toast("✅ Mensaje guardado"); }
+      waPintar();
+    });
+    qs("#waRest").addEventListener("click", async function(){
+      var ok = await saveConfig("waSaludo", "");
+      if (ok !== false){ tx._tocado = false; if (typeof toast === "function") toast("Mensaje original restaurado"); }
+      waPintar(true);
+    });
+    qs("#waOn").addEventListener("change", async function(){
+      var v = !!this.checked;
+      var ok = await saveConfig("waActivo", v);
+      if (ok !== false && typeof toast === "function") toast(v ? "✅ Respuestas automáticas activadas" : "Respuestas automáticas apagadas");
+      waPintar();
+    });
+    qs("#waConn").addEventListener("click", async function(e){
+      if (e.target.closest("#waReint")){ waCargar(); return; }
+      if (e.target.closest("#waPedir")){
+        var n = String((qs("#waNum") || {}).value || "").replace(/\D/g, "");
+        if (n.length < 8){ if (typeof toast === "function") toast("Escribe tu número con 56 adelante, por ejemplo 56912345678"); return; }
+        if (n.length === 9 && n.charAt(0) === "9") n = "56" + n;
+        var r = await waApi({ accion: "solicitar", numero: n });
+        if (r && r.ok){ if (typeof toast === "function") toast("✅ Solicitud enviada a DerLabs"); waCargar(); }
+        else if (typeof toast === "function") toast((r && r.error) || "No se pudo enviar la solicitud");
+        return;
+      }
+      if (e.target.closest("#waCancelar")){
+        var r2 = await waApi({ accion: "cancelarSolicitud" });
+        if (r2 && r2.ok) waCargar();
+      }
+    });
+    var tab = qs('.ptab[data-pt="envio"]'); if (tab) tab.addEventListener("click", function(){ waCargar(); });
+    waPintar(true);
+  } catch(e){ console.warn("panel whatsapp:", e); }
+}
+async function waApi(cuerpo){
+  try {
+    var tk = (typeof auth !== "undefined" && auth && auth.currentUser) ? await auth.currentUser.getIdToken() : "";
+    var r = await fetch("/api/whatsapp?op=tienda", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tk }, body: JSON.stringify(Object.assign({ storeId: STORE_ID }, cuerpo)) });
+    var j = await r.json().catch(function(){ return { ok: false, error: "Respuesta inválida (" + r.status + ")" }; });
+    return j;
+  } catch(e){ return { ok: false, error: "Sin conexión" }; }
+}
+async function waCargar(){
+  if (_wa.cargando || !qs("#waPanel")) return;
+  _wa.cargando = true; _wa.error = ""; waPintar();
+  var j = await waApi({ accion: "estado" });
+  _wa.cargando = false;
+  if (j && j.ok) _wa.estado = j; else _wa.error = (j && j.error) || "No se pudo revisar";
+  waPintar();
+}
+function _waFmt(n){ return Number(n || 0).toLocaleString("es-CL"); }
+function waTextoVista(base){
+  var c = state.config || {}, e = typeof hrEstado === "function" ? hrEstado() : { abierta: true };
+  var est = c.abierto === false ? "🔴 En este momento estamos cerrados." : e.abierta ? "🟢 Estamos abiertos y recibiendo pedidos." : "🔴 Ahora estamos cerrados" + (e.abre ? "; abrimos " + e.abre + "." : ".");
+  var dom = c.dominioPrincipal || location.host;
+  return String(base).replace(/\{cliente\}/g, "María").replace(/\{tienda\}/g, c.nombre || "tu tienda")
+    .replace(/\{link\}/g, "https://" + dom).replace(/\{estado\}/g, est).replace(/[ \t]+([!?,.])/g, "$1");
+}
+function waVista(){
+  var tx = qs("#waTxt"), pv = qs("#waPv"); if (!tx || !pv) return;
+  var t = waTextoVista(tx.value || "");
+  pv.innerHTML = esc(t).replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/(https?:\/\/[^\s<]+)/g, "<a>$1</a>").replace(/\n/g, "<br>") || '<span style="color:#999">(vacío)</span>';
+  qs("#waCnt").textContent = tx.value.length + " / 600";
+}
+function waPintar(conTexto){
+  var box = qs("#waPanel"); if (!box) return;
+  var c = state.config || {}, s = _wa.estado, tx = qs("#waTxt");
+  var on = c.waActivo !== false;
+  qs("#waOn").checked = on;
+  if (conTexto || (tx && !tx._tocado && document.activeElement !== tx)) tx.value = String(c.waSaludo || "").trim() || _waBase();
+  waVista();
+  var h = "", res = "";
+  if (_wa.cargando && !s) h = '<div class="wa-est"><span class="wa-ico">⏳</span><span>Revisando tu conexión…</span></div>';
+  else if (_wa.error && !s) h = '<div class="wa-est err"><span class="wa-ico">⚠️</span><span><b>No pudimos revisar tu WhatsApp</b>' + esc(_wa.error) + ' · <a href="#" id="waReint" onclick="return false">Reintentar</a></span></div>';
+  else if (s && s.conectado && s.estado === "pausado"){
+    h = '<div class="wa-est pausa"><span class="wa-ico">⏸️</span><span><b>Asistente pausado por DerLabs</b>' + esc(s.motivoPausa || "") + '. Si crees que es un error, escríbenos.</span></div>';
+    res = "Pausado";
+  } else if (s && s.conectado){
+    var pct = s.limite ? Math.min(100, Math.round(100 * s.uso.enviados / s.limite)) : 0;
+    h = '<div class="wa-est ok"><span class="wa-ico">✅</span><span style="flex:1"><b>Conectado: ' + esc(s.numero || "tu número") + '</b>' +
+      _waFmt(s.uso.enviados) + ' de ' + _waFmt(s.limite) + ' respuestas automáticas este mes' +
+      '<div class="wa-barra' + (pct >= 100 ? " tope" : pct >= 80 ? " alto" : "") + '"><i style="width:' + pct + '%"></i></div>' +
+      (pct >= 100 ? 'Llegaste al tope del mes: el asistente descansa hasta el próximo mes. Escríbenos si necesitas más.' : _waFmt(s.uso.recibidos) + ' mensajes recibidos') + '</span></div>';
+    res = on ? "Activo" : "Apagado: no responde";
+  } else if (s && s.solicitud){
+    h = '<div class="wa-est"><span class="wa-ico">🕐</span><span><b>Solicitud enviada</b>Pediste conectar el ' + esc(s.solicitud.numero) + '. DerLabs te contactará para dejarlo listo. · <a href="#" id="waCancelar" onclick="return false">Cancelar</a></span></div>';
+    res = "Esperando conexión";
+  } else if (s){
+    var pre = String(c.whatsapp || "").replace(/\D/g, "");
+    h = '<div class="wa-est"><span class="wa-ico">📱</span><span style="flex:1"><b>Conecta tu WhatsApp</b>Escribe el número de WhatsApp Business de tu negocio y te lo dejamos funcionando.' +
+      '<div class="wa-sol"><input class="field" id="waNum" type="tel" inputmode="numeric" placeholder="56912345678" value="' + esc(pre) + '"><button type="button" class="pill pill-solid pill-sm" id="waPedir">Conectar</button></div></span></div>';
+    res = "Sin conectar";
+  }
+  qs("#waConn").innerHTML = h;
+  qs("#waResumen").textContent = res || (on ? "Responde solo a quien te escribe" : "Apagado");
+}
+document.addEventListener("click", function(e){
+  if (!e.target || !e.target.closest || !e.target.closest("[data-pvwa]")) return;
+  setTimeout(function(){ waCargar(); var c = qs("#waPanel"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start" }); }, 260);
+});
+
+/* ════════════════════════════════════════════════════════════════
    P26 — VELOCIDAD + PANEL ORDENADO
    · v26RenderPronto: las 4 escuchas de Firestore redibujan una sola
      vez (antes, una vez cada una).
@@ -9360,6 +9532,7 @@ function v26PanelHome(){
     (v28EsComida() ? '<div class="pv-estado pv-entrega"><div class="pv-ent-t"><b>Cómo entregas</b><small>Lo que eliges aquí es lo que ven tus clientes al pedir</small></div>' +
       '<div class="pv-ent-f"><span><b>Delivery</b><small>Llevas el pedido a su dirección</small></span><label class="switch"><input type="checkbox" id="pvDelivery"' + (state.config.deliveryActivo !== false ? " checked" : "") + '><span class="slider"></span></label></div>' +
       '<div class="pv-ent-f"><span><b>Retiro en local</b><small>El cliente pasa a buscarlo</small></span><label class="switch"><input type="checkbox" id="pvRetiro"' + (state.config.retiroActivo !== false ? " checked" : "") + '><span class="slider"></span></label></div></div>' : "") +
+    (v28EsComida() ? '<button type="button" class="pv-fila" data-pvir="envio" data-pvwa="1"><span class="pv-ico">🤖</span><span class="pv-txt"><b>Asistente de WhatsApp</b><small>' + (state.config.waActivo === false ? "Apagado" : "Responde solo a tus clientes con tu link y horario") + '</small></span><span class="pv-chev">›</span></button>' : "") +
     (v28EsComida() && !hrTiene(state.config.horario) ? '<button type="button" class="pv-fila pv-aviso" data-pvir="tienda"><span class="pv-ico">🕒</span><span class="pv-txt"><b>Agrega tu horario de atención</b><small>La tienda abre y cierra sola a la hora que indiques</small></span><span class="pv-chev">›</span></button>' : '') +
     v41Plan() +
     V26_GRUPOS.map(function(g){

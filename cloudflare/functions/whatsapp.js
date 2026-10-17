@@ -1,28 +1,38 @@
-import { getDb, estadoHorario } from "./_firebase.js";
-/* cloudflare/functions/whatsapp.js — P62 · WhatsApp (Fase 1)
-   Recibe los mensajes de WhatsApp Business (Cloud API de Meta) en /api/whatsapp.
+import { getDb, estadoHorario, uidDesdeToken } from "./_firebase.js";
+/* cloudflare/functions/whatsapp.js — WhatsApp de DerLabs (P62 · P63 · P64 · P65)
 
-   · GET  /api/whatsapp  → Meta comprueba la dirección (hub.verify_token = WA_VERIFY_TOKEN).
-   · POST /api/whatsapp  → llegan los mensajes. Se acepta solo si viene firmado por Meta
-     (cabecera X-Hub-Signature-256 = HMAC-SHA256 del cuerpo con WA_APP_SECRET).
+   Una sola dirección, /api/whatsapp, para todo:
+   · GET  ?hub.mode=subscribe…   Meta comprueba la dirección (hub.verify_token = WA_VERIFY_TOKEN).
+   · GET  ?diag=<WA_VERIFY_TOKEN> diagnóstico: secretos presentes, prueba del token y últimos avisos.
+   · POST (firmado por Meta)      llegan los mensajes (cabecera X-Hub-Signature-256, HMAC con WA_APP_SECRET).
+   · POST ?op=tienda              el dueño desde su panel (sesión de Firebase): ver su estado, pedir conexión.
+   · POST ?op=admin               DerLabs (cabecera X-Admin-Secret = ADMIN_SECRET): conectar, pausar,
+                                  dar de baja, cambiar límites y ver el uso de todos los números.
 
-   A qué tienda pertenece cada número: waNumeros/{phoneNumberId}.storeId en Firestore;
-   para el piloto basta la variable WA_DOMINIO (por ejemplo "derlabs.store"): se busca
-   dominios/{WA_DOMINIO}.storeId, igual que hace la web.
+   Datos (Firestore, solo los lee y escribe el servidor):
+   · waNumeros/{phoneNumberId}   { storeId, numero, estado: activo|pausado|baja, limiteMes,
+                                   uso: { mes, recibidos, enviados, bloqueados }, calidad, ultimoError }
+   · waSolicitudes/{storeId}     el dueño pidió conectar su número (desde el panel)
+   · tiendas/{storeId}/waChats/{numero}   cada conversación
+   · tiendas/{storeId}/config/general     waActivo (el dueño apaga o prende el bot), waSaludo (su mensaje)
 
-   Fase 1: a quien escribe se le contesta con un saludo, el link de la tienda y si está
-   abierta (una vez cada 12 horas por persona, para no repetir). Cada conversación queda
-   anotada en tiendas/{storeId}/waChats/{numero}. La toma de pedidos por chat llega en la Fase 2.
+   Protecciones para que un cliente no afecte a los demás ni genere costos:
+   · tope de respuestas automáticas al mes por número (limiteMes, 2.000 por defecto; DerLabs lo cambia)
+   · tope por persona: 12 respuestas por hora (corta conversaciones en bucle con otros bots)
+   · si Meta bloquea un número por política, ese número se pausa solo y queda el aviso
+   · la calidad del número que informa Meta (verde / amarilla / roja) queda a la vista de DerLabs
 
-   Secretos y variables en Cloudflare (Settings → Variables and secrets):
-     WA_TOKEN          secreto · token permanente del usuario del sistema de Meta
-     WA_APP_SECRET     secreto · "Clave secreta de la app" (App settings → Basic)
-     WA_VERIFY_TOKEN   secreto · una frase cualquiera, la misma que se pone en Meta
-     WA_DOMINIO        texto   · dominio de la tienda piloto (opcional si existe waNumeros) */
+   Secretos en Cloudflare: WA_TOKEN, WA_APP_SECRET, WA_VERIFY_TOKEN, ADMIN_SECRET; WA_DOMINIO (piloto). */
 
 const GRAPH = "https://graph.facebook.com/v21.0/";
-/* P63 · Diagnóstico: los últimos 15 avisos que llegaron (sin textos ni números completos) quedan en el KV
-   LANDING, clave "wa_diag". Se ven en /api/whatsapp?diag=<WA_VERIFY_TOKEN>. */
+const CADA_SALUDO_MS = 12 * 3600 * 1000;
+export const LIMITE_MES_DEF = 2000;
+const MAX_POR_CLIENTE_HORA = 12;
+export const SALUDO_DEF = "¡Hola {cliente}! 👋 Gracias por escribir a *{tienda}*.\n\n🛒 Haz tu pedido aquí: {link}\n{estado}";
+const ERR_BLOQUEO = [368, 131031];                    /* Meta bloqueó el número o la cuenta: se pausa solo */
+const ERR_LIMITE = [130429, 131048, 131056, 80007];   /* Meta frenó por volumen o spam */
+
+/* ── Diagnóstico: últimos 15 avisos en el KV LANDING (clave wa_diag), sin textos ni números completos ── */
 const DIAG_MAX = 15;
 async function anotar(env, item){
   try {
@@ -33,10 +43,15 @@ async function anotar(env, item){
   } catch(e){ console.error("wa diag:", e.message); }
 }
 const tapar = n => { n = String(n || ""); return n.length > 4 ? n.slice(0, 4) + "•••" + n.slice(-2) : n; };
-const CADA_SALUDO_MS = 12 * 3600 * 1000;
+const digitos = s => String(s || "").replace(/\D/g, "");
+const idOk = s => { s = String(s || "").trim(); return /^[A-Za-z0-9_-]{1,80}$/.test(s) ? s : ""; };
+const mesDe = t => new Date(t).toISOString().slice(0, 7);
 
 function texto(cuerpo, status){
   return new Response(cuerpo, { status: status || 200, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+}
+function json(obj, status){
+  return new Response(JSON.stringify(obj), { status: status || 200, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
 /* comparación en tiempo constante (no revela cuántas letras coinciden) */
@@ -56,79 +71,219 @@ export async function firmaValida(cuerpo, cabecera, secreto){
   return igualSeguro(hex, cabecera.slice(7).toLowerCase());
 }
 
-async function tiendaDeNumero(db, env, phoneId){
-  if (phoneId){
-    const n = await db.doc("waNumeros/" + phoneId).get();
-    if (n.exists && n.data().storeId) return String(n.data().storeId);
-  }
-  const dom = String(env.WA_DOMINIO || "").trim().toLowerCase();
-  if (dom){
-    const d = await db.doc("dominios/" + dom).get();
-    if (d.exists && d.data().storeId) return String(d.data().storeId);
-  }
-  return null;
+/* el token tal como se pegó en Cloudflare puede traer espacios, saltos de línea, comillas o "Bearer " delante */
+export function limpiarToken(t){
+  return String(t || "").replace(/^\s*["']?\s*(Bearer\s+)?/i, "").replace(/["']?\s*$/, "").replace(/\s+/g, "");
 }
 
+/* ── Mensaje de bienvenida: el que escribió el dueño (config.waSaludo) o el de siempre ── */
 export function textoSaludo(cfg, nombreCliente, dominio, fecha){
+  cfg = cfg || {};
   const tienda = String(cfg.nombre || "nuestra tienda").trim();
-  const quien = String(nombreCliente || "").trim().split(/\s+/)[0];
+  const quien = String(nombreCliente || "").trim().split(/\s+/)[0] || "";
   const url = dominio ? "https://" + String(dominio).replace(/^https?:\/\//, "").replace(/\/+$/, "") : "";
   const e = estadoHorario(cfg, fecha);
   let estado;
   if (e.abierta) estado = "🟢 Estamos abiertos y recibiendo pedidos.";
   else if (e.manual) estado = "🔴 En este momento estamos cerrados.";
   else estado = "🔴 Ahora estamos cerrados" + (e.abre ? "; abrimos " + e.abre + "." : ".");
-  return "¡Hola" + (quien ? " " + quien : "") + "! 👋 Gracias por escribir a *" + tienda + "*.\n\n" +
-    (url ? "🛒 Haz tu pedido aquí: " + url + "\n" : "") + estado;
+  const propio = String(cfg.waSaludo || "").trim();
+  const base = propio ? propio.slice(0, 600) : SALUDO_DEF;
+  return base
+    .replace(/\{cliente\}/g, quien).replace(/\{tienda\}/g, tienda)
+    .replace(/\{link\}/g, url).replace(/\{estado\}/g, estado)
+    .replace(/[ \t]+([!?,.])/g, "$1").replace(/[ \t]{2,}/g, " ").trim();
 }
 
-/* el token tal como se pegó en Cloudflare puede traer espacios, saltos de línea, comillas o "Bearer " delante */
-export function limpiarToken(t){
-  return String(t || "").replace(/^\s*["']?\s*(Bearer\s+)?/i, "").replace(/["']?\s*$/, "").replace(/\s+/g, "");
-}
 async function enviar(env, phoneId, cuerpo){
   const token = limpiarToken(env.WA_TOKEN);
-  if (!token) throw new Error("Falta el secreto WA_TOKEN en Cloudflare");
+  if (!token){ const e = new Error("Falta el secreto WA_TOKEN en Cloudflare"); e.codigo = 0; throw e; }
   const r = await fetch(GRAPH + phoneId + "/messages", {
     method: "POST",
     headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
     body: JSON.stringify(Object.assign({ messaging_product: "whatsapp" }, cuerpo))
   });
   if (!r.ok){
-    let det = ""; try { det = JSON.stringify((await r.json()).error || {}); } catch(e){}
-    throw new Error("Meta respondió " + r.status + " " + det.slice(0, 300));
+    let er = {}; try { er = (await r.json()).error || {}; } catch(e){}
+    const e = new Error("Meta respondió " + r.status + " " + JSON.stringify(er).slice(0, 300));
+    e.codigo = Number(er.code) || 0; e.status = r.status;
+    throw e;
   }
   return r.json();
 }
 
-async function procesarMensaje(db, env, phoneId, msg, contacto, ahora){
-  const storeId = await tiendaDeNumero(db, env, phoneId);
-  if (!storeId){ console.warn("whatsapp: número sin tienda", phoneId); return { ok: false, motivo: "sin-tienda" }; }
-  const waId = String(msg.from || "").replace(/\D/g, "");
-  if (!waId) return { ok: false, motivo: "sin-remitente" };
+/* A qué tienda pertenece un número. Si no está en waNumeros y existe WA_DOMINIO (piloto), se anota solo. */
+async function numeroDe(db, env, phoneId, display){
+  const ref = db.doc("waNumeros/" + phoneId);
+  const n = await ref.get();
+  if (n.exists && n.data().storeId) return { ref, d: n.data() };
+  const dom = String(env.WA_DOMINIO || "").trim().toLowerCase();
+  if (!dom) return null;
+  const dd = await db.doc("dominios/" + dom).get();
+  if (!dd.exists || !dd.data().storeId) return null;
+  const d = { storeId: String(dd.data().storeId), numero: display ? "+" + digitos(display) : "", numeroDigitos: digitos(display), estado: "activo", limiteMes: LIMITE_MES_DEF, origen: "piloto (WA_DOMINIO)", vinculadoEn: new Date().toISOString() };
+  await ref.set(d, { merge: true });
+  return { ref, d };
+}
+
+async function procesarMensaje(db, env, phoneId, display, msg, contacto, ahora){
+  const num = await numeroDe(db, env, phoneId, display);
+  if (!num){ console.warn("whatsapp: número sin tienda", phoneId); return { ok: false, motivo: "número sin tienda" }; }
+  const storeId = num.d.storeId, estadoNum = num.d.estado || "activo";
+  if (estadoNum === "baja") return { ok: true, storeId, motivo: "número dado de baja" };
+  const waId = digitos(msg.from);
+  if (!waId) return { ok: false, motivo: "sin remitente" };
   const ref = db.doc("tiendas/" + storeId + "/waChats/" + waId);
   const prev = await ref.get(), chat = prev.exists ? prev.data() : {};
   /* Meta reintenta si no contestamos rápido: el mismo mensaje no se procesa dos veces */
   if (msg.id && chat.ultimoId === msg.id) return { ok: true, repetido: true };
+
+  const mes = mesDe(ahora);
+  const uso = num.d.uso && num.d.uso.mes === mes ? Object.assign({}, num.d.uso) : { mes, recibidos: 0, enviados: 0, bloqueados: 0 };
+  uso.recibidos = (Number(uso.recibidos) || 0) + 1;
+  const cambiosNum = { uso, ultimoMensajeEn: new Date(ahora).toISOString() };
+  if (display && !num.d.numero){ cambiosNum.numero = "+" + digitos(display); cambiosNum.numeroDigitos = digitos(display); }
+
   const nombre = contacto && contacto.profile && contacto.profile.name ? String(contacto.profile.name).slice(0, 80) : (chat.nombre || "");
   const txt = msg.type === "text" && msg.text ? String(msg.text.body || "").slice(0, 1000) : "[" + String(msg.type || "mensaje") + "]";
   const datos = { nombre, ultimoId: msg.id || "", ultimoTexto: txt, ultimoEn: new Date(ahora).toISOString(), mensajes: (Number(chat.mensajes) || 0) + 1 };
-  let saludo = false;
-  if (!chat.saludoEn || ahora - Date.parse(chat.saludoEn) > CADA_SALUDO_MS){
-    const g = await db.doc("tiendas/" + storeId + "/config/general").get();
-    const cfg = g.exists ? g.data() : {};
+
+  let motivo = "", saludo = false, error = "";
+  const g = await db.doc("tiendas/" + storeId + "/config/general").get();
+  const cfg = g.exists ? g.data() : {};
+  const hora = chat.hora && ahora - Date.parse(chat.hora.inicio) < 3600e3 ? Object.assign({}, chat.hora) : { inicio: new Date(ahora).toISOString(), n: 0 };
+  const toca = !chat.saludoEn || ahora - Date.parse(chat.saludoEn) > CADA_SALUDO_MS;
+  const limite = Number(num.d.limiteMes) > 0 ? Number(num.d.limiteMes) : LIMITE_MES_DEF;
+
+  if (estadoNum === "pausado") motivo = "pausado por DerLabs";
+  else if (cfg.waActivo === false) motivo = "bot apagado por la tienda";
+  else if (!toca) motivo = "ya saludado (menos de 12 h)";
+  else if ((Number(uso.enviados) || 0) >= limite){ motivo = "límite mensual alcanzado"; uso.bloqueados = (Number(uso.bloqueados) || 0) + 1; }
+  else if (hora.n >= MAX_POR_CLIENTE_HORA) motivo = "límite por cliente (12 por hora)";
+  else {
     const dominio = cfg.dominioPrincipal || String(env.WA_DOMINIO || "");
-    try { await enviar(env, phoneId, { status: "read", message_id: msg.id }); } catch(e){ /* el visto es opcional */ }
-    await enviar(env, phoneId, { to: waId, type: "text", text: { preview_url: true, body: textoSaludo(cfg, nombre, dominio, new Date(ahora)) } });
-    datos.saludoEn = new Date(ahora).toISOString();
-    saludo = true;
+    try {
+      try { await enviar(env, phoneId, { status: "read", message_id: msg.id }); } catch(e){ /* el visto es opcional */ }
+      await enviar(env, phoneId, { to: waId, type: "text", text: { preview_url: true, body: textoSaludo(cfg, nombre, dominio, new Date(ahora)) } });
+      datos.saludoEn = new Date(ahora).toISOString();
+      hora.n += 1; saludo = true;
+      uso.enviados = (Number(uso.enviados) || 0) + 1;
+      if (uso.enviados === Math.ceil(limite * 0.8)) cambiosNum.alerta = { tipo: "80% del límite mensual", en: new Date(ahora).toISOString() };
+    } catch(e){
+      error = e.message;
+      cambiosNum.ultimoError = { en: new Date(ahora).toISOString(), codigo: e.codigo || 0, texto: String(e.message).slice(0, 300) };
+      if (ERR_BLOQUEO.includes(e.codigo)){ cambiosNum.estado = "pausado"; cambiosNum.motivoPausa = "Meta bloqueó el número (código " + e.codigo + ")"; }
+      else if (ERR_LIMITE.includes(e.codigo)) cambiosNum.alerta = { tipo: "Meta frenó los envíos (código " + e.codigo + ")", en: new Date(ahora).toISOString() };
+    }
   }
+  datos.hora = hora;
   await ref.set(datos, { merge: true });
-  return { ok: true, storeId, saludo };
+  await num.ref.set(cambiosNum, { merge: true });
+  if (error) return { ok: false, storeId, error };
+  return { ok: true, storeId, saludo, motivo };
+}
+
+/* Meta avisa cuando cambia la calidad de un número (verde, amarilla, roja) o su límite de envíos */
+async function calidadNumero(db, v, ahora){
+  const dig = digitos(v.display_phone_number);
+  if (!dig) return;
+  const q = await db.collection("waNumeros").where("numeroDigitos", "==", dig).get();
+  for (const d of q.docs) await d.ref.set({ calidad: { evento: String(v.event || ""), limite: String(v.current_limit || ""), en: new Date(ahora).toISOString() } }, { merge: true });
+}
+
+/* ── Panel del dueño ── */
+async function apiTienda(request, env, b){
+  const storeId = idOk(b.storeId);
+  if (!storeId) return json({ ok: false, error: "Falta la tienda" }, 400);
+  const db = getDb(env);
+  const uid = await uidDesdeToken(request, env);
+  if (!uid) return json({ ok: false, error: "Sesión vencida — vuelve a entrar" }, 401);
+  const u = await db.doc("usuarios/" + uid).get();
+  const rol = u.exists && u.data().roles ? u.data().roles[storeId] : null;
+  if (!rol || rol === "repartidor") return json({ ok: false, error: "Sin permiso para esta tienda" }, 403);
+  if (b.accion === "solicitar"){
+    const numero = digitos(b.numero);
+    if (numero.length < 8 || numero.length > 15) return json({ ok: false, error: "Escribe el número con código de país, por ejemplo +56 9 1234 5678" }, 400);
+    const g = await db.doc("tiendas/" + storeId + "/config/general").get();
+    await db.doc("waSolicitudes/" + storeId).set({ storeId, numero: "+" + numero, tienda: g.exists ? String(g.data().nombre || "") : "", en: new Date().toISOString(), uid });
+    return json({ ok: true });
+  }
+  if (b.accion === "cancelarSolicitud"){ await db.doc("waSolicitudes/" + storeId).delete(); return json({ ok: true }); }
+  /* estado */
+  const q = await db.collection("waNumeros").where("storeId", "==", storeId).get();
+  const nums = q.docs.map(d => Object.assign({ id: d.id }, d.data())).filter(d => d.estado !== "baja");
+  const n = nums[0] || null, s = await db.doc("waSolicitudes/" + storeId).get();
+  const mes = mesDe(Date.now());
+  return json({ ok: true,
+    conectado: !!n, numero: n ? n.numero || "" : "", estado: n ? n.estado || "activo" : "", motivoPausa: n ? n.motivoPausa || "" : "",
+    uso: n && n.uso && n.uso.mes === mes ? { enviados: n.uso.enviados || 0, recibidos: n.uso.recibidos || 0 } : { enviados: 0, recibidos: 0 },
+    limite: n ? (Number(n.limiteMes) || LIMITE_MES_DEF) : LIMITE_MES_DEF,
+    solicitud: s.exists ? { numero: s.data().numero, en: s.data().en } : null,
+    saludoBase: SALUDO_DEF });
+}
+
+/* ── Administración de DerLabs ── */
+async function apiAdmin(request, env, b){
+  if (!env.ADMIN_SECRET || !igualSeguro(request.headers.get("x-admin-secret"), env.ADMIN_SECRET)) return json({ ok: false, error: "Clave incorrecta" }, 401);
+  const db = getDb(env), ahora = new Date().toISOString(), mes = mesDe(Date.now());
+  const phoneId = digitos(b.phoneId);
+  if (b.accion === "listar"){
+    const [qn, qs] = await Promise.all([db.collection("waNumeros").get(), db.collection("waSolicitudes").get()]);
+    const nombres = {};
+    const nombreDe = async id => { if (!(id in nombres)){ const g = await db.doc("tiendas/" + id + "/config/general").get(); nombres[id] = g.exists ? String(g.data().nombre || id) : "(tienda borrada)"; } return nombres[id]; };
+    const numeros = [];
+    for (const d of qn.docs){
+      const x = d.data(), uso = x.uso && x.uso.mes === mes ? x.uso : { enviados: 0, recibidos: 0, bloqueados: 0 };
+      numeros.push({ phoneId: d.id, storeId: x.storeId || "", tienda: x.storeId ? await nombreDe(x.storeId) : "", numero: x.numero || "", estado: x.estado || "activo", motivoPausa: x.motivoPausa || "",
+        limiteMes: Number(x.limiteMes) || LIMITE_MES_DEF, uso, calidad: x.calidad || null, alerta: x.alerta || null, ultimoError: x.ultimoError || null, ultimoMensajeEn: x.ultimoMensajeEn || "", origen: x.origen || "" });
+    }
+    numeros.sort((a, b2) => (b2.uso.enviados || 0) - (a.uso.enviados || 0));
+    return json({ ok: true, mes, numeros, solicitudes: qs.docs.map(d => d.data()) });
+  }
+  if (b.accion === "vincular"){
+    const storeId = idOk(b.storeId), numero = digitos(b.numero);
+    if (!phoneId || !storeId) return json({ ok: false, error: "Faltan el ID del número y la tienda" }, 400);
+    const g = await db.doc("tiendas/" + storeId + "/config/general").get();
+    if (!g.exists) return json({ ok: false, error: "No existe la tienda «" + storeId + "»" }, 404);
+    const prev = await db.doc("waNumeros/" + phoneId).get();
+    if (prev.exists && prev.data().storeId && prev.data().storeId !== storeId && prev.data().estado !== "baja" && !b.forzar)
+      return json({ ok: false, error: "Ese número ya está conectado a otra tienda (" + prev.data().storeId + "). Dalo de baja primero." }, 409);
+    await db.doc("waNumeros/" + phoneId).set({ storeId, numero: numero ? "+" + numero : (prev.exists ? prev.data().numero || "" : ""), numeroDigitos: numero || (prev.exists ? prev.data().numeroDigitos || "" : ""),
+      estado: "activo", motivoPausa: "", limiteMes: Number(b.limiteMes) > 0 ? Math.min(Number(b.limiteMes), 100000) : LIMITE_MES_DEF, vinculadoEn: ahora, origen: "admin" }, { merge: true });
+    await db.doc("waSolicitudes/" + storeId).delete();
+    return json({ ok: true });
+  }
+  if (!phoneId && b.accion !== "bajaTienda" && b.accion !== "borrarSolicitud") return json({ ok: false, error: "Falta el ID del número" }, 400);
+  if (b.accion === "estado"){
+    const est = ["activo", "pausado", "baja"].includes(b.estado) ? b.estado : "";
+    if (!est) return json({ ok: false, error: "Estado no válido" }, 400);
+    const ref = db.doc("waNumeros/" + phoneId); if (!(await ref.get()).exists) return json({ ok: false, error: "No existe ese número" }, 404);
+    await ref.set({ estado: est, motivoPausa: est === "pausado" ? String(b.motivo || "Pausado por DerLabs").slice(0, 120) : "", cambioEstadoEn: ahora }, { merge: true });
+    return json({ ok: true });
+  }
+  if (b.accion === "limite"){
+    const lim = Math.round(Number(b.limiteMes));
+    if (!(lim > 0 && lim <= 100000)) return json({ ok: false, error: "Límite entre 1 y 100.000" }, 400);
+    const ref = db.doc("waNumeros/" + phoneId); if (!(await ref.get()).exists) return json({ ok: false, error: "No existe ese número" }, 404);
+    await ref.set({ limiteMes: lim, alerta: null }, { merge: true });
+    return json({ ok: true });
+  }
+  if (b.accion === "bajaTienda"){
+    const storeId = idOk(b.storeId); if (!storeId) return json({ ok: false, error: "Falta la tienda" }, 400);
+    const q = await db.collection("waNumeros").where("storeId", "==", storeId).get();
+    for (const d of q.docs) await d.ref.set({ estado: "baja", cambioEstadoEn: ahora }, { merge: true });
+    await db.doc("waSolicitudes/" + storeId).delete();
+    return json({ ok: true, numeros: q.docs.length });
+  }
+  if (b.accion === "borrarSolicitud"){ const storeId = idOk(b.storeId); if (storeId) await db.doc("waSolicitudes/" + storeId).delete(); return json({ ok: true }); }
+  return json({ ok: false, error: "Acción desconocida" }, 400);
 }
 
 export async function whatsapp(request, env, ahora){
   const url = new URL(request.url);
+  const op = url.searchParams.get("op");
+  if (request.method === "OPTIONS") return new Response("", { status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Secret", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" } });
+
   if (request.method === "GET" && url.searchParams.has("diag")){
     if (!env.WA_VERIFY_TOKEN || !igualSeguro(url.searchParams.get("diag"), env.WA_VERIFY_TOKEN)) return texto("Prohibido", 403);
     let lista = []; try { lista = JSON.parse((env.LANDING && await env.LANDING.get("wa_diag")) || "[]"); } catch(e){}
@@ -141,7 +296,8 @@ export async function whatsapp(request, env, ahora){
         prueba = r.ok ? "token válido (" + (jj.name || jj.id || "ok") + ")" : "Meta rechaza el token: " + ((jj.error && jj.error.message) || r.status);
       } catch(e){ prueba = "no se pudo probar: " + e.message; }
     }
-    const conf = { WA_TOKEN: !!env.WA_TOKEN, tokenLargo: tk.length, tokenEmpieza: tk.slice(0, 4), tokenTraiaEspacios: crudo !== tk, pruebaToken: prueba, WA_APP_SECRET: !!env.WA_APP_SECRET, WA_VERIFY_TOKEN: !!env.WA_VERIFY_TOKEN, WA_DOMINIO: String(env.WA_DOMINIO || ""), FIREBASE: !!env.FIREBASE_SERVICE_ACCOUNT, KV: !!env.LANDING };
+    const conf = { WA_TOKEN: !!env.WA_TOKEN, tokenLargo: tk.length, tokenEmpieza: tk.slice(0, 4), tokenTraiaEspacios: crudo !== tk, pruebaToken: prueba,
+      WA_APP_SECRET: !!env.WA_APP_SECRET, WA_VERIFY_TOKEN: !!env.WA_VERIFY_TOKEN, ADMIN_SECRET: !!env.ADMIN_SECRET, WA_DOMINIO: String(env.WA_DOMINIO || ""), FIREBASE: !!env.FIREBASE_SERVICE_ACCOUNT, KV: !!env.LANDING };
     return new Response(JSON.stringify({ configuracion: conf, ultimosAvisos: lista.length ? lista : "Todavía no llega ningún aviso de Meta" }, null, 2), { headers: { "Content-Type": "application/json; charset=utf-8" } });
   }
   if (request.method === "GET"){
@@ -150,28 +306,35 @@ export async function whatsapp(request, env, ahora){
     return texto("Prohibido", 403);
   }
   if (request.method !== "POST") return texto("Método no permitido", 405);
+
+  if (op === "tienda" || op === "admin"){
+    let b = {}; try { b = JSON.parse(await request.text() || "{}"); } catch(e){ return json({ ok: false, error: "Datos inválidos" }, 400); }
+    try { return op === "tienda" ? await apiTienda(request, env, b) : await apiAdmin(request, env, b); }
+    catch(e){ console.error("whatsapp " + op + ":", e.message); return json({ ok: false, error: "Error del servidor: " + e.message }, 500); }
+  }
+
   const cuerpo = await request.text();
   if (!(await firmaValida(cuerpo, request.headers.get("x-hub-signature-256"), env.WA_APP_SECRET))){
     await anotar(env, { resultado: "firma inválida (revisa WA_APP_SECRET)", conFirma: !!request.headers.get("x-hub-signature-256") });
     return texto("Firma inválida", 401);
   }
   let j; try { j = JSON.parse(cuerpo); } catch(e){ return texto("JSON inválido", 400); }
-  const db = getDb(env), res = [];
+  const db = getDb(env), res = [], t = ahora || Date.now();
   for (const entrada of (j.entry || [])){
     for (const cambio of (entrada.changes || [])){
       const v = cambio.value || {};
-      const phoneId = v.metadata && v.metadata.phone_number_id;
+      if (cambio.field === "phone_number_quality_update"){ try { await calidadNumero(db, v, t); res.push({ ok: true, motivo: "calidad " + (v.event || "") }); } catch(e){ res.push({ ok: false, error: e.message }); } continue; }
+      const phoneId = v.metadata && v.metadata.phone_number_id, display = v.metadata && v.metadata.display_phone_number;
       const contactos = v.contacts || [];
       for (const m of (v.messages || [])){
-        try { res.push(await procesarMensaje(db, env, phoneId, m, contactos.find(c => c.wa_id === m.from) || contactos[0], ahora || Date.now())); }
+        try { res.push(await procesarMensaje(db, env, phoneId, display, m, contactos.find(c => c.wa_id === m.from) || contactos[0], t)); }
         catch(e){ console.error("whatsapp:", e.message); res.push({ ok: false, error: e.message }); }
       }
     }
   }
-  const cambios = (j.entry || []).reduce((n, e) => n + ((e.changes || []).length), 0);
   const tipos = [].concat.apply([], (j.entry || []).map(e => (e.changes || []).map(c => c.field + (c.value && c.value.statuses ? ":estado" : "") + (c.value && c.value.messages ? ":mensaje" : ""))));
-  await anotar(env, { resultado: res.length ? res.map(x => x.error ? "error: " + x.error : x.motivo ? x.motivo : x.repetido ? "repetido" : x.saludo ? "saludo enviado" : "anotado (sin saludo)").join(" | ") : "aviso sin mensajes", campos: tipos.join(","), cambios,
+  await anotar(env, { resultado: res.length ? res.map(x => x.error ? "error: " + x.error : x.saludo ? "saludo enviado" : x.repetido ? "repetido" : (x.motivo || "anotado")).join(" | ") : "aviso sin mensajes", campos: tipos.join(","),
     de: [].concat.apply([], (j.entry || []).map(e => (e.changes || []).map(c => ((c.value && c.value.messages) || []).map(m => tapar(m.from)).join(",")))).filter(Boolean).join(",") });
   /* a Meta siempre se le contesta 200: si no, reintenta el mismo aviso por horas */
-  return new Response(JSON.stringify({ ok: true, n: res.length, res }), { headers: { "Content-Type": "application/json" } });
+  return json({ ok: true, n: res.length, res });
 }
