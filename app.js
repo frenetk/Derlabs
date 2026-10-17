@@ -9281,7 +9281,10 @@ function waCss(){
     "#waPanel .wa-pv small{display:block;font-size:11px;font-weight:800;color:#6B5E52;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px}",
     "#waPanel .wa-burbuja{background:#fff;border-radius:4px 14px 14px 14px;padding:10px 12px;font-size:14px;line-height:1.45;color:#111;max-width:92%;box-shadow:0 1px 1px rgba(0,0,0,.08);overflow-wrap:anywhere}",
     "#waPanel .wa-burbuja a{color:#027EB5;text-decoration:none}",
-    "#waPanel .wa-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}#waPanel .wa-btns button{margin:0}"
+    "#waPanel .wa-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}#waPanel .wa-btns button{margin:0}",
+    "#waPanel .wa-ped{display:flex;align-items:center;gap:12px;margin:12px 0 0;padding:12px;border:1.5px solid #E6E1DD;border-radius:12px}",
+    "#waPanel .wa-ped>span{flex:1;min-width:0;font-size:14px}#waPanel .wa-ped small{display:block;font-size:12px;line-height:1.4;color:#6B6560;margin-top:3px}",
+    "#waPanel .wa-ped .switch{flex:none}"
   ].join("\n");
   document.head.appendChild(st);
 }
@@ -9294,6 +9297,8 @@ function waPanel(){
     box.innerHTML = '<div class="pcard-h"><div><b>🤖 Asistente de WhatsApp</b><small id="waResumen">Responde solo a quien te escribe</small></div>' +
       '<label class="switch"><input type="checkbox" id="waOn" aria-label="Respuestas automáticas por WhatsApp"><span class="slider"></span></label></div>' +
       '<p class="pnota" style="font-size:12.5px;margin:8px 0 0">Cuando un cliente escribe a tu WhatsApp, recibe al instante tu link, tu horario y si estás abierto. Tú sigues usando tu WhatsApp como siempre.</p>' +
+      '<div class="wa-ped"><span><b>🛒 Tomar pedidos por chat</b><small>Mientras estás abierto, el asistente muestra tu menú, pregunta lo necesario (tamaño, extras, dirección) y el pedido llega a tu gestor como cualquier otro, con pago en efectivo.</small></span>' +
+      '<label class="switch"><input type="checkbox" id="waPed" aria-label="Tomar pedidos por WhatsApp"><span class="slider"></span></label></div>' +
       '<div id="waConn"></div>' +
       '<label class="plabel" for="waTxt">Mensaje de bienvenida</label>' +
       '<textarea class="field" id="waTxt" maxlength="600"></textarea>' +
@@ -9331,6 +9336,12 @@ function waPanel(){
       var v = !!this.checked;
       var ok = await saveConfig("waActivo", v);
       if (ok !== false && typeof toast === "function") toast(v ? "✅ Respuestas automáticas activadas" : "Respuestas automáticas apagadas");
+      waPintar();
+    });
+    qs("#waPed").addEventListener("change", async function(){
+      var v = !!this.checked;
+      var ok = await saveConfig("waPedidos", v);
+      if (ok !== false && typeof toast === "function") toast(v ? "✅ El asistente tomará pedidos" : "El asistente solo enviará tu link");
       waPintar();
     });
     qs("#waConn").addEventListener("click", async function(e){
@@ -9388,6 +9399,7 @@ function waPintar(conTexto){
   var c = state.config || {}, s = _wa.estado, tx = qs("#waTxt");
   var on = c.waActivo !== false;
   qs("#waOn").checked = on;
+  var ped = qs("#waPed"); if (ped){ ped.checked = c.waPedidos !== false; ped.disabled = !on; ped.closest(".wa-ped").style.opacity = on ? "" : ".55"; }
   if (conTexto || (tx && !tx._tocado && document.activeElement !== tx)) tx.value = String(c.waSaludo || "").trim() || _waBase();
   waVista();
   var h = "", res = "";
@@ -9401,7 +9413,7 @@ function waPintar(conTexto){
     h = '<div class="wa-est ok"><span class="wa-ico">✅</span><span style="flex:1"><b>Conectado: ' + esc(s.numero || "tu número") + '</b>' +
       _waFmt(s.uso.enviados) + ' de ' + _waFmt(s.limite) + ' respuestas automáticas este mes' +
       '<div class="wa-barra' + (pct >= 100 ? " tope" : pct >= 80 ? " alto" : "") + '"><i style="width:' + pct + '%"></i></div>' +
-      (pct >= 100 ? 'Llegaste al tope del mes: el asistente descansa hasta el próximo mes. Escríbenos si necesitas más.' : _waFmt(s.uso.recibidos) + ' mensajes recibidos') + '</span></div>';
+      (pct >= 100 ? 'Llegaste al tope del mes: el asistente descansa hasta el próximo mes. Escríbenos si necesitas más.' : _waFmt(s.uso.recibidos) + ' mensajes recibidos' + (s.uso.pedidos ? ' · <b style="display:inline">' + _waFmt(s.uso.pedidos) + (s.uso.pedidos === 1 ? ' pedido' : ' pedidos') + ' por chat</b>' : '')) + '</span></div>';
     res = on ? "Activo" : "Apagado: no responde";
   } else if (s && s.solicitud){
     h = '<div class="wa-est"><span class="wa-ico">🕐</span><span><b>Solicitud enviada</b>Pediste conectar el ' + esc(s.solicitud.numero) + '. DerLabs te contactará para dejarlo listo. · <a href="#" id="waCancelar" onclick="return false">Cancelar</a></span></div>';
@@ -9532,7 +9544,7 @@ function v26PanelHome(){
     (v28EsComida() ? '<div class="pv-estado pv-entrega"><div class="pv-ent-t"><b>Cómo entregas</b><small>Lo que eliges aquí es lo que ven tus clientes al pedir</small></div>' +
       '<div class="pv-ent-f"><span><b>Delivery</b><small>Llevas el pedido a su dirección</small></span><label class="switch"><input type="checkbox" id="pvDelivery"' + (state.config.deliveryActivo !== false ? " checked" : "") + '><span class="slider"></span></label></div>' +
       '<div class="pv-ent-f"><span><b>Retiro en local</b><small>El cliente pasa a buscarlo</small></span><label class="switch"><input type="checkbox" id="pvRetiro"' + (state.config.retiroActivo !== false ? " checked" : "") + '><span class="slider"></span></label></div></div>' : "") +
-    (v28EsComida() ? '<button type="button" class="pv-fila" data-pvir="envio" data-pvwa="1"><span class="pv-ico">🤖</span><span class="pv-txt"><b>Asistente de WhatsApp</b><small>' + (state.config.waActivo === false ? "Apagado" : "Responde solo a tus clientes con tu link y horario") + '</small></span><span class="pv-chev">›</span></button>' : "") +
+    (v28EsComida() ? '<button type="button" class="pv-fila" data-pvir="envio" data-pvwa="1"><span class="pv-ico">🤖</span><span class="pv-txt"><b>Asistente de WhatsApp</b><small>' + (state.config.waActivo === false ? "Apagado" : state.config.waPedidos === false ? "Responde solo a tus clientes con tu link y horario" : "Toma pedidos por chat y los manda a tu gestor") + '</small></span><span class="pv-chev">›</span></button>' : "") +
     (v28EsComida() && !hrTiene(state.config.horario) ? '<button type="button" class="pv-fila pv-aviso" data-pvir="tienda"><span class="pv-ico">🕒</span><span class="pv-txt"><b>Agrega tu horario de atención</b><small>La tienda abre y cierra sola a la hora que indiques</small></span><span class="pv-chev">›</span></button>' : '') +
     v41Plan() +
     V26_GRUPOS.map(function(g){

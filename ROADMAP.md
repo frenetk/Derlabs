@@ -1395,3 +1395,23 @@ idéntico pixel a pixel.
 - **Protecciones**: tope mensual por número (2.000 por defecto), 12 respuestas por hora por persona, alerta al 80 %,
   pausa automática si Meta bloquea el número (códigos 368 / 131031), aviso si Meta frena por volumen (130429, 131048,
   131056, 80007) y registro de la calidad del número (`phone_number_quality_update`).
+
+## 37. WhatsApp Fase 2: el asistente toma pedidos por chat (P66) — ✅ hecho
+
+- Con la tienda **abierta** y "🛒 Tomar pedidos por chat" encendido (`config.waPedidos`, por defecto sí), el asistente
+  conversa; cerrada o apagado, solo manda el saludo con el link (una vez cada 12 h, como en P62).
+- **Entender**: Gemini (`GEMINI_API_KEY`, modelo `GEMINI_MODEL`, por defecto `gemini-2.5-flash`) recibe solo
+  `id|nombre|categoría|precio` y devuelve ids del catálogo; los ids que no existen se descartan. Sin clave o si Gemini
+  falla, un buscador por nombre ("2 clásicas y una coca") hace el trabajo.
+- **Conversación** (`_waBot.js`, estado en `waChats/{numero}.conv` como texto, vence a las 2 h): menú por categorías
+  en listas de WhatsApp (9 productos por página + "Ver más"), preguntas de variantes y extras obligatorios con botones,
+  "¿algo más?" con subtotal (y botón de bebidas si no lleva), delivery o retiro según lo que tenga activo la tienda,
+  dirección + comuna (detecta la comuna o muestra la lista; sin cobertura ofrece retiro), elección de local si hay
+  varios, resumen con envío y total, Confirmar / Empezar de nuevo / Cancelar.
+- **Pedido**: lo valida el servidor igual que la web (`validarPedidoCompleto`: horario, stock, precios y extras); el
+  envío lo calcula el servidor con las zonas o el costo fijo. Queda en `tiendas/{id}/pedidos` con id `WA…`,
+  `origen: "whatsapp"`, pago en efectivo; descuenta stock e insumos, manda los correos y el aviso al dueño. En el
+  gestor sale la etiqueta "💬 WhatsApp" (toca para abrir el chat con el cliente).
+- **Hablar con alguien**: el bot se calla 2 h en ese chat y le llega un aviso al dueño.
+- Topes: 40 mensajes por hora por persona mientras conversa; cada respuesta cuenta en el tope del mes; el panel muestra
+  los pedidos por chat del mes (`uso.pedidos`).

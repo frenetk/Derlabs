@@ -1,5 +1,9 @@
 import { getDb, estadoHorario, uidDesdeToken } from "./_firebase.js";
-/* cloudflare/functions/whatsapp.js — WhatsApp de DerLabs (P62 · P63 · P64 · P65)
+import { atender } from "./_waBot.js";
+import { notificar } from "./notificar.js";
+/* cloudflare/functions/whatsapp.js — WhatsApp de DerLabs (P62 · P63 · P64 · P65 · P66)
+   P66: con la tienda abierta y "tomar pedidos" encendido (config.waPedidos, por defecto sí),
+   el asistente conversa y arma el pedido (ver _waBot.js); cerrada o apagado, solo saluda.
 
    Una sola dirección, /api/whatsapp, para todo:
    · GET  ?hub.mode=subscribe…   Meta comprueba la dirección (hub.verify_token = WA_VERIFY_TOKEN).
@@ -11,7 +15,7 @@ import { getDb, estadoHorario, uidDesdeToken } from "./_firebase.js";
 
    Datos (Firestore, solo los lee y escribe el servidor):
    · waNumeros/{phoneNumberId}   { storeId, numero, estado: activo|pausado|baja, limiteMes,
-                                   uso: { mes, recibidos, enviados, bloqueados }, calidad, ultimoError }
+                                   uso: { mes, recibidos, enviados, bloqueados, pedidos }, calidad, ultimoError }
    · waSolicitudes/{storeId}     el dueño pidió conectar su número (desde el panel)
    · tiendas/{storeId}/waChats/{numero}   cada conversación
    · tiendas/{storeId}/config/general     waActivo (el dueño apaga o prende el bot), waSaludo (su mensaje)
@@ -28,6 +32,7 @@ const GRAPH = "https://graph.facebook.com/v21.0/";
 const CADA_SALUDO_MS = 12 * 3600 * 1000;
 export const LIMITE_MES_DEF = 2000;
 const MAX_POR_CLIENTE_HORA = 12;
+const MAX_CONV_HORA = 40;   /* P66: tomando pedidos, una conversación tiene más idas y vueltas */
 export const SALUDO_DEF = "¡Hola {cliente}! 👋 Gracias por escribir a *{tienda}*.\n\n🛒 Haz tu pedido aquí: {link}\n{estado}";
 const ERR_BLOQUEO = [368, 131031];                    /* Meta bloqueó el número o la cuenta: se pausa solo */
 const ERR_LIMITE = [130429, 131048, 131056, 80007];   /* Meta frenó por volumen o spam */
@@ -145,30 +150,58 @@ async function procesarMensaje(db, env, phoneId, display, msg, contacto, ahora){
   if (display && !num.d.numero){ cambiosNum.numero = "+" + digitos(display); cambiosNum.numeroDigitos = digitos(display); }
 
   const nombre = contacto && contacto.profile && contacto.profile.name ? String(contacto.profile.name).slice(0, 80) : (chat.nombre || "");
-  const txt = msg.type === "text" && msg.text ? String(msg.text.body || "").slice(0, 1000) : "[" + String(msg.type || "mensaje") + "]";
+  /* lo que escribió o tocó el cliente */
+  const entrada = { tipo: msg.type || "" };
+  if (msg.type === "text" && msg.text) entrada.texto = String(msg.text.body || "").slice(0, 1000);
+  else if (msg.type === "interactive" && msg.interactive){ const rp = msg.interactive.button_reply || msg.interactive.list_reply || {}; entrada.id = String(rp.id || "").slice(0, 256); entrada.texto = String(rp.title || "").slice(0, 100); }
+  else if (msg.type === "button" && msg.button) entrada.texto = String(msg.button.text || "").slice(0, 200);
+  const txt = entrada.texto || "[" + String(msg.type || "mensaje") + "]";
   const datos = { nombre, ultimoId: msg.id || "", ultimoTexto: txt, ultimoEn: new Date(ahora).toISOString(), mensajes: (Number(chat.mensajes) || 0) + 1 };
 
-  let motivo = "", saludo = false, error = "";
+  let motivo = "", saludo = false, error = "", respuestas = 0, pedidoId = "";
   const g = await db.doc("tiendas/" + storeId + "/config/general").get();
   const cfg = g.exists ? g.data() : {};
   const hora = chat.hora && ahora - Date.parse(chat.hora.inicio) < 3600e3 ? Object.assign({}, chat.hora) : { inicio: new Date(ahora).toISOString(), n: 0 };
   const toca = !chat.saludoEn || ahora - Date.parse(chat.saludoEn) > CADA_SALUDO_MS;
   const limite = Number(num.d.limiteMes) > 0 ? Number(num.d.limiteMes) : LIMITE_MES_DEF;
+  /* P66: con "tomar pedidos" encendido (por defecto) y la tienda abierta, el bot conversa */
+  const pedidos = cfg.waPedidos !== false && estadoHorario(cfg, new Date(ahora)).abierta;
+  const humano = chat.humanoHasta && ahora < Date.parse(chat.humanoHasta);
 
   if (estadoNum === "pausado") motivo = "pausado por DerLabs";
   else if (cfg.waActivo === false) motivo = "bot apagado por la tienda";
-  else if (!toca) motivo = "ya saludado (menos de 12 h)";
+  else if (humano) motivo = "lo atiende una persona";
+  else if (!pedidos && !toca) motivo = "ya saludado (menos de 12 h)";
   else if ((Number(uso.enviados) || 0) >= limite){ motivo = "límite mensual alcanzado"; uso.bloqueados = (Number(uso.bloqueados) || 0) + 1; }
-  else if (hora.n >= MAX_POR_CLIENTE_HORA) motivo = "límite por cliente (12 por hora)";
+  else if (hora.n >= (pedidos ? MAX_CONV_HORA : MAX_POR_CLIENTE_HORA)) motivo = "límite por cliente (" + (pedidos ? MAX_CONV_HORA : MAX_POR_CLIENTE_HORA) + " por hora)";
   else {
     const dominio = cfg.dominioPrincipal || String(env.WA_DOMINIO || "");
+    const textoBienvenida = textoSaludo(cfg, nombre, dominio, new Date(ahora));
     try {
       try { await enviar(env, phoneId, { status: "read", message_id: msg.id }); } catch(e){ /* el visto es opcional */ }
-      await enviar(env, phoneId, { to: waId, type: "text", text: { preview_url: true, body: textoSaludo(cfg, nombre, dominio, new Date(ahora)) } });
-      datos.saludoEn = new Date(ahora).toISOString();
-      hora.n += 1; saludo = true;
-      uso.enviados = (Number(uso.enviados) || 0) + 1;
-      if (uso.enviados === Math.ceil(limite * 0.8)) cambiosNum.alerta = { tipo: "80% del límite mensual", en: new Date(ahora).toISOString() };
+      let salida;
+      if (pedidos){
+        const origin = "https://" + String(dominio || "derlabs.cl").replace(/^https?:\/\//, "").replace(/\/+$/, "");
+        let conv0 = null; try { conv0 = chat.conv ? JSON.parse(chat.conv) : null; } catch(e){}
+        const r = await atender({ db, env, storeId, cfg: Object.assign({ dominioPrincipal: dominio }, cfg), chat: { conv: conv0 }, entrada, nombre, waId, ahora, saludo: textoBienvenida, origin });
+        salida = r.salida;
+        /* se guarda como texto para reemplazarla entera (con merge, Firestore mezclaría los campos viejos) */
+        datos.conv = r.conv ? JSON.stringify(r.conv) : null;
+        if (r.pedidoId){ pedidoId = r.pedidoId; datos.ultimoPedido = { id: r.pedidoId, en: new Date(ahora).toISOString() }; datos.pedidos = (Number(chat.pedidos) || 0) + 1; }
+        if (r.humanoHasta){
+          datos.humanoHasta = r.humanoHasta; datos.conv = null;
+          try { await notificar(new Request(origin + "/api/notificar", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }), env,
+            { storeId, titulo: "🙋 Un cliente quiere hablar por WhatsApp", texto: (nombre || "Cliente") + " (+" + waId + ") pidió hablar con alguien. Respóndele desde tu WhatsApp Business.", url: "/pedidos.html" }); } catch(e){ console.warn("push humano:", e.message); }
+        }
+      } else salida = [{ type: "text", text: { preview_url: true, body: textoBienvenida } }];
+      for (const m of salida){
+        if ((Number(uso.enviados) || 0) >= limite) break;
+        await enviar(env, phoneId, Object.assign({ to: waId }, m));
+        uso.enviados = (Number(uso.enviados) || 0) + 1; respuestas++;
+        if (uso.enviados === Math.ceil(limite * 0.8)) cambiosNum.alerta = { tipo: "80% del límite mensual", en: new Date(ahora).toISOString() };
+      }
+      if (!pedidos || !chat.saludoEn || toca) datos.saludoEn = new Date(ahora).toISOString();
+      hora.n += 1; saludo = respuestas > 0;
     } catch(e){
       error = e.message;
       cambiosNum.ultimoError = { en: new Date(ahora).toISOString(), codigo: e.codigo || 0, texto: String(e.message).slice(0, 300) };
@@ -176,11 +209,12 @@ async function procesarMensaje(db, env, phoneId, display, msg, contacto, ahora){
       else if (ERR_LIMITE.includes(e.codigo)) cambiosNum.alerta = { tipo: "Meta frenó los envíos (código " + e.codigo + ")", en: new Date(ahora).toISOString() };
     }
   }
+  if (pedidoId){ uso.pedidos = (Number(uso.pedidos) || 0) + 1; }
   datos.hora = hora;
   await ref.set(datos, { merge: true });
   await num.ref.set(cambiosNum, { merge: true });
   if (error) return { ok: false, storeId, error };
-  return { ok: true, storeId, saludo, motivo };
+  return { ok: true, storeId, saludo, respuestas, motivo, pedidoId };
 }
 
 /* Meta avisa cuando cambia la calidad de un número (verde, amarilla, roja) o su límite de envíos */
@@ -216,7 +250,7 @@ async function apiTienda(request, env, b){
   const mes = mesDe(Date.now());
   return json({ ok: true,
     conectado: !!n, numero: n ? n.numero || "" : "", estado: n ? n.estado || "activo" : "", motivoPausa: n ? n.motivoPausa || "" : "",
-    uso: n && n.uso && n.uso.mes === mes ? { enviados: n.uso.enviados || 0, recibidos: n.uso.recibidos || 0 } : { enviados: 0, recibidos: 0 },
+    uso: n && n.uso && n.uso.mes === mes ? { enviados: n.uso.enviados || 0, recibidos: n.uso.recibidos || 0, pedidos: n.uso.pedidos || 0 } : { enviados: 0, recibidos: 0, pedidos: 0 },
     limite: n ? (Number(n.limiteMes) || LIMITE_MES_DEF) : LIMITE_MES_DEF,
     solicitud: s.exists ? { numero: s.data().numero, en: s.data().en } : null,
     saludoBase: SALUDO_DEF });
@@ -333,7 +367,7 @@ export async function whatsapp(request, env, ahora){
     }
   }
   const tipos = [].concat.apply([], (j.entry || []).map(e => (e.changes || []).map(c => c.field + (c.value && c.value.statuses ? ":estado" : "") + (c.value && c.value.messages ? ":mensaje" : ""))));
-  await anotar(env, { resultado: res.length ? res.map(x => x.error ? "error: " + x.error : x.saludo ? "saludo enviado" : x.repetido ? "repetido" : (x.motivo || "anotado")).join(" | ") : "aviso sin mensajes", campos: tipos.join(","),
+  await anotar(env, { resultado: res.length ? res.map(x => x.error ? "error: " + x.error : x.pedidoId ? "pedido " + x.pedidoId : x.respuestas > 1 ? x.respuestas + " respuestas" : x.saludo ? "saludo enviado" : x.repetido ? "repetido" : (x.motivo || "anotado")).join(" | ") : "aviso sin mensajes", campos: tipos.join(","),
     de: [].concat.apply([], (j.entry || []).map(e => (e.changes || []).map(c => ((c.value && c.value.messages) || []).map(m => tapar(m.from)).join(",")))).filter(Boolean).join(",") });
   /* a Meta siempre se le contesta 200: si no, reintenta el mismo aviso por horas */
   return json({ ok: true, n: res.length, res });
